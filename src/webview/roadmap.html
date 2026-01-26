@@ -1,0 +1,688 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+          sans-serif;
+        background: #0a0a0a;
+        color: #e0e0e0;
+        overflow: hidden;
+      }
+
+      .container {
+        height: 100vh;
+        display: flex;
+        flex-direction: column;
+      }
+
+      .header {
+        background: #1a1a1a;
+        padding: 16px 24px;
+        border-bottom: 1px solid #333;
+        z-index: 10;
+      }
+
+      .header h1 {
+        font-size: 18px;
+        font-weight: 600;
+        margin-bottom: 4px;
+      }
+
+      .breadcrumb {
+        font-size: 12px;
+        color: #888;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-top: 8px;
+      }
+
+      .breadcrumb-item {
+        cursor: pointer;
+        transition: color 0.2s;
+      }
+
+      .breadcrumb-item:hover {
+        color: #4ec9b0;
+      }
+
+      .breadcrumb-separator {
+        color: #555;
+      }
+
+      .canvas {
+        flex: 1;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 40px;
+        overflow: auto;
+        background: radial-gradient(circle at center, #1a1a1a 0%, #0a0a0a 100%);
+      }
+
+      .level-container {
+        display: flex;
+        gap: 24px;
+        flex-wrap: wrap;
+        justify-content: center;
+        align-items: flex-start;
+        max-width: 1400px;
+        animation: fadeIn 0.3s ease-out;
+      }
+
+      @keyframes fadeIn {
+        from {
+          opacity: 0;
+          transform: scale(0.95);
+        }
+        to {
+          opacity: 1;
+          transform: scale(1);
+        }
+      }
+
+      .card {
+        background: linear-gradient(135deg, #1e1e1e 0%, #2a2a2a 100%);
+        border: 2px solid #3a3a3a;
+        border-radius: 16px;
+        padding: 32px;
+        min-width: 200px;
+        max-width: 280px;
+        cursor: pointer;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        position: relative;
+        overflow: hidden;
+      }
+
+      .card::before {
+        content: "";
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 4px;
+        background: linear-gradient(90deg, #3b82f6, #8b5cf6);
+        opacity: 0;
+        transition: opacity 0.3s;
+      }
+
+      .card:hover {
+        transform: translateY(-8px) scale(1.05);
+        border-color: #4ec9b0;
+        box-shadow: 0 12px 40px rgba(78, 201, 176, 0.2);
+      }
+
+      .card:hover::before {
+        opacity: 1;
+      }
+
+      .card.folder {
+        border-color: #f59e0b;
+      }
+
+      .card.folder:hover {
+        border-color: #f59e0b;
+        box-shadow: 0 12px 40px rgba(245, 158, 11, 0.2);
+      }
+
+      .card.folder::before {
+        background: linear-gradient(90deg, #f59e0b, #ef4444);
+      }
+
+      .card.file {
+        border-color: #3b82f6;
+      }
+
+      .card.file:hover {
+        border-color: #3b82f6;
+        box-shadow: 0 12px 40px rgba(59, 130, 246, 0.2);
+      }
+
+      .card.file::before {
+        background: linear-gradient(90deg, #3b82f6, #8b5cf6);
+      }
+
+      .card-icon {
+        font-size: 48px;
+        margin-bottom: 16px;
+        text-align: center;
+      }
+
+      .card-name {
+        font-size: 16px;
+        font-weight: 600;
+        text-align: center;
+        color: #fff;
+        margin-bottom: 8px;
+        word-break: break-word;
+      }
+
+      .card-info {
+        font-size: 12px;
+        color: #888;
+        text-align: center;
+      }
+
+      .card-badge {
+        position: absolute;
+        top: 12px;
+        right: 12px;
+        background: rgba(78, 201, 176, 0.2);
+        color: #4ec9b0;
+        padding: 4px 10px;
+        border-radius: 12px;
+        font-size: 11px;
+        font-weight: 600;
+      }
+
+      .back-button {
+        position: fixed;
+        top: 80px;
+        left: 24px;
+        background: #2a2a2a;
+        border: 1px solid #3a3a3a;
+        color: #fff;
+        padding: 10px 20px;
+        border-radius: 8px;
+        cursor: pointer;
+        font-size: 14px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        transition: all 0.2s;
+        z-index: 5;
+      }
+
+      .back-button:hover {
+        background: #3a3a3a;
+        border-color: #4ec9b0;
+      }
+
+      .function-list {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        margin-top: 24px;
+        max-height: 500px;
+        overflow-y: auto;
+      }
+
+      .function-card {
+        background: rgba(0, 0, 0, 0.3);
+        border: 1px solid #3a3a3a;
+        border-radius: 8px;
+        padding: 16px;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        transition: all 0.2s;
+      }
+
+      .function-card:hover {
+        background: rgba(0, 0, 0, 0.5);
+        border-color: #4ec9b0;
+      }
+
+      .function-icon {
+        font-size: 24px;
+      }
+
+      .function-details {
+        flex: 1;
+      }
+
+      .function-name {
+        font-size: 14px;
+        font-weight: 600;
+        color: #fff;
+        margin-bottom: 4px;
+      }
+
+      .function-meta {
+        font-size: 11px;
+        color: #888;
+      }
+
+      .empty-state {
+        text-align: center;
+        color: #666;
+        padding: 60px;
+      }
+
+      .empty-state-icon {
+        font-size: 64px;
+        margin-bottom: 16px;
+      }
+
+      .hint {
+        position: fixed;
+        bottom: 24px;
+        left: 50%;
+        transform: translateX(-50%);
+        background: rgba(26, 26, 26, 0.95);
+        border: 1px solid #3a3a3a;
+        padding: 12px 24px;
+        border-radius: 8px;
+        font-size: 12px;
+        color: #888;
+        pointer-events: none;
+        animation: pulse 2s infinite;
+      }
+
+      @keyframes pulse {
+        0%,
+        100% {
+          opacity: 0.6;
+        }
+        50% {
+          opacity: 1;
+        }
+      }
+
+      .debug-panel {
+        position: fixed;
+        top: 80px;
+        right: 24px;
+        background: #1a1a1a;
+        border: 1px solid #3a3a3a;
+        padding: 12px;
+        border-radius: 8px;
+        font-size: 11px;
+        color: #888;
+        max-width: 300px;
+        z-index: 5;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <div class="header">
+        <h1>🗺️ Project Map</h1>
+        <div class="breadcrumb" id="breadcrumb">
+          <span class="breadcrumb-item" onclick="navigateTo([])">Root</span>
+        </div>
+      </div>
+
+      <div class="canvas" id="canvas">
+        <div class="level-container" id="levelContainer"></div>
+      </div>
+
+      <button class="back-button" id="backButton" style="display: none">
+        ← Back
+      </button>
+
+      <div class="hint" id="hint">Click on a folder or file to explore</div>
+
+      <!-- Debug panel (remove in production) -->
+      <div class="debug-panel" id="debugPanel" style="display: none">
+        <strong>Debug Info:</strong><br />
+        <div id="debugContent"></div>
+      </div>
+    </div>
+
+    <script>
+      // Get data
+      let roadmapData = window.ROADMAP_DATA || { files: [] };
+      console.log("🗺️ [INIT] Roadmap data:", roadmapData);
+
+      let currentPath = [];
+      let hierarchyData = null;
+
+      // Build folder hierarchy
+      function buildHierarchy(files) {
+        console.log("📊 [buildHierarchy] Starting with files:", files.length);
+
+        const root = {
+          name: "Root",
+          type: "folder",
+          children: {},
+          files: [],
+        };
+
+        // Find common base path
+        const basePath = findBasePath(files);
+        console.log("📁 [buildHierarchy] Base path:", basePath);
+
+        files.forEach((file, index) => {
+          let relativePath = file.path.replace(/\\/g, "/");
+          if (basePath) {
+            relativePath = relativePath.replace(basePath + "/", "");
+          }
+
+          console.log(
+            `📄 [buildHierarchy] Processing ${index + 1}/${
+              files.length
+            }: ${relativePath}`
+          );
+
+          const parts = relativePath.split("/").filter((p) => p); // Remove empty parts
+          let current = root;
+
+          // Build folder structure (excluding the file itself)
+          for (let i = 0; i < parts.length - 1; i++) {
+            const folderName = parts[i];
+
+            if (!current.children[folderName]) {
+              console.log(`  📁 Creating folder: ${folderName}`);
+              current.children[folderName] = {
+                name: folderName,
+                type: "folder",
+                children: {},
+                files: [],
+              };
+            }
+            current = current.children[folderName];
+          }
+
+          // Add file to the deepest folder
+          const fileName = parts[parts.length - 1];
+          console.log(`  📄 Adding file: ${fileName} to folder`);
+
+          current.files.push({
+            name: fileName,
+            type: "file",
+            fullPath: file.path,
+            functions: file.functions || [],
+          });
+        });
+
+        console.log("✅ [buildHierarchy] Final hierarchy:", root);
+        return root;
+      }
+
+      function findBasePath(files) {
+        if (files.length === 0) return "";
+
+        const paths = files.map((f) => f.path.replace(/\\/g, "/"));
+        const parts = paths[0].split("/");
+
+        let commonParts = [];
+        for (let i = 0; i < parts.length - 1; i++) {
+          const part = parts.slice(0, i + 1).join("/");
+          const allMatch = paths.every((p) => p.startsWith(part));
+          if (allMatch) {
+            commonParts = parts.slice(0, i + 1);
+          } else {
+            break;
+          }
+        }
+
+        return commonParts.join("/");
+      }
+
+      function getCurrentLevel() {
+        let current = hierarchyData;
+        console.log(
+          "🎯 [getCurrentLevel] Starting at root, path:",
+          currentPath
+        );
+
+        for (const part of currentPath) {
+          console.log("  🔍 Navigating into:", part);
+
+          if (current.children && current.children[part]) {
+            current = current.children[part];
+            console.log("  ✅ Found:", part);
+          } else {
+            console.error("  ❌ Could not find:", part);
+            console.error(
+              "  Available children:",
+              Object.keys(current.children || {})
+            );
+            return null;
+          }
+        }
+
+        console.log("✅ [getCurrentLevel] Current level:", current.name);
+        console.log(
+          "  📁 Subfolders:",
+          Object.keys(current.children || {}).length
+        );
+        console.log("  📄 Files:", (current.files || []).length);
+
+        return current;
+      }
+
+      function renderLevel() {
+        console.log("🎨 [renderLevel] Rendering level for path:", currentPath);
+
+        const container = document.getElementById("levelContainer");
+        const level = getCurrentLevel();
+
+        if (!level) {
+          console.error("❌ [renderLevel] No level found!");
+          container.innerHTML =
+            '<div class="empty-state"><div class="empty-state-icon">📭</div><h3>Nothing here</h3></div>';
+          return;
+        }
+
+        const folders = Object.keys(level.children || {}).sort();
+        const files = (level.files || []).sort((a, b) =>
+          a.name.localeCompare(b.name)
+        );
+
+        console.log(
+          `📊 [renderLevel] Found ${folders.length} folders and ${files.length} files`
+        );
+
+        // Update debug panel
+        updateDebugPanel({
+          folders: folders.length,
+          files: files.length,
+          level: level.name,
+        });
+
+        container.innerHTML = "";
+
+        // Render folders - ALWAYS show all folders, regardless of content
+        folders.forEach((folderName) => {
+          const folder = level.children[folderName];
+          const folderCount = countItems(folder);
+          const totalItems = folderCount.folders + folderCount.files;
+
+          console.log(
+            `  📁 Rendering folder: ${folderName} (${totalItems} items)`
+          );
+
+          const card = document.createElement("div");
+          card.className = "card folder";
+          card.onclick = () => navigateInto(folderName);
+
+          card.innerHTML = `
+            <div class="card-badge">${totalItems}</div>
+            <div class="card-icon">📁</div>
+            <div class="card-name">${folderName}</div>
+            <div class="card-info">${folderCount.folders} folders · ${folderCount.files} files</div>
+          `;
+
+          container.appendChild(card);
+        });
+
+        // Render files
+        files.forEach((file) => {
+          console.log(
+            `  📄 Rendering file: ${file.name} (${file.functions.length} functions)`
+          );
+
+          const card = document.createElement("div");
+          card.className = "card file";
+          card.onclick = () => showFileFunctions(file);
+
+          card.innerHTML = `
+            <div class="card-badge">${file.functions.length} fn</div>
+            <div class="card-icon">📄</div>
+            <div class="card-name">${file.name}</div>
+            <div class="card-info">Click to view functions</div>
+          `;
+
+          container.appendChild(card);
+        });
+
+        // Show empty state only if truly empty
+        if (folders.length === 0 && files.length === 0) {
+          console.log("📭 [renderLevel] Empty folder!");
+          container.innerHTML =
+            '<div class="empty-state"><div class="empty-state-icon">📭</div><h3>Empty folder</h3><p>No files or subfolders here</p></div>';
+        }
+
+        // Update UI elements
+        document.getElementById("backButton").style.display =
+          currentPath.length > 0 ? "flex" : "none";
+        updateBreadcrumb();
+
+        // Hide hint after first interaction
+        setTimeout(() => {
+          document.getElementById("hint").style.display = "none";
+        }, 3000);
+      }
+
+      function countItems(node) {
+        let folders = Object.keys(node.children || {}).length;
+        let files = (node.files || []).length;
+
+        // Recursively count nested items
+        Object.values(node.children || {}).forEach((child) => {
+          const counts = countItems(child);
+          folders += counts.folders;
+          files += counts.files;
+        });
+
+        return { folders, files };
+      }
+
+      function navigateInto(folderName) {
+        console.log("🚀 [navigateInto] Navigating to:", folderName);
+        currentPath.push(folderName);
+        renderLevel();
+      }
+
+      function navigateBack() {
+        if (currentPath.length > 0) {
+          const popped = currentPath.pop();
+          console.log("⬅️ [navigateBack] Going back from:", popped);
+          renderLevel();
+        }
+      }
+
+      function navigateTo(path) {
+        console.log("🎯 [navigateTo] Jumping to path:", path);
+        currentPath = path;
+        renderLevel();
+      }
+
+      function updateBreadcrumb() {
+        const breadcrumb = document.getElementById("breadcrumb");
+        let html =
+          '<span class="breadcrumb-item" onclick="navigateTo([])">Root</span>';
+
+        currentPath.forEach((part, index) => {
+          const pathUpToHere = currentPath.slice(0, index + 1);
+          html += '<span class="breadcrumb-separator">/</span>';
+          html += `<span class="breadcrumb-item" onclick="navigateTo(${JSON.stringify(
+            pathUpToHere
+          ).replace(/"/g, "&quot;")})">${part}</span>`;
+        });
+
+        breadcrumb.innerHTML = html;
+      }
+
+      function updateDebugPanel(info) {
+        const panel = document.getElementById("debugPanel");
+        const content = document.getElementById("debugContent");
+
+        content.innerHTML = `
+          Level: ${info.level}<br>
+          Folders: ${info.folders}<br>
+          Files: ${info.files}<br>
+          Path: ${currentPath.join("/") || "root"}
+        `;
+
+        // Auto-hide after 5 seconds
+        panel.style.display = "block";
+        setTimeout(() => {
+          panel.style.display = "none";
+        }, 5000);
+      }
+
+      function showFileFunctions(file) {
+        console.log("📄 [showFileFunctions] Showing functions for:", file.name);
+
+        const container = document.getElementById("levelContainer");
+        container.innerHTML = "";
+
+        // File header card
+        const headerCard = document.createElement("div");
+        headerCard.className = "card file";
+        headerCard.style.width = "100%";
+        headerCard.style.maxWidth = "800px";
+        headerCard.innerHTML = `
+          <div class="card-icon">📄</div>
+          <div class="card-name">${file.name}</div>
+          <div class="card-info">${file.functions.length} functions</div>
+          <div class="function-list">
+            ${file.functions
+              .map(
+                (fn) => `
+              <div class="function-card">
+                <div class="function-icon">${getFunctionIcon(fn.name)}</div>
+                <div class="function-details">
+                  <div class="function-name">${fn.name}</div>
+                  <div class="function-meta">
+                    ${
+                      fn.calls && fn.calls.length > 0
+                        ? `Calls: ${fn.calls.slice(0, 3).join(", ")}${
+                            fn.calls.length > 3 ? "..." : ""
+                          }`
+                        : "No dependencies"
+                    }
+                  </div>
+                </div>
+              </div>
+            `
+              )
+              .join("")}
+          </div>
+        `;
+
+        container.appendChild(headerCard);
+      }
+
+      function getFunctionIcon(name) {
+        const lower = name.toLowerCase();
+        if (lower.startsWith("use")) return "🪝";
+        if (lower.startsWith("handle")) return "🎯";
+        if (lower.includes("fetch") || lower.includes("api")) return "📡";
+        if (lower.includes("render")) return "🎨";
+        if (lower.includes("analyze") || lower.includes("build")) return "⚙️";
+        return "⚡";
+      }
+
+      // Back button handler
+      document.getElementById("backButton").onclick = navigateBack;
+
+      // Initialize
+      console.log("🚀 [INIT] Starting initialization...");
+
+      if (roadmapData && roadmapData.files && roadmapData.files.length > 0) {
+        console.log(`✅ [INIT] Found ${roadmapData.files.length} files`);
+
+        hierarchyData = buildHierarchy(roadmapData.files);
+        console.log("✅ [INIT] Hierarchy built successfully");
+
+        // Don't auto-navigate into first folder - stay at root
+        renderLevel();
+      } else {
+        console.error("❌ [INIT] No files found in roadmap data");
+        document.getElementById("levelContainer").innerHTML =
+          '<div class="empty-state"><div class="empty-state-icon">📭</div><h3>No files found</h3><p>Make sure you have TypeScript files in your workspace</p></div>';
+      }
+    </script>
+  </body>
+</html>

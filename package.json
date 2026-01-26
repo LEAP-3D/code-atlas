@@ -1,34 +1,73 @@
 {
-  "name": "my-app",
-  "version": "0.1.0",
-  "private": true,
-  "scripts": {
-    "dev": "next dev",
-    "build": "npm run lint && next build",
-    "start": "next start",
-    "lint": "eslint"
+  "name": "experiment",
+  "displayName": "experiment",
+  "description": "Visualize TypeScript call graphs and code structure using Mermaid diagrams",
+  "version": "0.0.1",
+  "engines": {
+    "vscode": "^1.105.0"
   },
-  "dependencies": {
-    "@prisma/adapter-pg": "^7.2.0",
-    "@prisma/client": "^7.2.0",
-    "next": "16.0.10",
-    "react": "19.2.1",
-    "react-dom": "19.2.1"
+  "categories": [
+    "Programming Languages",
+    "Visualization"
+  ],
+  "activationEvents": [
+    "onView:codeTree",
+    "onCommand:experiment.showSelectedCode",
+    "onCommand:experiment.showRoadmap"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "experimentSidebar",
+          "title": "Experiment",
+          "icon": "media/roadmap.svg"
+        }
+      ]
+    },
+    "views": {
+      "experimentSidebar": [
+        {
+          "id": "codeTree",
+          "name": "Selected Code"
+        }
+      ]
+    },
+    "commands": [
+      {
+        "command": "experiment.showSelectedCode",
+        "title": "Show Selected Code"
+      },
+      {
+        "command": "experiment.showRoadmap",
+        "title": "Show Project Roadmap"
+      }
+    ],
+    "keybindings": [
+      {
+        "command": "experiment.showSelectedCode",
+        "key": "ctrl+alt+c",
+        "when": "editorTextFocus"
+      }
+    ]
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "pretest": "npm run compile && npm run lint",
+    "lint": "eslint src",
+    "test": "vscode-test"
   },
   "devDependencies": {
-    "@tailwindcss/postcss": "^4",
-    "@types/node": "^20",
-    "@types/react": "^19",
-    "@types/react-dom": "^19",
-    "@typescript-eslint/eslint-plugin": "^8.0.0",
-    "@typescript-eslint/parser": "^8.0.0",
-    "babel-plugin-react-compiler": "1.0.0",
-    "dotenv": "^17.2.3",
-    "eslint": "^9.39.2",
-    "eslint-config-next": "16.0.10",
-    "eslint-plugin-unused-imports": "^4.3.0",
-    "prisma": "^7.2.0",
-    "tailwindcss": "^4",
-    "typescript": "^5.0.0"
+    "@types/vscode": "^1.105.0",
+    "@types/mocha": "^10.0.10",
+    "@types/node": "22.x",
+    "typescript-eslint": "^8.48.1",
+    "eslint": "^9.39.1",
+    "typescript": "^5.9.3",
+    "@vscode/test-cli": "^0.0.12",
+    "@vscode/test-electron": "^2.5.2"
   }
 }
