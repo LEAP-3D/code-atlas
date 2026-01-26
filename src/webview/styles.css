@@ -1,0 +1,12 @@
+body {
+  font-family: system-ui, sans-serif;
+  padding: 16px;
+}
+
+pre {
+  background: #1e1e1e;
+  color: #d4d4d4;
+  padding: 12px;
+  border-radius: 6px;
+  overflow-x: auto;
+}
