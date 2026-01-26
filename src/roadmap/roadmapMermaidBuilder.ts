@@ -1,4 +1,4 @@
-import { functionIndex } from "../state/functionIndex";
+import { functionIndex, FunctionRecord } from "../state/functionIndex";
 import { callGraphIndex } from "../state/callGraphIndex";
 import { fileIndex } from "../state/fileIndex";
 
@@ -8,7 +8,7 @@ export function buildRoadmapMermaid(): string {
   const files = fileIndex.getAll();
 
   // Group functions by file
-  const fileGroups = new Map<string, any[]>();
+  const fileGroups = new Map<string, FunctionRecord[]>();
 
   for (const fn of functionIndex.getAll()) {
     if (!fileGroups.has(fn.filePath)) {

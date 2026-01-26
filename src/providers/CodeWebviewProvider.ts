@@ -2,7 +2,7 @@ import * as vscode from "vscode";
 import * as path from "path";
 import * as fs from "fs";
 import { fileIndex } from "../state/fileIndex";
-import { functionIndex, FunctionRecord } from "../state/functionIndex";
+import { functionIndex } from "../state/functionIndex";
 import { callGraphIndex } from "../state/callGraphIndex";
 import {
   RoadmapData,
@@ -19,13 +19,13 @@ export class CodeWebviewProvider {
       relevantCode: string;
       selectedCode: string;
       mermaidDiagram: string;
-    }
+    },
   ) {
     const panel = vscode.window.createWebviewPanel(
       "codeExplanation",
       "Filtered Prompt Preview",
       vscode.ViewColumn.Beside,
-      { enableScripts: true }
+      { enableScripts: true },
     );
 
     panel.webview.html = this.getHtml(panel.webview, context, data);
@@ -36,7 +36,7 @@ export class CodeWebviewProvider {
       "roadmapView",
       "📊 Project Roadmap",
       vscode.ViewColumn.Beside,
-      { enableScripts: true }
+      { enableScripts: true },
     );
 
     panel.webview.html = this.getRoadmapHtml(panel.webview, context);
@@ -44,13 +44,13 @@ export class CodeWebviewProvider {
 
   private static getRoadmapHtml(
     webview: vscode.Webview,
-    context: vscode.ExtensionContext
+    context: vscode.ExtensionContext,
   ): string {
     const htmlPath = path.join(
       context.extensionPath,
       "src",
       "webview",
-      "roadmap.html"
+      "roadmap.html",
     );
 
     let html = fs.readFileSync(htmlPath, "utf8");
@@ -64,7 +64,7 @@ export class CodeWebviewProvider {
 
     // Inject data as a proper JSON script tag
     const dataScript = `<script>window.ROADMAP_DATA = ${JSON.stringify(
-      roadmapData
+      roadmapData,
     )};</script>`;
 
     // Insert script before closing </head> tag
@@ -91,7 +91,7 @@ export class CodeWebviewProvider {
 
       // Get functions for this specific file
       const fileFunctions = allFunctions.filter(
-        (fn) => fn.filePath === file.path
+        (fn) => fn.filePath === file.path,
       );
 
       console.log(`  📄 ${fileName}: ${fileFunctions.length} functions`);
@@ -133,7 +133,7 @@ export class CodeWebviewProvider {
       totalFiles: roadmapFiles.length,
       totalFunctions: roadmapFiles.reduce(
         (sum, f) => sum + f.functions.length,
-        0
+        0,
       ),
       totalConnections: allEdges.length,
     };
@@ -148,7 +148,7 @@ export class CodeWebviewProvider {
       console.log(
         `  Sample: ${file.name} - ${file.functions
           .map((f) => f.name)
-          .join(", ")}`
+          .join(", ")}`,
       );
     });
 
@@ -232,13 +232,13 @@ export class CodeWebviewProvider {
       relevantCode: string;
       selectedCode: string;
       mermaidDiagram: string;
-    }
+    },
   ): string {
     const htmlPath = path.join(
       context.extensionPath,
       "src",
       "webview",
-      "index.html"
+      "index.html",
     );
 
     let html = fs.readFileSync(htmlPath, "utf8");
