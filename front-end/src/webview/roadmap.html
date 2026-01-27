@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
   <head>
     <style>
@@ -9,8 +9,8 @@
       }
 
       body {
-        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
-          sans-serif;
+        font-family:
+          -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
         background: #0a0a0a;
         color: #e0e0e0;
         overflow: hidden;
@@ -27,9 +27,12 @@
         padding: 16px 24px;
         border-bottom: 1px solid #333;
         z-index: 10;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
       }
 
-      .header h1 {
+      .header-left h1 {
         font-size: 18px;
         font-weight: 600;
         margin-bottom: 4px;
@@ -53,212 +56,226 @@
         color: #4ec9b0;
       }
 
-      .breadcrumb-separator {
-        color: #555;
+      .controls {
+        display: flex;
+        gap: 12px;
+        align-items: center;
       }
 
-      .canvas {
-        flex: 1;
+      .zoom-controls {
+        display: flex;
+        gap: 4px;
+        background: #2a2a2a;
+        border: 1px solid #3a3a3a;
+        border-radius: 8px;
+        padding: 4px;
+      }
+
+      .zoom-btn {
+        background: transparent;
+        border: none;
+        color: #fff;
+        width: 32px;
+        height: 32px;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 18px;
         display: flex;
         align-items: center;
         justify-content: center;
-        padding: 40px;
-        overflow: auto;
-        background: radial-gradient(circle at center, #1a1a1a 0%, #0a0a0a 100%);
+        transition: all 0.2s;
       }
 
-      .level-container {
-        display: flex;
-        gap: 24px;
-        flex-wrap: wrap;
-        justify-content: center;
-        align-items: flex-start;
-        max-width: 1400px;
-        animation: fadeIn 0.3s ease-out;
+      .zoom-btn:hover {
+        background: #3a3a3a;
       }
 
-      @keyframes fadeIn {
-        from {
-          opacity: 0;
-          transform: scale(0.95);
-        }
-        to {
-          opacity: 1;
-          transform: scale(1);
-        }
-      }
-
-      .card {
-        background: linear-gradient(135deg, #1e1e1e 0%, #2a2a2a 100%);
-        border: 2px solid #3a3a3a;
-        border-radius: 16px;
-        padding: 32px;
-        min-width: 200px;
-        max-width: 280px;
-        cursor: pointer;
-        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-        position: relative;
-        overflow: hidden;
-      }
-
-      .card::before {
-        content: "";
-        position: absolute;
-        top: 0;
-        left: 0;
-        right: 0;
-        height: 4px;
-        background: linear-gradient(90deg, #3b82f6, #8b5cf6);
-        opacity: 0;
-        transition: opacity 0.3s;
-      }
-
-      .card:hover {
-        transform: translateY(-8px) scale(1.05);
-        border-color: #4ec9b0;
-        box-shadow: 0 12px 40px rgba(78, 201, 176, 0.2);
-      }
-
-      .card:hover::before {
-        opacity: 1;
-      }
-
-      .card.folder {
-        border-color: #f59e0b;
-      }
-
-      .card.folder:hover {
-        border-color: #f59e0b;
-        box-shadow: 0 12px 40px rgba(245, 158, 11, 0.2);
-      }
-
-      .card.folder::before {
-        background: linear-gradient(90deg, #f59e0b, #ef4444);
-      }
-
-      .card.file {
-        border-color: #3b82f6;
-      }
-
-      .card.file:hover {
-        border-color: #3b82f6;
-        box-shadow: 0 12px 40px rgba(59, 130, 246, 0.2);
-      }
-
-      .card.file::before {
-        background: linear-gradient(90deg, #3b82f6, #8b5cf6);
-      }
-
-      .card-icon {
-        font-size: 48px;
-        margin-bottom: 16px;
-        text-align: center;
-      }
-
-      .card-name {
-        font-size: 16px;
-        font-weight: 600;
-        text-align: center;
-        color: #fff;
-        margin-bottom: 8px;
-        word-break: break-word;
-      }
-
-      .card-info {
-        font-size: 12px;
+      .zoom-level {
         color: #888;
+        font-size: 12px;
+        padding: 0 8px;
+        min-width: 50px;
         text-align: center;
       }
 
-      .card-badge {
-        position: absolute;
-        top: 12px;
-        right: 12px;
-        background: rgba(78, 201, 176, 0.2);
-        color: #4ec9b0;
-        padding: 4px 10px;
-        border-radius: 12px;
-        font-size: 11px;
-        font-weight: 600;
-      }
-
-      .back-button {
-        position: fixed;
-        top: 80px;
-        left: 24px;
+      .reset-btn {
         background: #2a2a2a;
         border: 1px solid #3a3a3a;
         color: #fff;
-        padding: 10px 20px;
+        padding: 8px 16px;
         border-radius: 8px;
         cursor: pointer;
-        font-size: 14px;
-        display: flex;
-        align-items: center;
-        gap: 8px;
+        font-size: 12px;
         transition: all 0.2s;
-        z-index: 5;
       }
 
-      .back-button:hover {
+      .reset-btn:hover {
         background: #3a3a3a;
         border-color: #4ec9b0;
       }
 
-      .function-list {
+      .canvas {
+        flex: 1;
+        position: relative;
+        overflow: hidden;
+        background: radial-gradient(circle at center, #1a1a1a 0%, #0a0a0a 100%);
+        cursor: grab;
+      }
+
+      .canvas.grabbing {
+        cursor: grabbing;
+      }
+
+      .graph-container {
+        position: absolute;
+        width: 10000px;
+        height: 10000px;
+        left: 50%;
+        top: 50%;
+        transform-origin: center center;
+      }
+
+      svg.connections {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        pointer-events: none;
+        z-index: 1;
+      }
+
+      .connection-line {
+        stroke: #3a3a3a;
+        stroke-width: 2;
+        fill: none;
+        transition: stroke 0.3s;
+      }
+
+      .connection-line.highlight {
+        stroke: #4ec9b0;
+        stroke-width: 3;
+      }
+
+      .nodes-layer {
+        position: absolute;
+        width: 100%;
+        height: 100%;
+        z-index: 2;
+      }
+
+      .node {
+        position: absolute;
         display: flex;
         flex-direction: column;
-        gap: 12px;
-        margin-top: 24px;
-        max-height: 500px;
-        overflow-y: auto;
-      }
-
-      .function-card {
-        background: rgba(0, 0, 0, 0.3);
-        border: 1px solid #3a3a3a;
-        border-radius: 8px;
-        padding: 16px;
-        display: flex;
         align-items: center;
-        gap: 12px;
-        transition: all 0.2s;
+        justify-content: center;
+        cursor: pointer;
+        transition:
+          opacity 0.3s,
+          transform 0.3s;
+        z-index: 2;
       }
 
-      .function-card:hover {
-        background: rgba(0, 0, 0, 0.5);
+      .node.focused {
+        z-index: 5;
+      }
+
+      .node.dimmed {
+        opacity: 0.2;
+      }
+
+      .node-circle {
+        width: 100px;
+        height: 100px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, #1e1e1e 0%, #2a2a2a 100%);
+        border: 3px solid #3a3a3a;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        position: relative;
+        transition: all 0.3s;
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+      }
+
+      .node:hover .node-circle {
+        transform: scale(1.15);
+        box-shadow: 0 12px 40px rgba(78, 201, 176, 0.3);
+      }
+
+      .node.focused .node-circle {
+        width: 140px;
+        height: 140px;
         border-color: #4ec9b0;
+        box-shadow: 0 16px 64px rgba(78, 201, 176, 0.5);
       }
 
-      .function-icon {
-        font-size: 24px;
+      .node.small .node-circle {
+        width: 70px;
+        height: 70px;
       }
 
-      .function-details {
-        flex: 1;
+      .node.folder .node-circle {
+        border-color: #f59e0b;
       }
 
-      .function-name {
-        font-size: 14px;
+      .node.file .node-circle {
+        border-color: #3b82f6;
+      }
+
+      .node-icon {
+        font-size: 40px;
+        margin-bottom: 4px;
+        transition: all 0.3s;
+      }
+
+      .node.focused .node-icon {
+        font-size: 56px;
+      }
+
+      .node.small .node-icon {
+        font-size: 28px;
+        margin-bottom: 0;
+      }
+
+      .node-name {
+        font-size: 12px;
         font-weight: 600;
         color: #fff;
-        margin-bottom: 4px;
-      }
-
-      .function-meta {
-        font-size: 11px;
-        color: #888;
-      }
-
-      .empty-state {
         text-align: center;
-        color: #666;
-        padding: 60px;
+        max-width: 90px;
+        word-break: break-word;
+        transition: all 0.3s;
+        line-height: 1.2;
       }
 
-      .empty-state-icon {
-        font-size: 64px;
-        margin-bottom: 16px;
+      .node.focused .node-name {
+        font-size: 14px;
+        max-width: 130px;
+      }
+
+      .node.small .node-name {
+        font-size: 10px;
+        max-width: 65px;
+      }
+
+      .node-badge {
+        position: absolute;
+        top: 4px;
+        right: 4px;
+        background: rgba(78, 201, 176, 0.2);
+        color: #4ec9b0;
+        padding: 3px 7px;
+        border-radius: 10px;
+        font-size: 10px;
+        font-weight: 600;
+      }
+
+      .node.small .node-badge {
+        font-size: 8px;
+        padding: 2px 5px;
       }
 
       .hint {
@@ -273,136 +290,244 @@
         font-size: 12px;
         color: #888;
         pointer-events: none;
-        animation: pulse 2s infinite;
+        z-index: 10;
+        transition: opacity 0.3s;
       }
 
-      @keyframes pulse {
-        0%,
-        100% {
-          opacity: 0.6;
-        }
-        50% {
-          opacity: 1;
-        }
-      }
-
-      .debug-panel {
+      .function-panel {
         position: fixed;
-        top: 80px;
-        right: 24px;
+        right: -400px;
+        top: 70px;
+        bottom: 20px;
+        width: 380px;
         background: #1a1a1a;
         border: 1px solid #3a3a3a;
-        padding: 12px;
-        border-radius: 8px;
-        font-size: 11px;
+        border-radius: 12px;
+        padding: 24px;
+        overflow-y: auto;
+        transition: right 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        z-index: 20;
+        box-shadow: -8px 0 32px rgba(0, 0, 0, 0.5);
+      }
+
+      .function-panel.visible {
+        right: 20px;
+      }
+
+      .function-panel-header {
+        margin-bottom: 20px;
+      }
+
+      .function-panel-title {
+        font-size: 16px;
+        font-weight: 600;
+        margin-bottom: 4px;
+      }
+
+      .function-panel-subtitle {
+        font-size: 12px;
         color: #888;
-        max-width: 300px;
-        z-index: 5;
+      }
+
+      .close-panel {
+        position: absolute;
+        top: 16px;
+        right: 16px;
+        background: #2a2a2a;
+        border: 1px solid #3a3a3a;
+        color: #fff;
+        width: 28px;
+        height: 28px;
+        border-radius: 50%;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 16px;
+        transition: all 0.2s;
+      }
+
+      .close-panel:hover {
+        background: #3a3a3a;
+        border-color: #4ec9b0;
+      }
+
+      .function-list {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+      }
+
+      .function-card {
+        background: rgba(0, 0, 0, 0.3);
+        border: 1px solid #3a3a3a;
+        border-radius: 8px;
+        padding: 12px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        transition: all 0.2s;
+      }
+
+      .function-card:hover {
+        background: rgba(0, 0, 0, 0.5);
+        border-color: #4ec9b0;
+      }
+
+      .function-icon {
+        font-size: 20px;
+      }
+
+      .function-details {
+        flex: 1;
+        min-width: 0;
+      }
+
+      .function-name {
+        font-size: 13px;
+        font-weight: 600;
+        color: #fff;
+        margin-bottom: 3px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+
+      .function-meta {
+        font-size: 10px;
+        color: #888;
+      }
+
+      .canvas::before {
+        content: "";
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background-image:
+          linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+          linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+        background-size: 50px 50px;
+        pointer-events: none;
       }
     </style>
   </head>
   <body>
     <div class="container">
       <div class="header">
-        <h1>🗺️ Project Map</h1>
-        <div class="breadcrumb" id="breadcrumb">
-          <span class="breadcrumb-item" onclick="navigateTo([])">Root</span>
+        <div class="header-left">
+          <h1>🗺️ Project Map</h1>
+          <div class="breadcrumb" id="breadcrumb">
+            <span class="breadcrumb-item" onclick="resetView()">Full Map</span>
+          </div>
+        </div>
+        <div class="controls">
+          <div class="zoom-controls">
+            <button class="zoom-btn" onclick="zoomOut()">−</button>
+            <div class="zoom-level" id="zoomLevel">100%</div>
+            <button class="zoom-btn" onclick="zoomIn()">+</button>
+          </div>
+          <button class="reset-btn" onclick="resetView()">Reset View</button>
         </div>
       </div>
 
       <div class="canvas" id="canvas">
-        <div class="level-container" id="levelContainer"></div>
+        <div class="graph-container" id="graphContainer">
+          <svg class="connections" id="connectionsSvg"></svg>
+          <div class="nodes-layer" id="nodesContainer"></div>
+        </div>
       </div>
 
-      <button class="back-button" id="backButton" style="display: none">
-        ← Back
-      </button>
+      <div class="function-panel" id="functionPanel">
+        <button class="close-panel" onclick="closeFunctionPanel()">×</button>
+        <div class="function-panel-header" id="panelHeader"></div>
+        <div class="function-list" id="functionList"></div>
+      </div>
 
-      <div class="hint" id="hint">Click on a folder or file to explore</div>
-
-      <!-- Debug panel (remove in production) -->
-      <div class="debug-panel" id="debugPanel" style="display: none">
-        <strong>Debug Info:</strong><br />
-        <div id="debugContent"></div>
+      <div class="hint" id="hint">
+        🖱️ Drag to pan • Cmd/Ctrl + Scroll to zoom • Click files to see
+        functions
       </div>
     </div>
 
     <script>
-      // Get data
       let roadmapData = window.ROADMAP_DATA || { files: [] };
       console.log("🗺️ [INIT] Roadmap data:", roadmapData);
 
-      let currentPath = [];
       let hierarchyData = null;
+      let allNodes = [];
+      let connections = [];
+      let focusedFile = null;
+      let scale = 1;
+      let translateX = 0;
+      let translateY = 0;
+      let isDragging = false;
+      let startX = 0;
+      let startY = 0;
 
-      // Build folder hierarchy
+      const MIN_SCALE = 0.1;
+      const MAX_SCALE = 3;
+      const ZOOM_STEP = 0.15;
+
+      // Build hierarchy
       function buildHierarchy(files) {
-        console.log("📊 [buildHierarchy] Starting with files:", files.length);
-
         const root = {
           name: "Root",
           type: "folder",
           children: {},
           files: [],
+          level: 0,
         };
 
-        // Find common base path
         const basePath = findBasePath(files);
-        console.log("📁 [buildHierarchy] Base path:", basePath);
 
-        files.forEach((file, index) => {
+        files.forEach((file) => {
           let relativePath = file.path.replace(/\\/g, "/");
           if (basePath) {
             relativePath = relativePath.replace(basePath + "/", "");
           }
 
-          console.log(
-            `📄 [buildHierarchy] Processing ${index + 1}/${
-              files.length
-            }: ${relativePath}`
-          );
-
-          const parts = relativePath.split("/").filter((p) => p); // Remove empty parts
+          const parts = relativePath.split("/").filter((p) => p);
           let current = root;
+          let currentLevel = 0;
 
-          // Build folder structure (excluding the file itself)
           for (let i = 0; i < parts.length - 1; i++) {
             const folderName = parts[i];
-
             if (!current.children[folderName]) {
-              console.log(`  📁 Creating folder: ${folderName}`);
               current.children[folderName] = {
                 name: folderName,
                 type: "folder",
                 children: {},
                 files: [],
+                parent: current,
+                level: currentLevel + 1,
+                path: parts.slice(0, i + 1).join("/"),
               };
             }
             current = current.children[folderName];
+            currentLevel++;
           }
 
-          // Add file to the deepest folder
           const fileName = parts[parts.length - 1];
-          console.log(`  📄 Adding file: ${fileName} to folder`);
-
           current.files.push({
             name: fileName,
             type: "file",
             fullPath: file.path,
             functions: file.functions || [],
+            parent: current,
+            level: currentLevel + 1,
+            path: relativePath,
           });
         });
 
-        console.log("✅ [buildHierarchy] Final hierarchy:", root);
         return root;
       }
 
       function findBasePath(files) {
         if (files.length === 0) return "";
-
         const paths = files.map((f) => f.path.replace(/\\/g, "/"));
         const parts = paths[0].split("/");
-
         let commonParts = [];
         for (let i = 0; i < parts.length - 1; i++) {
           const part = parts.slice(0, i + 1).join("/");
@@ -413,245 +538,278 @@
             break;
           }
         }
-
         return commonParts.join("/");
       }
 
-      function getCurrentLevel() {
-        let current = hierarchyData;
-        console.log(
-          "🎯 [getCurrentLevel] Starting at root, path:",
-          currentPath
-        );
+      // Hierarchical tree layout (top-down)
+      function calculateTreeLayout(
+        node,
+        startX = 5000,
+        startY = 500,
+        level = 0,
+      ) {
+        const positions = [];
+        const horizontalSpacing = 250; // Space between siblings
+        const verticalSpacing = 300; // Space between levels
 
-        for (const part of currentPath) {
-          console.log("  🔍 Navigating into:", part);
+        // Get all items at this level
+        const folders = Object.values(node.children || {});
+        const files = node.files || [];
+        const allItems = [...folders, ...files];
 
-          if (current.children && current.children[part]) {
-            current = current.children[part];
-            console.log("  ✅ Found:", part);
-          } else {
-            console.error("  ❌ Could not find:", part);
-            console.error(
-              "  Available children:",
-              Object.keys(current.children || {})
+        if (allItems.length === 0) return positions;
+
+        // Calculate total width needed for this level
+        const totalWidth = (allItems.length - 1) * horizontalSpacing;
+        const currentX = startX - totalWidth / 2;
+        const currentY = startY + level * verticalSpacing;
+
+        // Position each item
+        allItems.forEach((item, index) => {
+          const itemX = currentX + index * horizontalSpacing;
+          const itemY = currentY;
+
+          positions.push({
+            node: item,
+            x: itemX,
+            y: itemY,
+            level: level + 1,
+            parentX: startX,
+            parentY: startY,
+          });
+
+          // Recursively position children
+          if (item.type === "folder") {
+            const childPositions = calculateTreeLayout(
+              item,
+              itemX,
+              itemY,
+              level + 1,
             );
-            return null;
+            positions.push(...childPositions);
           }
-        }
-
-        console.log("✅ [getCurrentLevel] Current level:", current.name);
-        console.log(
-          "  📁 Subfolders:",
-          Object.keys(current.children || {}).length
-        );
-        console.log("  📄 Files:", (current.files || []).length);
-
-        return current;
-      }
-
-      function renderLevel() {
-        console.log("🎨 [renderLevel] Rendering level for path:", currentPath);
-
-        const container = document.getElementById("levelContainer");
-        const level = getCurrentLevel();
-
-        if (!level) {
-          console.error("❌ [renderLevel] No level found!");
-          container.innerHTML =
-            '<div class="empty-state"><div class="empty-state-icon">📭</div><h3>Nothing here</h3></div>';
-          return;
-        }
-
-        const folders = Object.keys(level.children || {}).sort();
-        const files = (level.files || []).sort((a, b) =>
-          a.name.localeCompare(b.name)
-        );
-
-        console.log(
-          `📊 [renderLevel] Found ${folders.length} folders and ${files.length} files`
-        );
-
-        // Update debug panel
-        updateDebugPanel({
-          folders: folders.length,
-          files: files.length,
-          level: level.name,
         });
 
-        container.innerHTML = "";
+        return positions;
+      }
 
-        // Render folders - ALWAYS show all folders, regardless of content
-        folders.forEach((folderName) => {
-          const folder = level.children[folderName];
-          const folderCount = countItems(folder);
-          const totalItems = folderCount.folders + folderCount.files;
+      // Render the graph
+      function renderGraph() {
+        console.log("🎨 Rendering hierarchical graph...");
 
-          console.log(
-            `  📁 Rendering folder: ${folderName} (${totalItems} items)`
-          );
+        const nodesContainer = document.getElementById("nodesContainer");
+        const svg = document.getElementById("connectionsSvg");
 
-          const card = document.createElement("div");
-          card.className = "card folder";
-          card.onclick = () => navigateInto(folderName);
+        nodesContainer.innerHTML = "";
+        svg.innerHTML = "";
+        allNodes = [];
+        connections = [];
 
-          card.innerHTML = `
-            <div class="card-badge">${totalItems}</div>
-            <div class="card-icon">📁</div>
-            <div class="card-name">${folderName}</div>
-            <div class="card-info">${folderCount.folders} folders · ${folderCount.files} files</div>
-          `;
+        hierarchyData = buildHierarchy(roadmapData.files);
+        const positions = calculateTreeLayout(hierarchyData);
 
-          container.appendChild(card);
+        console.log(`📊 Calculated ${positions.length} positions`);
+
+        // Create connections first
+        positions.forEach((pos) => {
+          if (pos.parentX !== undefined && pos.parentY !== undefined) {
+            drawConnection(
+              pos.parentX,
+              pos.parentY,
+              pos.x,
+              pos.y,
+              getNodeId(pos.node),
+              getNodeId(pos.node.parent),
+            );
+          }
         });
 
-        // Render files
-        files.forEach((file) => {
-          console.log(
-            `  📄 Rendering file: ${file.name} (${file.functions.length} functions)`
-          );
+        // Create nodes
+        positions.forEach((pos) => {
+          const element = createNode(pos.node, pos.x, pos.y);
+          nodesContainer.appendChild(element);
 
-          const card = document.createElement("div");
-          card.className = "card file";
-          card.onclick = () => showFileFunctions(file);
-
-          card.innerHTML = `
-            <div class="card-badge">${file.functions.length} fn</div>
-            <div class="card-icon">📄</div>
-            <div class="card-name">${file.name}</div>
-            <div class="card-info">Click to view functions</div>
-          `;
-
-          container.appendChild(card);
+          allNodes.push({
+            element,
+            data: pos.node,
+            x: pos.x,
+            y: pos.y,
+          });
         });
 
-        // Show empty state only if truly empty
-        if (folders.length === 0 && files.length === 0) {
-          console.log("📭 [renderLevel] Empty folder!");
-          container.innerHTML =
-            '<div class="empty-state"><div class="empty-state-icon">📭</div><h3>Empty folder</h3><p>No files or subfolders here</p></div>';
-        }
-
-        // Update UI elements
-        document.getElementById("backButton").style.display =
-          currentPath.length > 0 ? "flex" : "none";
-        updateBreadcrumb();
-
-        // Hide hint after first interaction
-        setTimeout(() => {
-          document.getElementById("hint").style.display = "none";
-        }, 3000);
+        console.log(`✅ Rendered ${allNodes.length} nodes`);
+        updateBreadcrumb("Full Map");
       }
 
-      function countItems(node) {
-        let folders = Object.keys(node.children || {}).length;
-        let files = (node.files || []).length;
-
-        // Recursively count nested items
-        Object.values(node.children || {}).forEach((child) => {
-          const counts = countItems(child);
-          folders += counts.folders;
-          files += counts.files;
-        });
-
-        return { folders, files };
+      function getNodeId(node) {
+        if (!node) return null;
+        return node.type === "folder"
+          ? `folder-${node.path || node.name}`
+          : `file-${node.path}`;
       }
 
-      function navigateInto(folderName) {
-        console.log("🚀 [navigateInto] Navigating to:", folderName);
-        currentPath.push(folderName);
-        renderLevel();
-      }
+      function createNode(data, x, y) {
+        const node = document.createElement("div");
+        node.className = `node ${data.type}`;
+        node.style.left = `${x}px`;
+        node.style.top = `${y}px`;
+        node.style.transform = "translate(-50%, -50%)";
 
-      function navigateBack() {
-        if (currentPath.length > 0) {
-          const popped = currentPath.pop();
-          console.log("⬅️ [navigateBack] Going back from:", popped);
-          renderLevel();
-        }
-      }
+        const icon = data.type === "folder" ? "📁" : "📄";
+        const badge =
+          data.type === "folder"
+            ? countFiles(data)
+            : data.functions?.length || 0;
 
-      function navigateTo(path) {
-        console.log("🎯 [navigateTo] Jumping to path:", path);
-        currentPath = path;
-        renderLevel();
-      }
-
-      function updateBreadcrumb() {
-        const breadcrumb = document.getElementById("breadcrumb");
-        let html =
-          '<span class="breadcrumb-item" onclick="navigateTo([])">Root</span>';
-
-        currentPath.forEach((part, index) => {
-          const pathUpToHere = currentPath.slice(0, index + 1);
-          html += '<span class="breadcrumb-separator">/</span>';
-          html += `<span class="breadcrumb-item" onclick="navigateTo(${JSON.stringify(
-            pathUpToHere
-          ).replace(/"/g, "&quot;")})">${part}</span>`;
-        });
-
-        breadcrumb.innerHTML = html;
-      }
-
-      function updateDebugPanel(info) {
-        const panel = document.getElementById("debugPanel");
-        const content = document.getElementById("debugContent");
-
-        content.innerHTML = `
-          Level: ${info.level}<br>
-          Folders: ${info.folders}<br>
-          Files: ${info.files}<br>
-          Path: ${currentPath.join("/") || "root"}
-        `;
-
-        // Auto-hide after 5 seconds
-        panel.style.display = "block";
-        setTimeout(() => {
-          panel.style.display = "none";
-        }, 5000);
-      }
-
-      function showFileFunctions(file) {
-        console.log("📄 [showFileFunctions] Showing functions for:", file.name);
-
-        const container = document.getElementById("levelContainer");
-        container.innerHTML = "";
-
-        // File header card
-        const headerCard = document.createElement("div");
-        headerCard.className = "card file";
-        headerCard.style.width = "100%";
-        headerCard.style.maxWidth = "800px";
-        headerCard.innerHTML = `
-          <div class="card-icon">📄</div>
-          <div class="card-name">${file.name}</div>
-          <div class="card-info">${file.functions.length} functions</div>
-          <div class="function-list">
-            ${file.functions
-              .map(
-                (fn) => `
-              <div class="function-card">
-                <div class="function-icon">${getFunctionIcon(fn.name)}</div>
-                <div class="function-details">
-                  <div class="function-name">${fn.name}</div>
-                  <div class="function-meta">
-                    ${
-                      fn.calls && fn.calls.length > 0
-                        ? `Calls: ${fn.calls.slice(0, 3).join(", ")}${
-                            fn.calls.length > 3 ? "..." : ""
-                          }`
-                        : "No dependencies"
-                    }
-                  </div>
-                </div>
-              </div>
-            `
-              )
-              .join("")}
+        node.innerHTML = `
+          <div class="node-circle">
+            ${badge > 0 ? `<div class="node-badge">${badge}</div>` : ""}
+            <div class="node-icon">${icon}</div>
+            <div class="node-name">${data.name}</div>
           </div>
         `;
 
-        container.appendChild(headerCard);
+        if (data.type === "file") {
+          node.onclick = (e) => {
+            e.stopPropagation();
+            focusOnFile(data);
+          };
+        }
+
+        return node;
+      }
+
+      function countFiles(folder) {
+        let count = folder.files?.length || 0;
+        Object.values(folder.children || {}).forEach((child) => {
+          count += countFiles(child);
+        });
+        return count;
+      }
+
+      function drawConnection(x1, y1, x2, y2, childId, parentId) {
+        const svg = document.getElementById("connectionsSvg");
+
+        // Draw a curved path (Bezier curve)
+        const path = document.createElementNS(
+          "http://www.w3.org/2000/svg",
+          "path",
+        );
+
+        const midY = (y1 + y2) / 2;
+        const d = `M ${x1} ${y1} C ${x1} ${midY}, ${x2} ${midY}, ${x2} ${y2}`;
+
+        path.setAttribute("d", d);
+        path.classList.add("connection-line");
+        path.dataset.childId = childId;
+        path.dataset.parentId = parentId;
+
+        svg.appendChild(path);
+        connections.push({ line: path, childId, parentId });
+      }
+
+      function focusOnFile(fileData) {
+        console.log("🎯 Focusing on file:", fileData.name);
+
+        focusedFile = fileData;
+
+        // Get all nodes in the hierarchy
+        const relevantNodeIds = new Set();
+        relevantNodeIds.add(getNodeId(fileData));
+
+        // Add all ancestors
+        let current = fileData.parent;
+        while (current) {
+          relevantNodeIds.add(getNodeId(current));
+          current = current.parent;
+        }
+
+        // Add all siblings
+        if (fileData.parent) {
+          fileData.parent.files?.forEach((file) => {
+            relevantNodeIds.add(getNodeId(file));
+          });
+        }
+
+        console.log("Relevant nodes:", relevantNodeIds);
+
+        // Update nodes
+        allNodes.forEach((nodeObj) => {
+          const nodeId = getNodeId(nodeObj.data);
+          const isFile = nodeId === getNodeId(fileData);
+          const isRelevant = relevantNodeIds.has(nodeId);
+
+          if (isFile) {
+            nodeObj.element.classList.add("focused");
+            nodeObj.element.classList.remove("dimmed", "small");
+          } else if (isRelevant) {
+            nodeObj.element.classList.add("small");
+            nodeObj.element.classList.remove("dimmed", "focused");
+          } else {
+            nodeObj.element.classList.add("dimmed");
+            nodeObj.element.classList.remove("focused", "small");
+          }
+        });
+
+        // Highlight connections
+        connections.forEach(({ line, childId, parentId }) => {
+          const isRelevant =
+            relevantNodeIds.has(childId) || relevantNodeIds.has(parentId);
+          if (isRelevant) {
+            line.classList.add("highlight");
+          } else {
+            line.classList.remove("highlight");
+          }
+        });
+
+        showFunctionPanel(fileData);
+
+        const pathParts = [];
+        current = fileData;
+        while (current && current.name !== "Root") {
+          pathParts.unshift(current.name);
+          current = current.parent;
+        }
+        updateBreadcrumb(pathParts.join(" / "));
+      }
+
+      function showFunctionPanel(fileData) {
+        const panel = document.getElementById("functionPanel");
+        const header = document.getElementById("panelHeader");
+        const list = document.getElementById("functionList");
+
+        header.innerHTML = `
+          <div class="function-panel-title">📄 ${fileData.name}</div>
+          <div class="function-panel-subtitle">${fileData.functions?.length || 0} functions</div>
+        `;
+
+        list.innerHTML =
+          fileData.functions
+            ?.map(
+              (fn) => `
+          <div class="function-card">
+            <div class="function-icon">${getFunctionIcon(fn.name)}</div>
+            <div class="function-details">
+              <div class="function-name">${fn.name}</div>
+              <div class="function-meta">
+                ${
+                  fn.calls && fn.calls.length > 0
+                    ? `Calls: ${fn.calls.slice(0, 2).join(", ")}${fn.calls.length > 2 ? "..." : ""}`
+                    : "No dependencies"
+                }
+              </div>
+            </div>
+          </div>
+        `,
+            )
+            .join("") || "<p style='color: #666;'>No functions found</p>";
+
+        panel.classList.add("visible");
+      }
+
+      function closeFunctionPanel() {
+        document.getElementById("functionPanel").classList.remove("visible");
+        resetView();
       }
 
       function getFunctionIcon(name) {
@@ -664,24 +822,123 @@
         return "⚡";
       }
 
-      // Back button handler
-      document.getElementById("backButton").onclick = navigateBack;
+      function resetView() {
+        focusedFile = null;
+        scale = 1;
+        translateX = 0;
+        translateY = 0;
+
+        allNodes.forEach((nodeObj) => {
+          nodeObj.element.classList.remove("focused", "dimmed", "small");
+        });
+
+        connections.forEach(({ line }) => {
+          line.classList.remove("highlight");
+        });
+
+        updateTransform();
+        updateBreadcrumb("Full Map");
+        document.getElementById("functionPanel").classList.remove("visible");
+      }
+
+      function updateBreadcrumb(text) {
+        document.getElementById("breadcrumb").innerHTML = `
+          <span class="breadcrumb-item" onclick="resetView()">${text}</span>
+        `;
+      }
+
+      function zoomIn() {
+        const newScale = Math.min(scale + ZOOM_STEP, MAX_SCALE);
+        setZoom(newScale);
+      }
+
+      function zoomOut() {
+        const newScale = Math.max(scale - ZOOM_STEP, MIN_SCALE);
+        setZoom(newScale);
+      }
+
+      function setZoom(newScale) {
+        scale = newScale;
+        updateTransform();
+        document.getElementById("zoomLevel").textContent =
+          `${Math.round(scale * 100)}%`;
+      }
+
+      function updateTransform() {
+        const container = document.getElementById("graphContainer");
+        container.style.transform = `translate(calc(-50% + ${translateX}px), calc(-50% + ${translateY}px)) scale(${scale})`;
+      }
+
+      const canvas = document.getElementById("canvas");
+
+      // Figma-style controls: drag to pan, cmd/ctrl + wheel to zoom
+      canvas.addEventListener("mousedown", (e) => {
+        if (e.target === canvas || e.target.closest("#graphContainer")) {
+          isDragging = true;
+          startX = e.clientX - translateX;
+          startY = e.clientY - translateY;
+          canvas.classList.add("grabbing");
+        }
+      });
+
+      canvas.addEventListener("mousemove", (e) => {
+        if (isDragging) {
+          translateX = e.clientX - startX;
+          translateY = e.clientY - startY;
+          updateTransform();
+        }
+      });
+
+      canvas.addEventListener("mouseup", () => {
+        isDragging = false;
+        canvas.classList.remove("grabbing");
+      });
+
+      canvas.addEventListener("mouseleave", () => {
+        isDragging = false;
+        canvas.classList.remove("grabbing");
+      });
+
+      // Figma-style zoom: only with Cmd/Ctrl
+      canvas.addEventListener(
+        "wheel",
+        (e) => {
+          // Check if Cmd (Mac) or Ctrl (Windows/Linux) is pressed
+          if (e.metaKey || e.ctrlKey) {
+            e.preventDefault();
+
+            // Zoom sensitivity (reduced from previous version)
+            const delta = e.deltaY > 0 ? -ZOOM_STEP * 0.5 : ZOOM_STEP * 0.5;
+            const newScale = Math.max(
+              MIN_SCALE,
+              Math.min(MAX_SCALE, scale + delta),
+            );
+            setZoom(newScale);
+          } else {
+            // Pan without modifier keys
+            e.preventDefault();
+            translateX -= e.deltaX;
+            translateY -= e.deltaY;
+            updateTransform();
+          }
+        },
+        { passive: false },
+      );
 
       // Initialize
-      console.log("🚀 [INIT] Starting initialization...");
-
       if (roadmapData && roadmapData.files && roadmapData.files.length > 0) {
-        console.log(`✅ [INIT] Found ${roadmapData.files.length} files`);
+        console.log(`✅ Found ${roadmapData.files.length} files`);
+        renderGraph();
 
-        hierarchyData = buildHierarchy(roadmapData.files);
-        console.log("✅ [INIT] Hierarchy built successfully");
-
-        // Don't auto-navigate into first folder - stay at root
-        renderLevel();
+        setTimeout(() => {
+          const hint = document.getElementById("hint");
+          hint.style.opacity = "0";
+          setTimeout(() => (hint.style.display = "none"), 300);
+        }, 5000);
       } else {
-        console.error("❌ [INIT] No files found in roadmap data");
-        document.getElementById("levelContainer").innerHTML =
-          '<div class="empty-state"><div class="empty-state-icon">📭</div><h3>No files found</h3><p>Make sure you have TypeScript files in your workspace</p></div>';
+        console.error("❌ No files found");
+        document.getElementById("nodesContainer").innerHTML =
+          '<div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); text-align: center; color: #666;"><div style="font-size: 64px; margin-bottom: 16px;">📭</div><h3>No files found</h3><p>Make sure you have TypeScript files in your workspace</p></div>';
       }
     </script>
   </body>
