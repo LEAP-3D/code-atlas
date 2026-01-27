@@ -9,14 +9,12 @@ export interface User {
 
 export class SimpleAuthService {
   private static instance: SimpleAuthService;
-  private sessionToken: string | undefined;
   private user: User | undefined;
-
-  private readonly API_BASE_URL = "http://localhost:3001/api";
-  private readonly CLERK_URL = "https://proud-horse-28.clerk.accounts.dev"; // e.g., https://your-app.clerk.accounts.dev
+  
+  private readonly CLERK_URL = "https://proud-horse-28.accounts.dev";
 
   private constructor(private context: vscode.ExtensionContext) {
-    this.loadSession();
+    this.loadUser();
   }
 
   static getInstance(context: vscode.ExtensionContext): SimpleAuthService {
@@ -26,70 +24,75 @@ export class SimpleAuthService {
     return SimpleAuthService.instance;
   }
 
-  private async loadSession(): Promise<void> {
-    this.sessionToken = await this.context.secrets.get("session_token");
-    if (this.sessionToken) {
-      try {
-        await this.fetchUser();
-      } catch {
-        this.sessionToken = undefined;
-        await this.context.secrets.delete("session_token");
-      }
+  private async loadUser(): Promise<void> {
+    const userData = await this.context.globalState.get<User>("user");
+    if (userData) {
+      this.user = userData;
     }
   }
 
   async signIn(): Promise<boolean> {
     // Open Clerk sign-in in browser
-    const signInUrl = `${this.CLERK_URL}/sign-in`;
-
-    const token = await vscode.window.showInputBox({
-      prompt:
-        "After signing in, paste your session token here (or press Enter to open sign-in page)",
-      placeHolder: "Session token...",
+    const signInUrl = `${this.CLERK_URL}/sign-in?redirect_url=vscode://success`;
+    
+    vscode.window.showInformationMessage(
+      "Opening sign-in page in your browser..."
+    );
+    
+    await vscode.env.openExternal(vscode.Uri.parse(signInUrl));
+    
+    // Ask user to enter their info after signing in
+    const email = await vscode.window.showInputBox({
+      prompt: "After signing in, please enter your email address",
+      placeHolder: "your.email@example.com",
       ignoreFocusOut: true,
     });
 
-    if (!token) {
-      // Open browser
-      await vscode.env.openExternal(vscode.Uri.parse(signInUrl));
-      vscode.window.showInformationMessage(
-        "Please sign in through your browser, then restart VS Code",
-      );
+    if (!email) {
       return false;
     }
 
-    // Save token
-    this.sessionToken = token;
-    await this.context.secrets.store("session_token", token);
+    const firstName = await vscode.window.showInputBox({
+      prompt: "Enter your first name",
+      placeHolder: "John",
+      ignoreFocusOut: true,
+    });
 
-    try {
-      await this.fetchUser();
-      return true;
-    } catch {
-      vscode.window.showErrorMessage("Invalid session token");
-      return false;
-    }
+    // Save user info
+    this.user = {
+      id: Date.now().toString(),
+      email: email,
+      firstName: firstName || email.split("@")[0],
+    };
+
+    await this.context.globalState.update("user", this.user);
+    return true;
   }
 
   async signUp(): Promise<boolean> {
     // Open Clerk sign-up in browser
-    const signUpUrl = `${this.CLERK_URL}/sign-up`;
-    await vscode.env.openExternal(vscode.Uri.parse(signUpUrl));
-
+    const signUpUrl = `${this.CLERK_URL}/sign-up?redirect_url=vscode://success`;
+    
     vscode.window.showInformationMessage(
-      "Please sign up through your browser, then use Sign In to authenticate",
+      "Opening sign-up page in your browser..."
     );
+    
+    await vscode.env.openExternal(vscode.Uri.parse(signUpUrl));
+    
+    vscode.window.showInformationMessage(
+      "After signing up, please use 'Sign In' to complete the process"
+    );
+    
     return false;
   }
 
   async signOut(): Promise<void> {
-    this.sessionToken = undefined;
     this.user = undefined;
-    await this.context.secrets.delete("session_token");
+    await this.context.globalState.update("user", undefined);
   }
 
   isAuthenticated(): boolean {
-    return !!this.sessionToken && !!this.user;
+    return !!this.user;
   }
 
   getUser(): User | undefined {
@@ -101,23 +104,5 @@ export class SimpleAuthService {
       return "";
     }
     return this.user.firstName || this.user.email.split("@")[0];
-  }
-
-  private async fetchUser(): Promise<void> {
-    if (!this.sessionToken) {
-      throw new Error("No session token");
-    }
-
-    const response = await fetch(`${this.API_BASE_URL}/user`, {
-      headers: {
-        Authorization: `Bearer ${this.sessionToken}`,
-      },
-    });
-
-    if (!response.ok) {
-      throw new Error("Failed to fetch user");
-    }
-
-    this.user = (await response.json()) as User;
   }
 }
