@@ -29,12 +29,28 @@
     "views": {
       "experimentSidebar": [
         {
+          "id": "authTree",
+          "name": "Authentication"
+        },
+        {
           "id": "codeTree",
           "name": "Selected Code"
         }
       ]
     },
     "commands": [
+      {
+        "command": "experiment.signIn",
+        "title": "Sign In"
+      },
+      {
+        "command": "experiment.signUp",
+        "title": "Sign Up"
+      },
+      {
+        "command": "experiment.signOut",
+        "title": "Sign Out"
+      },
       {
         "command": "experiment.showSelectedCode",
         "title": "Show Selected Code"

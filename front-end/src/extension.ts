@@ -13,7 +13,57 @@ import { analyzeRuntimeTriggers } from "./analyzers/runtime/runtimeTriggerAnalyz
 import { mapErrorsToFunctions } from "./analyzers/debug/errorFunctionMapper";
 import { buildCallerChain } from "./analyzers/debug/executionChainBuilder";
 
+// Auth imports
+
+import { SimpleAuthService } from "./SimpleAuthService";
+import { AuthTreeProvider } from "./AuthThreeProvider";
+
 export function activate(context: vscode.ExtensionContext) {
+  // Setup auth
+  const authService = SimpleAuthService.getInstance(context);
+  const authTreeProvider = new AuthTreeProvider();
+  vscode.window.registerTreeDataProvider("authTree", authTreeProvider);
+
+  // Update auth tree based on current state
+  if (authService.isAuthenticated()) {
+    authTreeProvider.refresh(true, authService.getUserDisplayName());
+  }
+
+  // Sign In command
+  const signInCmd = vscode.commands.registerCommand(
+    "experiment.signIn",
+    async () => {
+      const success = await authService.signIn();
+      if (success) {
+        authTreeProvider.refresh(true, authService.getUserDisplayName());
+        vscode.window.showInformationMessage(
+          `Welcome, ${authService.getUserDisplayName()}!`,
+        );
+      }
+    },
+  );
+
+  // Sign Up command
+  const signUpCmd = vscode.commands.registerCommand(
+    "experiment.signUp",
+    async () => {
+      await authService.signUp();
+    },
+  );
+
+  // Sign Out command
+  const signOutCmd = vscode.commands.registerCommand(
+    "experiment.signOut",
+    async () => {
+      await authService.signOut();
+      authTreeProvider.refresh(false);
+      vscode.window.showInformationMessage("Signed out successfully");
+    },
+  );
+
+  context.subscriptions.push(signInCmd, signUpCmd, signOutCmd);
+
+  // Existing code tree
   const treeProvider = new CodeTreeProvider();
   vscode.window.registerTreeDataProvider("codeTree", treeProvider);
 
@@ -28,7 +78,7 @@ export function activate(context: vscode.ExtensionContext) {
 
         if (files.length === 0) {
           vscode.window.showWarningMessage(
-            "No TypeScript files found in workspace"
+            "No TypeScript files found in workspace",
           );
           return;
         }
@@ -40,11 +90,11 @@ export function activate(context: vscode.ExtensionContext) {
         analyzeFunctionBoundaries(fileIndex.getAll());
 
         vscode.window.showInformationMessage(
-          `✓ Indexed ${fileIndex.getAll().length} files`
+          `✓ Indexed ${fileIndex.getAll().length} files`,
         );
 
         vscode.window.showInformationMessage(
-          `✓ Found ${functionIndex.getAll().length} functions`
+          `✓ Found ${functionIndex.getAll().length} functions`,
         );
 
         /* ---------- PHASE 3: analyze function calls ---------- */
@@ -70,23 +120,23 @@ export function activate(context: vscode.ExtensionContext) {
 
           const trigger = triggerIndex.find(
             err.functionName,
-            document.uri.fsPath
+            document.uri.fsPath,
           );
 
           console.log(
             "[DEBUG] function:",
             err.functionName,
             "trigger:",
-            trigger
+            trigger,
           );
 
           vscode.window.showErrorMessage(
-            `❌ ${chain.join(" → ")}: ${err.message}`
+            `❌ ${chain.join(" → ")}: ${err.message}`,
           );
 
           if (trigger) {
             vscode.window.showInformationMessage(
-              `🔔 Triggered by: ${trigger.trigger}`
+              `🔔 Triggered by: ${trigger.trigger}`,
             );
           }
         });
@@ -101,7 +151,7 @@ export function activate(context: vscode.ExtensionContext) {
 
         const mermaidDiagram = buildExecutionMermaid(
           document.uri.fsPath,
-          errorFunctions
+          errorFunctions,
         );
 
         CodeWebviewProvider.show(context, {
@@ -115,11 +165,11 @@ export function activate(context: vscode.ExtensionContext) {
         vscode.window.showErrorMessage(
           `Error during analysis: ${
             error instanceof Error ? error.message : "Unknown error"
-          }`
+          }`,
         );
         console.error(error);
       }
-    }
+    },
   );
 
   // show roadmap view command
@@ -134,7 +184,7 @@ export function activate(context: vscode.ExtensionContext) {
 
         if (files.length === 0) {
           vscode.window.showWarningMessage(
-            "No TypeScript files found in workspace"
+            "No TypeScript files found in workspace",
           );
           return;
         }
@@ -149,13 +199,13 @@ export function activate(context: vscode.ExtensionContext) {
 
         if (functionCount === 0) {
           vscode.window.showWarningMessage(
-            "No functions found. Make sure you have TypeScript/JavaScript files with function declarations."
+            "No functions found. Make sure you have TypeScript/JavaScript files with function declarations.",
           );
           return;
         }
 
         vscode.window.showInformationMessage(
-          `✓ Roadmap ready: ${fileCount} files, ${functionCount} functions`
+          `✓ Roadmap ready: ${fileCount} files, ${functionCount} functions`,
         );
 
         /* ---------- SHOW ROADMAP ---------- */
@@ -164,14 +214,18 @@ export function activate(context: vscode.ExtensionContext) {
         vscode.window.showErrorMessage(
           `Error building roadmap: ${
             error instanceof Error ? error.message : "Unknown error"
-          }`
+          }`,
         );
         console.error(error);
       }
-    }
+    },
   );
 
   // register commands
   context.subscriptions.push(disposable);
   context.subscriptions.push(roadmapDisposable);
+}
+
+export function deactivate() {
+  console.log("Extension deactivated");
 }
