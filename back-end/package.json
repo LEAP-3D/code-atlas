@@ -1,25 +1,31 @@
 {
   "name": "backend",
   "version": "1.0.0",
+  "type": "module",
   "description": "Backend API for VS Code extension with Clerk auth and Pinecone",
   "main": "dist/server.js",
   "scripts": {
     "dev": "tsx watch src/server.ts",
+    "lint": "eslint src",
     "build": "tsc",
     "start": "node dist/server.js"
   },
   "dependencies": {
     "@clerk/clerk-sdk-node": "^4.13.11",
     "@pinecone-database/pinecone": "^2.0.1",
-    "express": "^4.18.2",
     "cors": "^2.8.5",
-    "dotenv": "^16.3.1"
+    "dotenv": "^16.3.1",
+    "express": "^4.18.2"
   },
   "devDependencies": {
-    "@types/express": "^4.17.21",
     "@types/cors": "^2.8.17",
+    "@types/express": "^4.17.21",
     "@types/node": "^20.11.5",
+    "@typescript-eslint/eslint-plugin": "^8.54.0",
+    "@typescript-eslint/parser": "^8.54.0",
+    "eslint": "^9.39.2",
+    "tsx": "^4.7.0",
     "typescript": "^5.3.3",
-    "tsx": "^4.7.0"
+    "typescript-eslint": "^8.54.0"
   }
 }
