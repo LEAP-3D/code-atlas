@@ -1,110 +1,75 @@
-name: VS Code Extension CI
+name: CI
 
 on:
   pull_request:
-    branches: [main]
+    branches:
+      - main
+
+permissions:
+  contents: read
+  pull-requests: write
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
-  # =========================
-  # FRONT-END
-  # =========================
-  frontend-lint:
-    name: Front-end · Code Quality Check (Lint)
+  lint:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        project:
+          - front-end
+          - back-end
+
     defaults:
       run:
-        working-directory: front-end
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+        working-directory: ${{ matrix.project }}
 
-      - name: Setup Node.js 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node
         uses: actions/setup-node@v4
         with:
           node-version: 20
           cache: npm
-          cache-dependency-path: front-end/package-lock.json
+          cache-dependency-path: ${{ matrix.project }}/package-lock.json
 
-      - name: Verify dependencies & lockfile (npm ci)
-        run: npm ci
+      - name: Install dependencies
+        run: npm install
 
-      - name: Check code quality (ESLint)
+      - name: Run lint
         run: npm run lint
 
-  frontend-build:
-    name: Front-end · Compile TypeScript
+  build:
     runs-on: ubuntu-latest
-    needs: frontend-lint
+    strategy:
+      matrix:
+        project:
+          - front-end
+          - back-end
+
     defaults:
       run:
-        working-directory: front-end
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+        working-directory: ${{ matrix.project }}
 
-      - name: Setup Node.js 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node
         uses: actions/setup-node@v4
         with:
           node-version: 20
           cache: npm
-          cache-dependency-path: front-end/package-lock.json
+          cache-dependency-path: ${{ matrix.project }}/package-lock.json
 
-      - name: Verify dependencies & lockfile (npm ci)
-        run: npm ci
+      - name: Install dependencies
+        run: npm install
 
-      - name: Compile TypeScript (UI / Webview)
+      - name: Run build
         run: npm run build
-
-  # =========================
-  # BACK-END (VS CODE EXTENSION CORE)
-  # =========================
-  backend-lint:
-    name: Back-end · Code Quality Check (Extension Core Lint)
-    runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: back-end
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js 20
-        uses: actions/setup-node@v4
-        with:
-          node-version: 20
-          cache: npm
-          cache-dependency-path: back-end/package-lock.json
-
-      - name: Verify dependencies & lockfile (npm ci)
-        run: npm ci
-
-      - name: Check code quality (ESLint)
-        run: npm run lint
-
-  backend-build:
-    name: Back-end · Compile TypeScript (VS Code Extension Core)
-    runs-on: ubuntu-latest
-    needs: backend-lint
-    defaults:
-      run:
-        working-directory: back-end
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js 20
-        uses: actions/setup-node@v4
-        with:
-          node-version: 20
-          cache: npm
-          cache-dependency-path: back-end/package-lock.json
-
-      - name: Verify dependencies & lockfile (npm ci)
-        run: npm ci
-
-      - name: Compile TypeScript (extension activate / vscode API)
-        run: npm run dev
