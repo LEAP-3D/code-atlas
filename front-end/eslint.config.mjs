@@ -1,27 +1,50 @@
-import { defineConfig } from "eslint/config";
-import tseslint from "@typescript-eslint/eslint-plugin";
-import tsParser from "@typescript-eslint/parser";
+import js from "@eslint/js";
+import tseslint from "typescript-eslint";
 
-export default defineConfig([
+export default [
+  js.configs.recommended,
+  ...tseslint.configs.recommended,
   {
-    files: ["**/*.ts"],
+    // Add browser globals for webview JavaScript files
     languageOptions: {
-      parser: tsParser,
-      parserOptions: {
-        project: "./tsconfig.json",
+      globals: {
+        console: "readonly",
+        window: "readonly",
+        document: "readonly",
+        acquireVsCodeApi: "readonly",
       },
     },
-    plugins: {
-      "@typescript-eslint": tseslint,
-    },
+    // Rules compatible with ESLint 9
     rules: {
-      "@typescript-eslint/no-unused-vars": "error",
-      "@typescript-eslint/no-explicit-any": "error",
-      "prefer-const": "error",
-      eqeqeq: ["error", "always"],
+      // TypeScript rules
+      "@typescript-eslint/naming-convention": [
+        "warn",
+        {
+          selector: "default",
+          format: ["camelCase"],
+        },
+        {
+          selector: "property", // ✅ THIS BELONGS IN NAMING-CONVENTION!
+          format: null,
+        },
+      ],
+      "@typescript-eslint/no-unused-vars": [
+        "error",
+        {
+          argsIgnorePattern: "^_",
+          varsIgnorePattern: "^_",
+          caughtErrorsIgnorePattern: "^_",
+        },
+      ],
+
+      // Standard JavaScript rules
+      curly: "warn",
+      eqeqeq: "warn",
+      "no-throw-literal": "warn",
+      semi: "off", // Base rule, not @typescript-eslint/semi
     },
   },
   {
-    ignores: ["out/**", "node_modules/**"],
+    ignores: ["out/**", "dist/**", "**/*.d.ts"],
   },
-]);
+];

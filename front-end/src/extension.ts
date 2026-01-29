@@ -1,6 +1,7 @@
 import * as vscode from "vscode";
 import { CodeTreeProvider } from "./providers/CodeTreeProvider";
 import { CodeWebviewProvider } from "./providers/CodeWebviewProvider";
+import { AuthWebviewProvider } from "./providers/AuthWebviewProvider";
 import { scanWorkspaceFiles } from "./analyzers/core/workspaceScanner";
 import { fileIndex } from "./state/fileIndex";
 import { functionIndex } from "./state/functionIndex";
@@ -13,61 +14,31 @@ import { analyzeRuntimeTriggers } from "./analyzers/runtime/runtimeTriggerAnalyz
 import { mapErrorsToFunctions } from "./analyzers/debug/errorFunctionMapper";
 import { buildCallerChain } from "./analyzers/debug/executionChainBuilder";
 
-// Auth imports
-
-import { SimpleAuthService } from "./SimpleAuthService";
-import { AuthTreeProvider } from "./AuthThreeProvider";
-
 export function activate(context: vscode.ExtensionContext) {
-  // Setup auth
-  const authService = SimpleAuthService.getInstance(context);
-  const authTreeProvider = new AuthTreeProvider();
-  vscode.window.registerTreeDataProvider("authTree", authTreeProvider);
-
-  // Update auth tree based on current state
-  if (authService.isAuthenticated()) {
-    authTreeProvider.refresh(true, authService.getUserDisplayName());
-  }
-
-  // Sign In command
-  const signInCmd = vscode.commands.registerCommand(
-    "experiment.signIn",
-    async () => {
-      const success = await authService.signIn();
-      if (success) {
-        authTreeProvider.refresh(true, authService.getUserDisplayName());
-        vscode.window.showInformationMessage(
-          `Welcome, ${authService.getUserDisplayName()}!`,
-        );
-      }
-    },
+  // ============================================
+  // SETUP USER WEBVIEW (AUTHENTICATION + HISTORY)
+  // ============================================
+  const authWebviewProvider = new AuthWebviewProvider(
+    context.extensionUri,
+    context, // Pass context for session persistence
   );
 
-  // Sign Up command
-  const signUpCmd = vscode.commands.registerCommand(
-    "experiment.signUp",
-    async () => {
-      await authService.signUp();
-    },
+  context.subscriptions.push(
+    vscode.window.registerWebviewViewProvider(
+      AuthWebviewProvider.viewType,
+      authWebviewProvider,
+    ),
   );
 
-  // Sign Out command
-  const signOutCmd = vscode.commands.registerCommand(
-    "experiment.signOut",
-    async () => {
-      await authService.signOut();
-      authTreeProvider.refresh(false);
-      vscode.window.showInformationMessage("Signed out successfully");
-    },
-  );
-
-  context.subscriptions.push(signInCmd, signUpCmd, signOutCmd);
-
+  // ============================================
   // Existing code tree
+  // ============================================
   const treeProvider = new CodeTreeProvider();
   vscode.window.registerTreeDataProvider("codeTree", treeProvider);
 
+  // ============================================
   // show selected code command (debug mode)
+  // ============================================
   const disposable = vscode.commands.registerCommand(
     "experiment.showSelectedCode",
     async () => {
@@ -172,7 +143,9 @@ export function activate(context: vscode.ExtensionContext) {
     },
   );
 
+  // ============================================
   // show roadmap view command
+  // ============================================
   const roadmapDisposable = vscode.commands.registerCommand(
     "experiment.showRoadmap",
     async () => {

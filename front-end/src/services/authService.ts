@@ -30,7 +30,7 @@ class AuthService {
   }
 
   private async loadSession() {
-    if (!this.context) return;
+    if (!this.context) {return;}
 
     const savedToken = await this.context.secrets.get("clerk_session_token");
     if (savedToken) {
@@ -61,7 +61,7 @@ class AuthService {
   }
 
   async handleAuthCallback(token: string) {
-    if (!this.context) return false;
+    if (!this.context) {return false;}
 
     this.sessionToken = token;
     await this.context.secrets.store("clerk_session_token", token);
@@ -75,7 +75,7 @@ class AuthService {
   }
 
   private async fetchUser(): Promise<boolean> {
-    if (!this.sessionToken) return false;
+    if (!this.sessionToken) {return false;}
 
     return new Promise((resolve) => {
       const options = {
@@ -127,7 +127,7 @@ class AuthService {
   }
 
   async logout() {
-    if (!this.context) return;
+    if (!this.context) {return;}
 
     this.sessionToken = null;
     this.user = null;
