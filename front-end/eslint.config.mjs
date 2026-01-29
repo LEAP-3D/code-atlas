@@ -37,4 +37,8 @@ export default [
   {
     ignores: ["out/**", "dist/**", "**/*.d.ts"],
   },
+  {
+    selector: "property",
+    format: null, // Allows "Content-Type", "Authorization", etc.
+  },
 ];
