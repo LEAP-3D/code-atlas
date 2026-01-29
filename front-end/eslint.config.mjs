@@ -25,6 +25,10 @@ export default [
           varsIgnorePattern: "^_",
           caughtErrorsIgnorePattern: "^_",
         },
+        {
+          selector: "property",
+          format: null, // Allows "Content-Type", "Authorization", etc.
+        },
       ],
 
       // Standard JavaScript rules
@@ -36,9 +40,5 @@ export default [
   },
   {
     ignores: ["out/**", "dist/**", "**/*.d.ts"],
-  },
-  {
-    selector: "property",
-    format: null, // Allows "Content-Type", "Authorization", etc.
   },
 ];
