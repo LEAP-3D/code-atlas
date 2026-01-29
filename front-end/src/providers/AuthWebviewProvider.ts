@@ -31,7 +31,6 @@ export class AuthWebviewProvider implements vscode.WebviewViewProvider {
     this._context = context;
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   public resolveWebviewView(
     webviewView: vscode.WebviewView,
     _context: vscode.WebviewViewResolveContext,
@@ -206,7 +205,6 @@ export class AuthWebviewProvider implements vscode.WebviewViewProvider {
     await this._context.globalState.update("user", undefined);
   }
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   private _getHtmlForWebview(_webview: vscode.Webview) {
     return `<!DOCTYPE html>
 <html lang="en">
