@@ -6,7 +6,7 @@ export function buildCallerChain(
   depth = 0,
   maxDepth = 6
 ): string[] {
-  if (depth >= maxDepth) return [];
+  if (depth >= maxDepth) {return [];}
 
   const callers = callGraphIndex.getCallersOf(targetFunctionName, filePath);
 

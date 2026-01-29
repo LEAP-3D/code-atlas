@@ -55,14 +55,14 @@ export function buildRoadmapMermaid(): string {
   const processedEdges = new Set<string>();
 
   for (const edge of edges) {
-    if (!edge.calleeId) continue;
+    if (!edge.calleeId) {continue;}
 
     const fromId = sanitizeId(edge.callerId);
     const toId = sanitizeId(edge.calleeId);
     const edgeKey = `${fromId}->${toId}`;
 
     // Avoid duplicate edges
-    if (processedEdges.has(edgeKey)) continue;
+    if (processedEdges.has(edgeKey)) {continue;}
     processedEdges.add(edgeKey);
 
     if (added.has(fromId) && added.has(toId)) {
