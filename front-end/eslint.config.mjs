@@ -17,17 +17,23 @@ export default [
     // Rules compatible with ESLint 9
     rules: {
       // TypeScript rules
-      "@typescript-eslint/naming-convention": "warn",
+      "@typescript-eslint/naming-convention": [
+        "warn",
+        {
+          selector: "default",
+          format: ["camelCase"],
+        },
+        {
+          selector: "property", // ✅ THIS BELONGS IN NAMING-CONVENTION!
+          format: null,
+        },
+      ],
       "@typescript-eslint/no-unused-vars": [
         "error",
         {
           argsIgnorePattern: "^_",
           varsIgnorePattern: "^_",
           caughtErrorsIgnorePattern: "^_",
-        },
-        {
-          selector: "property",
-          format: null, // Allows "Content-Type", "Authorization", etc.
         },
       ],
 
