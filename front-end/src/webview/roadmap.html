@@ -249,16 +249,25 @@
         word-break: break-word;
         transition: all 0.3s;
         line-height: 1.2;
+        overflow: hidden;
+        display: -webkit-box;
+        -webkit-line-clamp: 2; /* Limit to 2 lines */
+        -webkit-box-orient: vertical;
       }
 
       .node.focused .node-name {
         font-size: 14px;
         max-width: 130px;
+        -webkit-line-clamp: 3; /* Allow 3 lines for focused nodes */
       }
 
       .node.small .node-name {
-        font-size: 10px;
-        max-width: 65px;
+        font-size: 8px;
+        max-width: 60px;
+        line-height: 1.1;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap; /* Prevent wrapping, use ellipsis instead */
       }
 
       .node-badge {
@@ -274,8 +283,10 @@
       }
 
       .node.small .node-badge {
-        font-size: 8px;
-        padding: 2px 5px;
+        font-size: 7px;
+        padding: 1px 4px;
+        top: 2px;
+        right: 2px;
       }
 
       .hint {
@@ -541,7 +552,7 @@
         return commonParts.join("/");
       }
 
-      // Hierarchical tree layout (top-down)
+      // Hierarchical tree layout (top-down) with proper spacing to prevent overlap
       function calculateTreeLayout(
         node,
         startX = 5000,
@@ -549,7 +560,7 @@
         level = 0,
       ) {
         const positions = [];
-        const horizontalSpacing = 250; // Space between siblings
+        const horizontalSpacing = 150; // Base spacing between nodes
         const verticalSpacing = 300; // Space between levels
 
         // Get all items at this level
@@ -559,14 +570,42 @@
 
         if (allItems.length === 0) return positions;
 
-        // Calculate total width needed for this level
-        const totalWidth = (allItems.length - 1) * horizontalSpacing;
-        const currentX = startX - totalWidth / 2;
+        // Calculate how much horizontal space each item needs (including its children)
+        function calculateSubtreeWidth(item) {
+          if (item.type === "file") {
+            return horizontalSpacing; // Files just take base space
+          }
+
+          // For folders, calculate space needed for all children
+          const subFolders = Object.values(item.children || {});
+          const subFiles = item.files || [];
+          const allSubItems = [...subFolders, ...subFiles];
+
+          if (allSubItems.length === 0) {
+            return horizontalSpacing;
+          }
+
+          // Sum up space needed by all children
+          let totalWidth = 0;
+          allSubItems.forEach((subItem) => {
+            totalWidth += calculateSubtreeWidth(subItem);
+          });
+
+          return Math.max(totalWidth, horizontalSpacing);
+        }
+
+        // Calculate total width needed for all items
+        const itemWidths = allItems.map((item) => calculateSubtreeWidth(item));
+        const totalWidth = itemWidths.reduce((sum, w) => sum + w, 0);
+
+        // Starting position (centered)
+        let currentX = startX - totalWidth / 2;
         const currentY = startY + level * verticalSpacing;
 
         // Position each item
         allItems.forEach((item, index) => {
-          const itemX = currentX + index * horizontalSpacing;
+          const itemWidth = itemWidths[index];
+          const itemX = currentX + itemWidth / 2; // Center of this item's allocated space
           const itemY = currentY;
 
           positions.push({
@@ -578,7 +617,7 @@
             parentY: startY,
           });
 
-          // Recursively position children
+          // Recursively position children of folders
           if (item.type === "folder") {
             const childPositions = calculateTreeLayout(
               item,
@@ -588,6 +627,9 @@
             );
             positions.push(...childPositions);
           }
+
+          // Move to next item's position
+          currentX += itemWidth;
         });
 
         return positions;
