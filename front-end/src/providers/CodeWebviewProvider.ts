@@ -31,6 +31,9 @@ export class CodeWebviewProvider {
     panel.webview.html = this.getHtml(panel.webview, context, data);
   }
 
+  // ============================================
+  // ШИНЭЧЛЭГДСЭН: showRoadmap - message handler нэмсэн
+  // ============================================
   static showRoadmap(context: vscode.ExtensionContext) {
     const panel = vscode.window.createWebviewPanel(
       "roadmapView",
@@ -40,6 +43,70 @@ export class CodeWebviewProvider {
     );
 
     panel.webview.html = this.getRoadmapHtml(panel.webview, context);
+
+    // ============================================
+    // ШИНЭ: Webview-ээс message хүлээн авах
+    // ============================================
+    panel.webview.onDidReceiveMessage(
+      async (message) => {
+        console.log("📨 Received message from webview:", message);
+
+        if (message.command === "goToFunction") {
+          try {
+            const filePath = message.filePath;
+            const line = message.line || 1;
+
+            console.log(`🎯 Opening file: ${filePath} at line ${line}`);
+
+            // Файлыг нээх
+            const uri = vscode.Uri.file(filePath);
+            const document = await vscode.workspace.openTextDocument(uri);
+            const editor = await vscode.window.showTextDocument(
+              document,
+              vscode.ViewColumn.One, // Зүүн талын editor дээр нээх
+            );
+
+            // Тухайн мөр рүү очих (VS Code 0-indexed тул -1)
+            const targetLine = Math.max(0, line - 1);
+            const range = new vscode.Range(targetLine, 0, targetLine, 0);
+
+            // Cursor-г тухайн мөрөнд байрлуулах
+            editor.selection = new vscode.Selection(range.start, range.start);
+
+            // Тухайн мөрийг дэлгэцийн төвд харуулах
+            editor.revealRange(range, vscode.TextEditorRevealType.InCenter);
+
+            // Мөрийг highlight хийх (optional - 2 секундын дараа арилна)
+            const decoration = vscode.window.createTextEditorDecorationType({
+              backgroundColor: new vscode.ThemeColor(
+                "editor.findMatchHighlightBackground",
+              ),
+              isWholeLine: true,
+            });
+
+            editor.setDecorations(decoration, [range]);
+
+            // 2 секундын дараа highlight-г арилгах
+            setTimeout(() => {
+              decoration.dispose();
+            }, 2000);
+
+            vscode.window.showInformationMessage(
+              `📍 Jumped to ${path.basename(filePath)}:${line}`,
+            );
+          } catch (error) {
+            console.error("Error opening file:", error);
+            vscode.window.showErrorMessage(
+              `Failed to open file: ${
+                error instanceof Error ? error.message : "Unknown error"
+              }`,
+            );
+          }
+        }
+      },
+      undefined,
+      context.subscriptions,
+    );
   }
 
   private static getRoadmapHtml(
@@ -116,8 +183,8 @@ export class CodeWebviewProvider {
           filePath: fn.filePath,
           emoji: this.getFunctionEmoji(fn.name),
           calls: calls,
-          startLine: fn.startLine,
-          endLine: fn.endLine,
+          startLine: fn.startLine, // ШИНЭ: startLine нэмсэн
+          endLine: fn.endLine, // ШИНЭ: endLine нэмсэн
         };
       });
 

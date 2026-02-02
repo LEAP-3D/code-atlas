@@ -251,14 +251,14 @@
         line-height: 1.2;
         overflow: hidden;
         display: -webkit-box;
-        -webkit-line-clamp: 2; /* Limit to 2 lines */
+        -webkit-line-clamp: 2;
         -webkit-box-orient: vertical;
       }
 
       .node.focused .node-name {
         font-size: 14px;
         max-width: 130px;
-        -webkit-line-clamp: 3; /* Allow 3 lines for focused nodes */
+        -webkit-line-clamp: 3;
       }
 
       .node.small .node-name {
@@ -267,7 +267,7 @@
         line-height: 1.1;
         overflow: hidden;
         text-overflow: ellipsis;
-        white-space: nowrap; /* Prevent wrapping, use ellipsis instead */
+        white-space: nowrap;
       }
 
       .node-badge {
@@ -369,6 +369,7 @@
         gap: 12px;
       }
 
+      /* ШИНЭ: Function card hover effect - clickable болгох */
       .function-card {
         background: rgba(0, 0, 0, 0.3);
         border: 1px solid #3a3a3a;
@@ -378,11 +379,17 @@
         align-items: center;
         gap: 10px;
         transition: all 0.2s;
+        cursor: pointer; /* ШИНЭ: cursor pointer */
       }
 
       .function-card:hover {
-        background: rgba(0, 0, 0, 0.5);
+        background: rgba(78, 201, 176, 0.1); /* ШИНЭ: илүү тод hover */
         border-color: #4ec9b0;
+        transform: translateX(4px); /* ШИНЭ: hover дээр бага зэрэг хөдлөх */
+      }
+
+      .function-card:active {
+        transform: translateX(2px) scale(0.98); /* ШИНЭ: click effect */
       }
 
       .function-icon {
@@ -407,6 +414,18 @@
       .function-meta {
         font-size: 10px;
         color: #888;
+      }
+
+      /* ШИНЭ: Go to code indicator */
+      .function-goto {
+        color: #4ec9b0;
+        font-size: 14px;
+        opacity: 0;
+        transition: opacity 0.2s;
+      }
+
+      .function-card:hover .function-goto {
+        opacity: 1;
       }
 
       .canvas::before {
@@ -458,11 +477,28 @@
 
       <div class="hint" id="hint">
         🖱️ Drag to pan • Cmd/Ctrl + Scroll to zoom • Click files to see
-        functions
+        functions • Click function to go to code
       </div>
     </div>
 
     <script>
+      // ============================================
+      // ШИНЭ: VS Code API-г авах
+      // ============================================
+      const vscode = acquireVsCodeApi();
+
+      // ============================================
+      // ШИНЭ: Функц руу очих - VS Code руу message илгээх
+      // ============================================
+      function goToFunction(filePath, line) {
+        console.log("🎯 Going to function:", filePath, "line:", line);
+        vscode.postMessage({
+          command: "goToFunction",
+          filePath: filePath,
+          line: line || 1,
+        });
+      }
+
       let roadmapData = window.ROADMAP_DATA || { files: [] };
       console.log("🗺️ [INIT] Roadmap data:", roadmapData);
 
@@ -470,7 +506,7 @@
       let allNodes = [];
       let connections = [];
       let focusedFile = null;
-      let scale = 0.5; // Start at 50% to see the whole graph
+      let scale = 0.5;
       let translateX = 0;
       let translateY = 0;
       let isDragging = false;
@@ -552,7 +588,6 @@
         return commonParts.join("/");
       }
 
-      // Hierarchical tree layout (top-down) with proper spacing to prevent overlap
       function calculateTreeLayout(
         node,
         startX = 5000,
@@ -560,23 +595,20 @@
         level = 0,
       ) {
         const positions = [];
-        const horizontalSpacing = 150; // Base spacing between nodes
-        const verticalSpacing = 300; // Space between levels
+        const horizontalSpacing = 150;
+        const verticalSpacing = 300;
 
-        // Get all items at this level
         const folders = Object.values(node.children || {});
         const files = node.files || [];
         const allItems = [...folders, ...files];
 
         if (allItems.length === 0) return positions;
 
-        // Calculate how much horizontal space each item needs (including its children)
         function calculateSubtreeWidth(item) {
           if (item.type === "file") {
-            return horizontalSpacing; // Files just take base space
+            return horizontalSpacing;
           }
 
-          // For folders, calculate space needed for all children
           const subFolders = Object.values(item.children || {});
           const subFiles = item.files || [];
           const allSubItems = [...subFolders, ...subFiles];
@@ -585,7 +617,6 @@
             return horizontalSpacing;
           }
 
-          // Sum up space needed by all children
           let totalWidth = 0;
           allSubItems.forEach((subItem) => {
             totalWidth += calculateSubtreeWidth(subItem);
@@ -594,18 +625,15 @@
           return Math.max(totalWidth, horizontalSpacing);
         }
 
-        // Calculate total width needed for all items
         const itemWidths = allItems.map((item) => calculateSubtreeWidth(item));
         const totalWidth = itemWidths.reduce((sum, w) => sum + w, 0);
 
-        // Starting position (centered)
         let currentX = startX - totalWidth / 2;
         const currentY = startY + level * verticalSpacing;
 
-        // Position each item
         allItems.forEach((item, index) => {
           const itemWidth = itemWidths[index];
-          const itemX = currentX + itemWidth / 2; // Center of this item's allocated space
+          const itemX = currentX + itemWidth / 2;
           const itemY = currentY;
 
           positions.push({
@@ -617,7 +645,6 @@
             parentY: startY,
           });
 
-          // Recursively position children of folders
           if (item.type === "folder") {
             const childPositions = calculateTreeLayout(
               item,
@@ -628,14 +655,12 @@
             positions.push(...childPositions);
           }
 
-          // Move to next item's position
           currentX += itemWidth;
         });
 
         return positions;
       }
 
-      // Render the graph
       function renderGraph() {
         console.log("🎨 Rendering hierarchical graph...");
 
@@ -652,7 +677,6 @@
 
         console.log(`📊 Calculated ${positions.length} positions`);
 
-        // Create connections first
         positions.forEach((pos) => {
           if (pos.parentX !== undefined && pos.parentY !== undefined) {
             drawConnection(
@@ -666,7 +690,6 @@
           }
         });
 
-        // Create nodes
         positions.forEach((pos) => {
           const element = createNode(pos.node, pos.x, pos.y);
           nodesContainer.appendChild(element);
@@ -732,7 +755,6 @@
       function drawConnection(x1, y1, x2, y2, childId, parentId) {
         const svg = document.getElementById("connectionsSvg");
 
-        // Draw a curved path (Bezier curve)
         const path = document.createElementNS(
           "http://www.w3.org/2000/svg",
           "path",
@@ -755,18 +777,15 @@
 
         focusedFile = fileData;
 
-        // Get all nodes in the hierarchy
         const relevantNodeIds = new Set();
         relevantNodeIds.add(getNodeId(fileData));
 
-        // Add all ancestors
         let current = fileData.parent;
         while (current) {
           relevantNodeIds.add(getNodeId(current));
           current = current.parent;
         }
 
-        // Add all siblings
         if (fileData.parent) {
           fileData.parent.files?.forEach((file) => {
             relevantNodeIds.add(getNodeId(file));
@@ -775,7 +794,6 @@
 
         console.log("Relevant nodes:", relevantNodeIds);
 
-        // Update nodes
         allNodes.forEach((nodeObj) => {
           const nodeId = getNodeId(nodeObj.data);
           const isFile = nodeId === getNodeId(fileData);
@@ -793,7 +811,6 @@
           }
         });
 
-        // Highlight connections
         connections.forEach(({ line, childId, parentId }) => {
           const isRelevant =
             relevantNodeIds.has(childId) || relevantNodeIds.has(parentId);
@@ -815,6 +832,9 @@
         updateBreadcrumb(pathParts.join(" / "));
       }
 
+      // ============================================
+      // ШИНЭЧЛЭГДСЭН: showFunctionPanel - onclick нэмсэн
+      // ============================================
       function showFunctionPanel(fileData) {
         const panel = document.getElementById("functionPanel");
         const header = document.getElementById("panelHeader");
@@ -822,31 +842,43 @@
 
         header.innerHTML = `
           <div class="function-panel-title">📄 ${fileData.name}</div>
-          <div class="function-panel-subtitle">${fileData.functions?.length || 0} functions</div>
+          <div class="function-panel-subtitle">${fileData.functions?.length || 0} functions • Click to go to code</div>
         `;
 
+        // ШИНЭ: onclick handler нэмсэн, filePath болон startLine дамжуулна
         list.innerHTML =
           fileData.functions
             ?.map(
               (fn) => `
-          <div class="function-card">
+          <div class="function-card" onclick="goToFunction('${escapeHtml(fileData.fullPath)}', ${fn.startLine || 1})">
             <div class="function-icon">${getFunctionIcon(fn.name)}</div>
             <div class="function-details">
-              <div class="function-name">${fn.name}</div>
+              <div class="function-name">${escapeHtml(fn.name)}</div>
               <div class="function-meta">
+                ${fn.startLine ? `Line ${fn.startLine}` : ""}
                 ${
                   fn.calls && fn.calls.length > 0
-                    ? `Calls: ${fn.calls.slice(0, 2).join(", ")}${fn.calls.length > 2 ? "..." : ""}`
-                    : "No dependencies"
+                    ? ` • Calls: ${fn.calls.slice(0, 2).join(", ")}${fn.calls.length > 2 ? "..." : ""}`
+                    : ""
                 }
               </div>
             </div>
+            <div class="function-goto">→</div>
           </div>
         `,
             )
             .join("") || "<p style='color: #666;'>No functions found</p>";
 
         panel.classList.add("visible");
+      }
+
+      // ШИНЭ: HTML escape функц - XSS-ээс хамгаалах
+      function escapeHtml(text) {
+        if (!text) return "";
+        return text
+          .replace(/\\/g, "\\\\")
+          .replace(/'/g, "\\'")
+          .replace(/"/g, '\\"');
       }
 
       function closeFunctionPanel() {
@@ -867,7 +899,6 @@
       function resetView() {
         focusedFile = null;
 
-        // Calculate the bounds of the graph
         if (allNodes.length > 0) {
           let minX = Infinity,
             maxX = -Infinity;
@@ -881,7 +912,7 @@
             maxY = Math.max(maxY, nodeObj.y);
           });
 
-          const graphWidth = maxX - minX + 200; // Add padding
+          const graphWidth = maxX - minX + 200;
           const graphHeight = maxY - minY + 200;
 
           const graphCenterX = (minX + maxX) / 2;
@@ -891,14 +922,12 @@
           const canvasCenterX = canvasRect.width / 2;
           const canvasCenterY = canvasRect.height / 2;
 
-          // Calculate zoom to fit the entire graph (with 10% margin)
           const scaleX = (canvasRect.width * 0.9) / graphWidth;
           const scaleY = (canvasRect.height * 0.9) / graphHeight;
-          scale = Math.min(scaleX, scaleY, 1); // Don't zoom in more than 100%
-          scale = Math.max(scale, MIN_SCALE); // Don't go below minimum
+          scale = Math.min(scaleX, scaleY, 1);
+          scale = Math.max(scale, MIN_SCALE);
 
-          // Calculate offset to center the graph
-          const containerCenterX = 5000; // Center of the 10000px container
+          const containerCenterX = 5000;
           const containerCenterY = 5000;
 
           translateX =
@@ -920,7 +949,6 @@
         });
 
         updateTransform();
-        // Update zoom percentage display
         document.getElementById("zoomLevel").textContent =
           `${Math.round(scale * 100)}%`;
         updateBreadcrumb("Full Map");
@@ -957,7 +985,6 @@
 
       const canvas = document.getElementById("canvas");
 
-      // Figma-style controls: drag to pan, cmd/ctrl + wheel to zoom
       canvas.addEventListener("mousedown", (e) => {
         if (e.target === canvas || e.target.closest("#graphContainer")) {
           isDragging = true;
@@ -985,31 +1012,25 @@
         canvas.classList.remove("grabbing");
       });
 
-      // Figma-style zoom: only with Cmd/Ctrl (MUCH slower)
       canvas.addEventListener(
         "wheel",
         (e) => {
-          // Check if Cmd (Mac) or Ctrl (Windows/Linux) is pressed
           if (e.metaKey || e.ctrlKey) {
             e.preventDefault();
 
-            // Get mouse position relative to canvas
             const rect = canvas.getBoundingClientRect();
             const mouseX = e.clientX - rect.left;
             const mouseY = e.clientY - rect.top;
 
-            // Calculate mouse position in graph coordinates (before zoom)
             const graphX = (mouseX - translateX) / scale;
             const graphY = (mouseY - translateY) / scale;
 
-            // MUCH slower zoom sensitivity (10x slower than before)
             const delta = e.deltaY > 0 ? -0.01 : 0.01;
             const newScale = Math.max(
               MIN_SCALE,
               Math.min(MAX_SCALE, scale + delta),
             );
 
-            // Calculate new translation to keep the point under cursor fixed
             translateX = mouseX - graphX * newScale;
             translateY = mouseY - graphY * newScale;
 
@@ -1018,7 +1039,6 @@
             document.getElementById("zoomLevel").textContent =
               `${Math.round(scale * 100)}%`;
           } else {
-            // Pan without modifier keys - also slower
             e.preventDefault();
             translateX -= e.deltaX * 0.5;
             translateY -= e.deltaY * 0.5;
@@ -1033,7 +1053,6 @@
         console.log(`✅ Found ${roadmapData.files.length} files`);
         renderGraph();
 
-        // Center the view after rendering
         setTimeout(() => {
           resetView();
         }, 100);
