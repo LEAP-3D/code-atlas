@@ -9,7 +9,7 @@ export function analyzeFunctionCalls(files: FileRecord[]) {
   console.log("🔍 analyzeFunctionCalls: START");
   console.log(
     "📂 Files:",
-    files.map((f) => f.path)
+    files.map((f) => f.path),
   );
 
   for (const file of files) {
@@ -19,17 +19,17 @@ export function analyzeFunctionCalls(files: FileRecord[]) {
       file.path,
       file.text,
       ts.ScriptTarget.Latest,
-      true
+      true,
     );
 
     function visit(node: ts.Node) {
       if (ts.isCallExpression(node)) {
         const { line, character } = sourceFile.getLineAndCharacterOfPosition(
-          node.getStart()
+          node.getStart(),
         );
 
         console.log(
-          `📞 Found CallExpression at ${file.path}:${line + 1}:${character + 1}`
+          `📞 Found CallExpression at ${file.path}:${line + 1}:${character + 1}`,
         );
 
         const caller = functionIndex.findByLine(file.path, line);
@@ -63,9 +63,9 @@ export function analyzeFunctionCalls(files: FileRecord[]) {
         const edge = {
           callerId: caller.id,
           callerName: caller.name,
+          callerFilePath: file.path, // filePath → callerFilePath
           calleeId: callee.id,
           calleeName,
-          filePath: file.path,
           line: line + 1,
         };
 

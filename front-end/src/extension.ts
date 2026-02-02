@@ -1,7 +1,10 @@
+// front-end/src/extension.ts
+
 import * as vscode from "vscode";
 import { CodeTreeProvider } from "./providers/CodeTreeProvider";
 import { CodeWebviewProvider } from "./providers/CodeWebviewProvider";
 import { AuthWebviewProvider } from "./providers/AuthWebviewProvider";
+import { AIProviderWebviewProvider } from "./providers/AIProviderWebviewProvider";
 import { scanWorkspaceFiles } from "./analyzers/core/workspaceScanner";
 import { fileIndex } from "./state/fileIndex";
 import { functionIndex } from "./state/functionIndex";
@@ -13,14 +16,37 @@ import { analyzeFunctionCalls } from "./analyzers/core/functionCallAnalyzer";
 import { analyzeRuntimeTriggers } from "./analyzers/runtime/runtimeTriggerAnalyzer";
 import { mapErrorsToFunctions } from "./analyzers/debug/errorFunctionMapper";
 import { buildCallerChain } from "./analyzers/debug/executionChainBuilder";
+import { AIService } from "./services/aiService";
+import { relevantFilesResolver } from "./services/relevantFilesResolver";
 
 export function activate(context: vscode.ExtensionContext) {
+  // ============================================
+  // AI SERVICE SETUP
+  // ============================================
+  const aiService = new AIService(context);
+
+  // ============================================
+  // AI PROVIDER WEBVIEW (SIDEBAR)
+  // ============================================
+  const aiProviderWebviewProvider = new AIProviderWebviewProvider(
+    context.extensionUri,
+    context,
+    aiService,
+  );
+
+  context.subscriptions.push(
+    vscode.window.registerWebviewViewProvider(
+      AIProviderWebviewProvider.viewType,
+      aiProviderWebviewProvider,
+    ),
+  );
+
   // ============================================
   // SETUP USER WEBVIEW (AUTHENTICATION + HISTORY)
   // ============================================
   const authWebviewProvider = new AuthWebviewProvider(
     context.extensionUri,
-    context, // Pass context for session persistence
+    context,
   );
 
   context.subscriptions.push(
@@ -43,7 +69,6 @@ export function activate(context: vscode.ExtensionContext) {
     "experiment.showSelectedCode",
     async () => {
       try {
-        /* ---------- PHASE 1: scan workspace ---------- */
         vscode.window.showInformationMessage("Scanning workspace...");
         const files = await scanWorkspaceFiles();
 
@@ -54,27 +79,19 @@ export function activate(context: vscode.ExtensionContext) {
           return;
         }
 
-        /* ---------- PHASE 2.1: load file contents ---------- */
         await loadWorkspaceFileContents(files);
-
-        /* ---------- PHASE 2.2: analyze function boundaries ---------- */
         analyzeFunctionBoundaries(fileIndex.getAll());
 
         vscode.window.showInformationMessage(
           `✓ Indexed ${fileIndex.getAll().length} files`,
         );
-
         vscode.window.showInformationMessage(
           `✓ Found ${functionIndex.getAll().length} functions`,
         );
 
-        /* ---------- PHASE 3: analyze function calls ---------- */
         analyzeFunctionCalls(fileIndex.getAll());
-
-        /* ---------- PHASE 4A: analyze runtime triggers ---------- */
         analyzeRuntimeTriggers(fileIndex.getAll());
 
-        /* ---------- ACTIVE EDITOR ---------- */
         const editor = vscode.window.activeTextEditor;
         if (!editor) {
           vscode.window.showErrorMessage("No active editor");
@@ -82,23 +99,13 @@ export function activate(context: vscode.ExtensionContext) {
         }
 
         const document = editor.document;
-
-        /* ---------- PHASE 2.3 + 3 + 4A: error mapping + chain + trigger ---------- */
         const mappedErrors = mapErrorsToFunctions(document);
 
         mappedErrors.forEach((err) => {
           const chain = buildCallerChain(err.functionName, document.uri.fsPath);
-
           const trigger = triggerIndex.find(
             err.functionName,
             document.uri.fsPath,
-          );
-
-          console.log(
-            "[DEBUG] function:",
-            err.functionName,
-            "trigger:",
-            trigger,
           );
 
           vscode.window.showErrorMessage(
@@ -112,14 +119,12 @@ export function activate(context: vscode.ExtensionContext) {
           }
         });
 
-        /* ---------- existing UI logic ---------- */
         const selectedCode =
           editor.selection && !editor.selection.isEmpty
             ? document.getText(editor.selection)
             : "No code selected";
 
         const errorFunctions = mappedErrors.map((e) => e.functionName);
-
         const mermaidDiagram = buildExecutionMermaid(
           document.uri.fsPath,
           errorFunctions,
@@ -152,7 +157,6 @@ export function activate(context: vscode.ExtensionContext) {
       try {
         vscode.window.showInformationMessage("🔍 Building project roadmap...");
 
-        /* ---------- PHASE 1: scan workspace ---------- */
         const files = await scanWorkspaceFiles();
 
         if (files.length === 0) {
@@ -162,7 +166,6 @@ export function activate(context: vscode.ExtensionContext) {
           return;
         }
 
-        /* ---------- PHASE 2: load and analyze ---------- */
         await loadWorkspaceFileContents(files);
         analyzeFunctionBoundaries(fileIndex.getAll());
         analyzeFunctionCalls(fileIndex.getAll());
@@ -171,9 +174,7 @@ export function activate(context: vscode.ExtensionContext) {
         const functionCount = functionIndex.getAll().length;
 
         if (functionCount === 0) {
-          vscode.window.showWarningMessage(
-            "No functions found. Make sure you have TypeScript/JavaScript files with function declarations.",
-          );
+          vscode.window.showWarningMessage("No functions found.");
           return;
         }
 
@@ -181,7 +182,6 @@ export function activate(context: vscode.ExtensionContext) {
           `✓ Roadmap ready: ${fileCount} files, ${functionCount} functions`,
         );
 
-        /* ---------- SHOW ROADMAP ---------- */
         CodeWebviewProvider.showRoadmap(context);
       } catch (error) {
         vscode.window.showErrorMessage(
@@ -194,9 +194,92 @@ export function activate(context: vscode.ExtensionContext) {
     },
   );
 
-  // register commands
+  // ============================================
+  // ASK AI COMMAND
+  // ============================================
+  const askAIDisposable = vscode.commands.registerCommand(
+    "experiment.askAI",
+    async () => {
+      try {
+        // 1. API key шалгах
+        const hasKey = await aiService.hasApiKey();
+        if (!hasKey) {
+          vscode.window.showErrorMessage(
+            "API key тохируулаагүй. Sidebar-аас тохируулна уу.",
+          );
+          return;
+        }
+
+        // 2. Active editor
+        const editor = vscode.window.activeTextEditor;
+        if (!editor) {
+          vscode.window.showErrorMessage("Файл нээнэ үү");
+          return;
+        }
+
+        // 3. Workspace scan
+        const files = await scanWorkspaceFiles();
+        if (files.length > 0) {
+          await loadWorkspaceFileContents(files);
+          analyzeFunctionBoundaries(fileIndex.getAll());
+          analyzeFunctionCalls(fileIndex.getAll());
+        }
+
+        // 4. Graph-аас relevant files олох
+        const currentFilePath = editor.document.uri.fsPath;
+        const relevantFiles =
+          relevantFilesResolver.getRelevantFiles(currentFilePath);
+
+        const providerName = aiService.getProviderConfig().name;
+        vscode.window.showInformationMessage(
+          `📁 ${relevantFiles.length} файл → ${providerName}`,
+        );
+
+        // 5. Асуулт авах
+        const question = await vscode.window.showInputBox({
+          prompt: `${providerName}-аас асуух`,
+          placeHolder: "Энэ код юу хийдэг вэ?",
+          ignoreFocusOut: true,
+        });
+
+        if (!question) return;
+
+        // 6. AI руу илгээх
+        await vscode.window.withProgress(
+          {
+            location: vscode.ProgressLocation.Notification,
+            title: `${providerName} хариулж байна...`,
+            cancellable: false,
+          },
+          async () => {
+            const answer = await aiService.askWithContext(
+              relevantFiles,
+              question,
+            );
+
+            // 7. Хариуг харуулах
+            const doc = await vscode.workspace.openTextDocument({
+              content: `# ${providerName} Хариулт\n\n**Асуулт:** ${question}\n\n**Контекст:** ${relevantFiles.length} файл\n- ${relevantFiles.map((f) => f.path).join("\n- ")}\n\n---\n\n${answer}`,
+              language: "markdown",
+            });
+            await vscode.window.showTextDocument(doc, { preview: true });
+          },
+        );
+      } catch (error) {
+        vscode.window.showErrorMessage(
+          `AI алдаа: ${error instanceof Error ? error.message : "Unknown"}`,
+        );
+        console.error(error);
+      }
+    },
+  );
+
+  // ============================================
+  // REGISTER ALL COMMANDS
+  // ============================================
   context.subscriptions.push(disposable);
   context.subscriptions.push(roadmapDisposable);
+  context.subscriptions.push(askAIDisposable);
 }
 
 export function deactivate() {

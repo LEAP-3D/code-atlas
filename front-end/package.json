@@ -30,6 +30,11 @@
     "views": {
       "experimentSidebar": [
         {
+          "id": "aiProviderView",
+          "name": "AI Provider",
+          "type": "webview"
+        },
+        {
           "id": "codeTree",
           "name": "Selected Code"
         },
@@ -48,12 +53,21 @@
       {
         "command": "experiment.showRoadmap",
         "title": "Show Project Roadmap"
+      },
+      {
+        "command": "experiment.askAI",
+        "title": "Ask AI (with context)"
       }
     ],
     "keybindings": [
       {
         "command": "experiment.showSelectedCode",
         "key": "ctrl+alt+c",
+        "when": "editorTextFocus"
+      },
+      {
+        "command": "experiment.askClaude",
+        "key": "ctrl+alt+a",
         "when": "editorTextFocus"
       }
     ]
@@ -77,5 +91,11 @@
     "eslint": "^9.39.1",
     "typescript": "^5.9.3",
     "typescript-eslint": "^8.54.0"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.72.1",
+    "@google/generative-ai": "^0.24.1",
+    "groq-sdk": "^0.37.0",
+    "openai": "^6.17.0"
   }
 }
