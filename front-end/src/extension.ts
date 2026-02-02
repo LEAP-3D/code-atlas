@@ -1,3 +1,5 @@
+// front-end/src/extension.ts
+
 import * as vscode from "vscode";
 import { CodeTreeProvider } from "./providers/CodeTreeProvider";
 import { CodeWebviewProvider } from "./providers/CodeWebviewProvider";
@@ -14,13 +16,22 @@ import { analyzeRuntimeTriggers } from "./analyzers/runtime/runtimeTriggerAnalyz
 import { mapErrorsToFunctions } from "./analyzers/debug/errorFunctionMapper";
 import { buildCallerChain } from "./analyzers/debug/executionChainBuilder";
 
+// ===== ШИНЭ IMPORTS =====
+import { ClaudeService } from "./services/claudeService";
+import { relevantFilesResolver } from "./services/relevantFilesResolver";
+
 export function activate(context: vscode.ExtensionContext) {
+  // ============================================
+  // CLAUDE SERVICE SETUP
+  // ============================================
+  const claudeService = new ClaudeService(context);
+
   // ============================================
   // SETUP USER WEBVIEW (AUTHENTICATION + HISTORY)
   // ============================================
   const authWebviewProvider = new AuthWebviewProvider(
     context.extensionUri,
-    context, // Pass context for session persistence
+    context,
   );
 
   context.subscriptions.push(
@@ -43,7 +54,6 @@ export function activate(context: vscode.ExtensionContext) {
     "experiment.showSelectedCode",
     async () => {
       try {
-        /* ---------- PHASE 1: scan workspace ---------- */
         vscode.window.showInformationMessage("Scanning workspace...");
         const files = await scanWorkspaceFiles();
 
@@ -54,27 +64,19 @@ export function activate(context: vscode.ExtensionContext) {
           return;
         }
 
-        /* ---------- PHASE 2.1: load file contents ---------- */
         await loadWorkspaceFileContents(files);
-
-        /* ---------- PHASE 2.2: analyze function boundaries ---------- */
         analyzeFunctionBoundaries(fileIndex.getAll());
 
         vscode.window.showInformationMessage(
           `✓ Indexed ${fileIndex.getAll().length} files`,
         );
-
         vscode.window.showInformationMessage(
           `✓ Found ${functionIndex.getAll().length} functions`,
         );
 
-        /* ---------- PHASE 3: analyze function calls ---------- */
         analyzeFunctionCalls(fileIndex.getAll());
-
-        /* ---------- PHASE 4A: analyze runtime triggers ---------- */
         analyzeRuntimeTriggers(fileIndex.getAll());
 
-        /* ---------- ACTIVE EDITOR ---------- */
         const editor = vscode.window.activeTextEditor;
         if (!editor) {
           vscode.window.showErrorMessage("No active editor");
@@ -82,13 +84,10 @@ export function activate(context: vscode.ExtensionContext) {
         }
 
         const document = editor.document;
-
-        /* ---------- PHASE 2.3 + 3 + 4A: error mapping + chain + trigger ---------- */
         const mappedErrors = mapErrorsToFunctions(document);
 
         mappedErrors.forEach((err) => {
           const chain = buildCallerChain(err.functionName, document.uri.fsPath);
-
           const trigger = triggerIndex.find(
             err.functionName,
             document.uri.fsPath,
@@ -112,14 +111,12 @@ export function activate(context: vscode.ExtensionContext) {
           }
         });
 
-        /* ---------- existing UI logic ---------- */
         const selectedCode =
           editor.selection && !editor.selection.isEmpty
             ? document.getText(editor.selection)
             : "No code selected";
 
         const errorFunctions = mappedErrors.map((e) => e.functionName);
-
         const mermaidDiagram = buildExecutionMermaid(
           document.uri.fsPath,
           errorFunctions,
@@ -152,7 +149,6 @@ export function activate(context: vscode.ExtensionContext) {
       try {
         vscode.window.showInformationMessage("🔍 Building project roadmap...");
 
-        /* ---------- PHASE 1: scan workspace ---------- */
         const files = await scanWorkspaceFiles();
 
         if (files.length === 0) {
@@ -162,7 +158,6 @@ export function activate(context: vscode.ExtensionContext) {
           return;
         }
 
-        /* ---------- PHASE 2: load and analyze ---------- */
         await loadWorkspaceFileContents(files);
         analyzeFunctionBoundaries(fileIndex.getAll());
         analyzeFunctionCalls(fileIndex.getAll());
@@ -181,7 +176,6 @@ export function activate(context: vscode.ExtensionContext) {
           `✓ Roadmap ready: ${fileCount} files, ${functionCount} functions`,
         );
 
-        /* ---------- SHOW ROADMAP ---------- */
         CodeWebviewProvider.showRoadmap(context);
       } catch (error) {
         vscode.window.showErrorMessage(
@@ -194,9 +188,106 @@ export function activate(context: vscode.ExtensionContext) {
     },
   );
 
-  // register commands
+  // ============================================
+  // ASK CLAUDE COMMAND - ШИНЭ!
+  // ============================================
+  const askClaudeDisposable = vscode.commands.registerCommand(
+    "experiment.askClaude",
+    async () => {
+      try {
+        // 1. Claude initialize
+        if (!claudeService.isInitialized()) {
+          const success = await claudeService.initialize();
+          if (!success) {
+            vscode.window.showErrorMessage("Claude API key шаардлагатай");
+            return;
+          }
+        }
+
+        // 2. Active editor
+        const editor = vscode.window.activeTextEditor;
+        if (!editor) {
+          vscode.window.showErrorMessage("Файл нээнэ үү");
+          return;
+        }
+
+        // 3. Workspace scan
+        const files = await scanWorkspaceFiles();
+        if (files.length > 0) {
+          await loadWorkspaceFileContents(files);
+          analyzeFunctionBoundaries(fileIndex.getAll());
+          analyzeFunctionCalls(fileIndex.getAll());
+        }
+
+        // 4. Graph-аас relevant files олох
+        const currentFilePath = editor.document.uri.fsPath;
+        const relevantFiles =
+          relevantFilesResolver.getRelevantFiles(currentFilePath);
+
+        vscode.window.showInformationMessage(
+          `📁 ${relevantFiles.length} холбогдох файл олдлоо`,
+        );
+
+        // 5. Асуулт авах
+        const question = await vscode.window.showInputBox({
+          prompt: "Claude-аас юу асуух вэ?",
+          placeHolder: "Энэ код юу хийдэг вэ?",
+          ignoreFocusOut: true,
+        });
+
+        if (!question) return;
+
+        // 6. Claude руу илгээх (loading-тэй)
+        await vscode.window.withProgress(
+          {
+            location: vscode.ProgressLocation.Notification,
+            title: "Claude хариулж байна...",
+            cancellable: false,
+          },
+          async () => {
+            const answer = await claudeService.askWithContext(
+              relevantFiles,
+              question,
+            );
+
+            // 7. Хариуг харуулах
+            const doc = await vscode.workspace.openTextDocument({
+              content: `# Claude Хариулт\n\n**Асуулт:** ${question}\n\n**Контекст:** ${relevantFiles.length} файл илгээгдсэн\n- ${relevantFiles.map((f) => f.path).join("\n- ")}\n\n---\n\n${answer}`,
+              language: "markdown",
+            });
+            await vscode.window.showTextDocument(doc, { preview: true });
+          },
+        );
+      } catch (error) {
+        vscode.window.showErrorMessage(
+          `Claude алдаа: ${error instanceof Error ? error.message : "Unknown"}`,
+        );
+        console.error(error);
+      }
+    },
+  );
+
+  // ============================================
+  // CLEAR CLAUDE API KEY COMMAND
+  // ============================================
+  const clearApiKeyDisposable = vscode.commands.registerCommand(
+    "experiment.clearClaudeApiKey",
+    async () => {
+      await claudeService.clearApiKey();
+      vscode.window.showInformationMessage(
+        "✓ Claude API key устгагдлаа. Дахин оруулна уу.",
+      );
+    },
+  );
+
+  context.subscriptions.push(clearApiKeyDisposable);
+
+  // ============================================
+  // REGISTER ALL COMMANDS
+  // ============================================
   context.subscriptions.push(disposable);
   context.subscriptions.push(roadmapDisposable);
+  context.subscriptions.push(askClaudeDisposable);
 }
 
 export function deactivate() {

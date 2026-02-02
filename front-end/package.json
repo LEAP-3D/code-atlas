@@ -48,12 +48,26 @@
       {
         "command": "experiment.showRoadmap",
         "title": "Show Project Roadmap"
+      },
+      {
+        "command": "experiment.askClaude",
+        "title": "Ask Claude (with context)",
+        "icon": "$(comment-discussion)"
+      },
+      {
+        "command": "experiment.clearClaudeApiKey",
+        "title": "Clear Claude API Key"
       }
     ],
     "keybindings": [
       {
         "command": "experiment.showSelectedCode",
         "key": "ctrl+alt+c",
+        "when": "editorTextFocus"
+      },
+      {
+        "command": "experiment.askClaude",
+        "key": "ctrl+alt+a",
         "when": "editorTextFocus"
       }
     ]
@@ -77,5 +91,8 @@
     "eslint": "^9.39.1",
     "typescript": "^5.9.3",
     "typescript-eslint": "^8.54.0"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.72.1"
   }
 }
