@@ -369,6 +369,7 @@
         gap: 12px;
       }
 
+      /* ШИНЭ: Function card hover effect - clickable болгох */
       .function-card {
         background: rgba(0, 0, 0, 0.3);
         border: 1px solid #3a3a3a;
@@ -378,11 +379,17 @@
         align-items: center;
         gap: 10px;
         transition: all 0.2s;
+        cursor: pointer; /* ШИНЭ: cursor pointer */
       }
 
       .function-card:hover {
-        background: rgba(78, 201, 176, 0.1);
+        background: rgba(78, 201, 176, 0.1); /* ШИНЭ: илүү тод hover */
         border-color: #4ec9b0;
+        transform: translateX(4px); /* ШИНЭ: hover дээр бага зэрэг хөдлөх */
+      }
+
+      .function-card:active {
+        transform: translateX(2px) scale(0.98); /* ШИНЭ: click effect */
       }
 
       .function-icon {
@@ -407,6 +414,18 @@
       .function-meta {
         font-size: 10px;
         color: #888;
+      }
+
+      /* ШИНЭ: Go to code indicator */
+      .function-goto {
+        color: #4ec9b0;
+        font-size: 14px;
+        opacity: 0;
+        transition: opacity 0.2s;
+      }
+
+      .function-card:hover .function-goto {
+        opacity: 1;
       }
 
       .canvas::before {
@@ -458,11 +477,28 @@
 
       <div class="hint" id="hint">
         🖱️ Drag to pan • Cmd/Ctrl + Scroll to zoom • Click files to see
-        functions
+        functions • Click function to go to code
       </div>
     </div>
 
     <script>
+      // ============================================
+      // ШИНЭ: VS Code API-г авах
+      // ============================================
+      const vscode = acquireVsCodeApi();
+
+      // ============================================
+      // ШИНЭ: Функц руу очих - VS Code руу message илгээх
+      // ============================================
+      function goToFunction(filePath, line) {
+        console.log("🎯 Going to function:", filePath, "line:", line);
+        vscode.postMessage({
+          command: "goToFunction",
+          filePath: filePath,
+          line: line || 1,
+        });
+      }
+
       let roadmapData = window.ROADMAP_DATA || { files: [] };
       console.log("🗺️ [INIT] Roadmap data:", roadmapData);
 
@@ -552,7 +588,6 @@
         return commonParts.join("/");
       }
 
-      // Hierarchical tree layout
       function calculateTreeLayout(
         node,
         startX = 5000,
@@ -626,7 +661,6 @@
         return positions;
       }
 
-      // Render the graph
       function renderGraph() {
         console.log("🎨 Rendering hierarchical graph...");
 
@@ -643,22 +677,19 @@
 
         console.log(`📊 Calculated ${positions.length} positions`);
 
-        // Create connections first
         positions.forEach((pos) => {
           if (pos.parentX !== undefined && pos.parentY !== undefined) {
-            const parentNode = pos.node.parent;
             drawConnection(
               pos.parentX,
               pos.parentY,
               pos.x,
               pos.y,
               getNodeId(pos.node),
-              getNodeId(parentNode),
+              getNodeId(pos.node.parent),
             );
           }
         });
 
-        // Create nodes
         positions.forEach((pos) => {
           const element = createNode(pos.node, pos.x, pos.y);
           nodesContainer.appendChild(element);
@@ -677,7 +708,6 @@
 
       function getNodeId(node) {
         if (!node) return null;
-        if (node.name === "Root") return "root";
         return node.type === "folder"
           ? `folder-${node.path || node.name}`
           : `file-${node.path}`;
@@ -742,71 +772,49 @@
         connections.push({ line: path, childId, parentId });
       }
 
-      // ✅ FIXED FUNCTION - Now properly includes Root and builds correct path
       function focusOnFile(fileData) {
         console.log("🎯 Focusing on file:", fileData.name);
 
         focusedFile = fileData;
 
-        // Build the ORDERED path from root to file (INCLUDING root)
-        const pathNodes = [];
-        let current = fileData;
+        const relevantNodeIds = new Set();
+        relevantNodeIds.add(getNodeId(fileData));
 
-        // Walk up from file to root
+        let current = fileData.parent;
         while (current) {
-          pathNodes.unshift(current); // Add to beginning
-          if (current.name === "Root") break;
+          relevantNodeIds.add(getNodeId(current));
           current = current.parent;
         }
 
-        console.log(
-          "📍 Path from root to file:",
-          pathNodes.map((n) => n.name).join(" → "),
-        );
-
-        // Create a set of node IDs in the path for quick lookup
-        const relevantNodeIds = new Set(
-          pathNodes.map((node) => getNodeId(node)),
-        );
-
-        // Create a set of valid connections (parent → child pairs in the path)
-        const validConnections = new Set();
-        for (let i = 0; i < pathNodes.length - 1; i++) {
-          const parentId = getNodeId(pathNodes[i]);
-          const childId = getNodeId(pathNodes[i + 1]);
-          const connectionKey = `${parentId}→${childId}`;
-          validConnections.add(connectionKey);
-          console.log(
-            `   Adding connection: ${pathNodes[i].name} → ${pathNodes[i + 1].name} (${connectionKey})`,
-          );
+        if (fileData.parent) {
+          fileData.parent.files?.forEach((file) => {
+            relevantNodeIds.add(getNodeId(file));
+          });
         }
 
-        // Update nodes
+        console.log("Relevant nodes:", relevantNodeIds);
+
         allNodes.forEach((nodeObj) => {
           const nodeId = getNodeId(nodeObj.data);
           const isFile = nodeId === getNodeId(fileData);
-          const isInPath = relevantNodeIds.has(nodeId) && !isFile;
+          const isRelevant = relevantNodeIds.has(nodeId);
 
           if (isFile) {
-            // The clicked file: large and bright
             nodeObj.element.classList.add("focused");
             nodeObj.element.classList.remove("dimmed", "small");
-          } else if (isInPath) {
-            // Folders in the path: small and visible
+          } else if (isRelevant) {
             nodeObj.element.classList.add("small");
             nodeObj.element.classList.remove("dimmed", "focused");
           } else {
-            // Everything else: dimmed
             nodeObj.element.classList.add("dimmed");
             nodeObj.element.classList.remove("focused", "small");
           }
         });
 
-        // Highlight ONLY the connections in the direct path
         connections.forEach(({ line, childId, parentId }) => {
-          const connectionKey = `${parentId}→${childId}`;
-
-          if (validConnections.has(connectionKey)) {
+          const isRelevant =
+            relevantNodeIds.has(childId) || relevantNodeIds.has(parentId);
+          if (isRelevant) {
             line.classList.add("highlight");
           } else {
             line.classList.remove("highlight");
@@ -815,13 +823,18 @@
 
         showFunctionPanel(fileData);
 
-        // Build breadcrumb (skip root)
-        const pathParts = pathNodes
-          .filter((n) => n.name !== "Root")
-          .map((n) => n.name);
+        const pathParts = [];
+        current = fileData;
+        while (current && current.name !== "Root") {
+          pathParts.unshift(current.name);
+          current = current.parent;
+        }
         updateBreadcrumb(pathParts.join(" / "));
       }
 
+      // ============================================
+      // ШИНЭЧЛЭГДСЭН: showFunctionPanel - onclick нэмсэн
+      // ============================================
       function showFunctionPanel(fileData) {
         const panel = document.getElementById("functionPanel");
         const header = document.getElementById("panelHeader");
@@ -829,31 +842,43 @@
 
         header.innerHTML = `
           <div class="function-panel-title">📄 ${fileData.name}</div>
-          <div class="function-panel-subtitle">${fileData.functions?.length || 0} functions</div>
+          <div class="function-panel-subtitle">${fileData.functions?.length || 0} functions • Click to go to code</div>
         `;
 
+        // ШИНЭ: onclick handler нэмсэн, filePath болон startLine дамжуулна
         list.innerHTML =
           fileData.functions
             ?.map(
               (fn) => `
-          <div class="function-card">
+          <div class="function-card" onclick="goToFunction('${escapeHtml(fileData.fullPath)}', ${fn.startLine || 1})">
             <div class="function-icon">${getFunctionIcon(fn.name)}</div>
             <div class="function-details">
-              <div class="function-name">${fn.name}</div>
+              <div class="function-name">${escapeHtml(fn.name)}</div>
               <div class="function-meta">
+                ${fn.startLine ? `Line ${fn.startLine}` : ""}
                 ${
                   fn.calls && fn.calls.length > 0
-                    ? `Calls: ${fn.calls.slice(0, 2).join(", ")}${fn.calls.length > 2 ? "..." : ""}`
-                    : "No dependencies"
+                    ? ` • Calls: ${fn.calls.slice(0, 2).join(", ")}${fn.calls.length > 2 ? "..." : ""}`
+                    : ""
                 }
               </div>
             </div>
+            <div class="function-goto">→</div>
           </div>
         `,
             )
             .join("") || "<p style='color: #666;'>No functions found</p>";
 
         panel.classList.add("visible");
+      }
+
+      // ШИНЭ: HTML escape функц - XSS-ээс хамгаалах
+      function escapeHtml(text) {
+        if (!text) return "";
+        return text
+          .replace(/\\/g, "\\\\")
+          .replace(/'/g, "\\'")
+          .replace(/"/g, '\\"');
       }
 
       function closeFunctionPanel() {
