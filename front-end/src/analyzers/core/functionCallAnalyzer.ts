@@ -6,14 +6,11 @@ import { FileRecord } from "../../state/fileIndex";
 export function analyzeFunctionCalls(files: FileRecord[]) {
   callGraphIndex.clear();
 
-  console.log("🔍 analyzeFunctionCalls: START");
-  console.log(
-    "📂 Files:",
-    files.map((f) => f.path),
-  );
+  console.log("🔍 [analyzeFunctionCalls] START");
+  console.log(`📂 Analyzing ${files.length} files for function calls...`);
 
   for (const file of files) {
-    console.log("\n📄 Analyzing file:", file.path);
+    console.log(`\n📄 [analyzeFunctionCalls] File: ${file.path}`);
 
     const sourceFile = ts.createSourceFile(
       file.path,
@@ -24,52 +21,69 @@ export function analyzeFunctionCalls(files: FileRecord[]) {
 
     function visit(node: ts.Node) {
       if (ts.isCallExpression(node)) {
-        const { line, character } = sourceFile.getLineAndCharacterOfPosition(
+        const { line } = sourceFile.getLineAndCharacterOfPosition(
           node.getStart(),
         );
 
-        console.log(
-          `📞 Found CallExpression at ${file.path}:${line + 1}:${character + 1}`,
-        );
-
+        // Find the caller function (function that contains this call)
         const caller = functionIndex.findByLine(file.path, line);
 
         if (!caller) {
-          console.log("⚠️  No caller function found for this line");
+          console.log(`⚠️  [${line + 1}] Call outside any function - skipping`);
           ts.forEachChild(node, visit);
           return;
         }
 
+        // Extract callee name
         let calleeName = "unknown";
 
         if (ts.isIdentifier(node.expression)) {
+          // Direct function call: doSomething()
           calleeName = node.expression.text;
         } else if (ts.isPropertyAccessExpression(node.expression)) {
+          // Method call: obj.method() or Class.staticMethod()
           calleeName = node.expression.name.text;
         }
 
-        console.log(`➡️  Caller: ${caller.name} | Callee name: ${calleeName}`);
-
-        const callee = functionIndex
-          .getAll()
-          .find((fn) => fn.name === calleeName && fn.filePath === file.path);
-
-        if (!callee) {
-          console.log(`🚫 Callee NOT FOUND in functionIndex: ${calleeName}`);
+        if (calleeName === "unknown") {
           ts.forEachChild(node, visit);
           return;
         }
 
+        console.log(`📞 [${line + 1}] ${caller.name} → ${calleeName}`);
+
+        // Try to find callee in the SAME file first
+        let callee = functionIndex
+          .getAll()
+          .find((fn) => fn.name === calleeName && fn.filePath === file.path);
+
+        // If not found in same file, search across ALL files
+        if (!callee) {
+          callee = functionIndex.getAll().find((fn) => fn.name === calleeName);
+        }
+
+        if (!callee) {
+          console.log(
+            `   🔍 Callee "${calleeName}" not found in any indexed file - might be external or built-in`,
+          );
+          ts.forEachChild(node, visit);
+          return;
+        }
+
+        // Create edge
         const edge = {
           callerId: caller.id,
           callerName: caller.name,
-          callerFilePath: file.path, // filePath → callerFilePath
+          callerFilePath: caller.filePath,
           calleeId: callee.id,
-          calleeName,
+          calleeName: callee.name,
+          calleeFilePath: callee.filePath, // Add this for cross-file tracking
           line: line + 1,
         };
 
-        console.log("✅ EDGE CREATED:", edge);
+        console.log(
+          `   ✅ Edge: ${caller.name} (${caller.filePath}) → ${callee.name} (${callee.filePath})`,
+        );
 
         callGraphIndex.add(edge);
       }
@@ -80,6 +94,17 @@ export function analyzeFunctionCalls(files: FileRecord[]) {
     visit(sourceFile);
   }
 
-  console.log("\n📊 FINAL callGraphIndex:", callGraphIndex.getAll());
-  console.log("🔍 analyzeFunctionCalls: END");
+  const totalEdges = callGraphIndex.getAll().length;
+  console.log(
+    `\n✅ [analyzeFunctionCalls] COMPLETE: ${totalEdges} function calls detected`,
+  );
+
+  // Debug: Show sample edges
+  const sampleEdges = callGraphIndex.getAll().slice(0, 5);
+  if (sampleEdges.length > 0) {
+    console.log("\n📊 Sample edges:");
+    sampleEdges.forEach((edge) => {
+      console.log(`   ${edge.callerName} → ${edge.calleeName}`);
+    });
+  }
 }

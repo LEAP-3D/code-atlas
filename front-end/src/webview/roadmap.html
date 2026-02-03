@@ -225,6 +225,22 @@
         border-color: #3b82f6;
       }
 
+      /* ✅ ШИНЭ: Алдаатай файлыг улаанаар */
+      .node.file.has-error .node-circle {
+        border-color: #ef4444;
+        background: linear-gradient(135deg, #2a1a1a 0%, #3a2020 100%);
+        box-shadow: 0 8px 32px rgba(239, 68, 68, 0.3);
+      }
+
+      .node.file.has-error:hover .node-circle {
+        box-shadow: 0 12px 40px rgba(239, 68, 68, 0.5);
+      }
+
+      .node.file.has-error .node-badge {
+        background: rgba(239, 68, 68, 0.3);
+        color: #ef4444;
+      }
+
       .node-icon {
         font-size: 40px;
         margin-bottom: 4px;
@@ -287,6 +303,25 @@
         padding: 1px 4px;
         top: 2px;
         right: 2px;
+      }
+
+      /* ✅ ШИНЭ: Error badge */
+      .error-badge-indicator {
+        position: absolute;
+        top: -8px;
+        left: -8px;
+        background: #ef4444;
+        color: white;
+        width: 24px;
+        height: 24px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 14px;
+        font-weight: bold;
+        z-index: 10;
+        box-shadow: 0 2px 8px rgba(239, 68, 68, 0.5);
       }
 
       .hint {
@@ -439,6 +474,38 @@
         background-size: 50px 50px;
         pointer-events: none;
       }
+
+      /* ✅ ШИНЭ: Error warning banner */
+      .error-warning {
+        background: rgba(239, 68, 68, 0.15);
+        border: 1px solid #ef4444;
+        border-radius: 8px;
+        padding: 12px;
+        margin-bottom: 16px;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+      }
+
+      .error-warning-icon {
+        font-size: 24px;
+      }
+
+      .error-warning-text {
+        flex: 1;
+      }
+
+      .error-warning-title {
+        font-size: 14px;
+        font-weight: 600;
+        color: #ef4444;
+        margin-bottom: 4px;
+      }
+
+      .error-warning-subtitle {
+        font-size: 12px;
+        color: #fca5a5;
+      }
     </style>
   </head>
   <body>
@@ -475,7 +542,7 @@
 
       <div class="hint" id="hint">
         🖱️ Drag to pan • Cmd/Ctrl + Scroll to zoom • Click files to see
-        functions • Click function to go to code
+        functions • Click function to go to code • 🔴 Red = Errors
       </div>
     </div>
 
@@ -495,6 +562,18 @@
 
       let roadmapData = window.ROADMAP_DATA || { files: [] };
       console.log("🗺️ [INIT] Roadmap data:", roadmapData);
+
+      // ✅ ШИНЭ: Error data check
+      console.log("🔍 [INIT] Checking for files with errors...");
+      const filesWithErrors = roadmapData.files.filter(
+        (f) => f.errorCount && f.errorCount > 0,
+      );
+      console.log(`   Found ${filesWithErrors.length} files with errors:`);
+      filesWithErrors.forEach((f) => {
+        console.log(
+          `      ❌ ${f.name}: ${f.errorCount} error(s) - color: ${f.color}`,
+        );
+      });
 
       let hierarchyData = null;
       let allNodes = [];
@@ -555,6 +634,9 @@
           if (index < 3) {
             console.log(`  File ${index}: ${file.path}`);
             console.log(`    relativePath: ${relativePath}`);
+            if (file.errorCount) {
+              console.log(`    ❌ Has ${file.errorCount} error(s)`);
+            }
           }
 
           const parts = relativePath.split("/").filter((p) => p);
@@ -591,6 +673,8 @@
             parent: current,
             level: currentLevel + 1,
             path: relativePath,
+            errorCount: file.errorCount || 0, // ✅ ШИНЭ: error count дамжуулах
+            color: file.color, // ✅ ШИНЭ: color дамжуулах
           });
         });
 
@@ -678,7 +762,6 @@
         const totalWidth = itemWidths.reduce((sum, w) => sum + w, 0);
 
         let currentX = startX - totalWidth / 2;
-        // ЗАСАГДСАН: Хүүхдүүд нь parent-аас доор байрлана (level + 1)
         const currentY = startY + verticalSpacing;
 
         allItems.forEach((item, index) => {
@@ -776,6 +859,15 @@
       function createNode(data, x, y) {
         const node = document.createElement("div");
         node.className = `node ${data.type}`;
+
+        // ✅ ШИНЭ: Алдаатай файл эсэхийг шалгаж class нэмэх
+        if (data.type === "file" && data.errorCount && data.errorCount > 0) {
+          node.classList.add("has-error");
+          console.log(
+            `   🔴 Creating error node: ${data.name} (${data.errorCount} errors)`,
+          );
+        }
+
         node.style.left = `${x}px`;
         node.style.top = `${y}px`;
         node.style.transform = "translate(-50%, -50%)";
@@ -786,8 +878,15 @@
             ? countFiles(data)
             : data.functions?.length || 0;
 
+        // ✅ ШИНЭ: Error indicator нэмэх
+        const errorIndicator =
+          data.type === "file" && data.errorCount && data.errorCount > 0
+            ? `<div class="error-badge-indicator">!</div>`
+            : "";
+
         node.innerHTML = `
           <div class="node-circle">
+            ${errorIndicator}
             ${badge > 0 ? `<div class="node-badge">${badge}</div>` : ""}
             <div class="node-icon">${icon}</div>
             <div class="node-name">${data.name}</div>
@@ -832,12 +931,13 @@
         connections.push({ line: path, childId, parentId });
       }
 
-      // ============================================
-      // ЗАСАГДСАН: focusOnFile - зөвхөн сонгосон файл
-      // болон эцэг folder-уудыг тодруулна
-      // ============================================
       function focusOnFile(fileData) {
         console.log("🎯 Focusing on file:", fileData.name);
+
+        // ✅ ШИНЭ: Error status-г log хийх
+        if (fileData.errorCount && fileData.errorCount > 0) {
+          console.log(`   ❌ File has ${fileData.errorCount} error(s)`);
+        }
 
         focusedFile = fileData;
 
@@ -852,9 +952,6 @@
           relevantNodeIds.add(getNodeId(current));
           current = current.parent;
         }
-
-        // ХАССАН: fileData.parent.files forEach - буруу байсан
-        // Эцэг folder-ийн бусад файлуудыг нэмэхгүй болсон
 
         console.log("Relevant nodes:", relevantNodeIds);
 
@@ -875,8 +972,6 @@
           }
         });
 
-        // Connection highlight засагдсан:
-        // Зөвхөн ХОЁР төгсгөл нь relevant байвал highlight хийнэ
         connections.forEach(({ line, childId, parentId }) => {
           const isRelevant =
             relevantNodeIds.has(childId) && relevantNodeIds.has(parentId);
@@ -904,9 +999,24 @@
         const header = document.getElementById("panelHeader");
         const list = document.getElementById("functionList");
 
+        // ✅ ШИНЭ: Error warning харуулах
+        const errorWarning =
+          fileData.errorCount && fileData.errorCount > 0
+            ? `
+            <div class="error-warning">
+              <div class="error-warning-icon">⚠️</div>
+              <div class="error-warning-text">
+                <div class="error-warning-title">${fileData.errorCount} Error${fileData.errorCount > 1 ? "s" : ""} Found</div>
+                <div class="error-warning-subtitle">This file has compilation errors</div>
+              </div>
+            </div>
+          `
+            : "";
+
         header.innerHTML = `
           <div class="function-panel-title">📄 ${fileData.name}</div>
           <div class="function-panel-subtitle">${fileData.functions?.length || 0} functions • Click to go to code</div>
+          ${errorWarning}
         `;
 
         list.innerHTML =
