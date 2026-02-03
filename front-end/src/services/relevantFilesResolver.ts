@@ -1,6 +1,5 @@
 import { functionIndex } from "../state/functionIndex";
 import { callGraphIndex } from "../state/callGraphIndex";
-import { fileIndex } from "../state/fileIndex";
 
 export interface RelevantFile {
   path: string;
