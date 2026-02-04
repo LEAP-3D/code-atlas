@@ -225,7 +225,6 @@
         border-color: #3b82f6;
       }
 
-      /* ✅ ШИНЭ: Алдаатай файлыг улаанаар */
       .node.file.has-error .node-circle {
         border-color: #ef4444;
         background: linear-gradient(135deg, #2a1a1a 0%, #3a2020 100%);
@@ -305,7 +304,6 @@
         right: 2px;
       }
 
-      /* ✅ ШИНЭ: Error badge */
       .error-badge-indicator {
         position: absolute;
         top: -8px;
@@ -475,7 +473,6 @@
         pointer-events: none;
       }
 
-      /* ✅ ШИНЭ: Error warning banner */
       .error-warning {
         background: rgba(239, 68, 68, 0.15);
         border: 1px solid #ef4444;
@@ -505,6 +502,111 @@
       .error-warning-subtitle {
         font-size: 12px;
         color: #fca5a5;
+      }
+
+      /* Dependencies Section Styles */
+      .dependencies-section {
+        margin-bottom: 24px;
+        padding-bottom: 24px;
+        border-bottom: 1px solid #3a3a3a;
+      }
+
+      .functions-section {
+        margin-top: 24px;
+      }
+
+      .section-title {
+        font-size: 14px;
+        font-weight: 600;
+        color: #fff;
+        margin-bottom: 12px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+
+      .dep-subsection {
+        margin-bottom: 16px;
+      }
+
+      .dep-subtitle {
+        font-size: 12px;
+        font-weight: 600;
+        color: #888;
+        margin-bottom: 8px;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+      }
+
+      .dep-item {
+        background: rgba(0, 0, 0, 0.3);
+        border: 1px solid #3a3a3a;
+        border-radius: 8px;
+        padding: 10px 12px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin-bottom: 8px;
+        cursor: pointer;
+        transition: all 0.2s;
+      }
+
+      .dep-item:hover {
+        background: rgba(78, 201, 176, 0.1);
+        border-color: #4ec9b0;
+        transform: translateX(4px);
+      }
+
+      .dep-item:active {
+        transform: translateX(2px) scale(0.98);
+      }
+
+      .dep-icon {
+        font-size: 16px;
+        flex-shrink: 0;
+      }
+
+      .dep-details {
+        flex: 1;
+        min-width: 0;
+      }
+
+      .dep-file-name {
+        font-size: 13px;
+        font-weight: 600;
+        color: #fff;
+        margin-bottom: 2px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+
+      .dep-imported-names {
+        font-size: 10px;
+        color: #888;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+
+      .dep-arrow {
+        color: #4ec9b0;
+        font-size: 14px;
+        opacity: 0;
+        transition: opacity 0.2s;
+        flex-shrink: 0;
+      }
+
+      .dep-item:hover .dep-arrow {
+        opacity: 1;
+      }
+
+      .no-deps {
+        color: #666;
+        font-size: 12px;
+        padding: 12px;
+        text-align: center;
+        font-style: italic;
       }
     </style>
   </head>
@@ -550,7 +652,6 @@
       // VS Code API
       const vscode = acquireVsCodeApi();
 
-      // Функц руу очих
       function goToFunction(filePath, line) {
         console.log("🎯 Going to function:", filePath, "line:", line);
         vscode.postMessage({
@@ -560,20 +661,13 @@
         });
       }
 
-      let roadmapData = window.ROADMAP_DATA || { files: [] };
+      let roadmapData = window.ROADMAP_DATA || { files: [], dependencies: [] };
       console.log("🗺️ [INIT] Roadmap data:", roadmapData);
 
-      // ✅ ШИНЭ: Error data check
-      console.log("🔍 [INIT] Checking for files with errors...");
       const filesWithErrors = roadmapData.files.filter(
         (f) => f.errorCount && f.errorCount > 0,
       );
-      console.log(`   Found ${filesWithErrors.length} files with errors:`);
-      filesWithErrors.forEach((f) => {
-        console.log(
-          `      ❌ ${f.name}: ${f.errorCount} error(s) - color: ${f.color}`,
-        );
-      });
+      console.log(`   Found ${filesWithErrors.length} files with errors`);
 
       let hierarchyData = null;
       let allNodes = [];
@@ -590,18 +684,11 @@
       const MAX_SCALE = 3;
       const ZOOM_STEP = 0.15;
 
-      // Build hierarchy
       function buildHierarchy(files) {
         const basePath = findBasePath(files);
-
-        // Project нэрийг basePath-аас авах (хамгийн сүүлийн folder)
         const pathParts = basePath ? basePath.split("/").filter((p) => p) : [];
         const projectName =
           pathParts.length > 0 ? pathParts[pathParts.length - 1] : "Project";
-
-        console.log("🔍 buildHierarchy debug:");
-        console.log("  basePath:", basePath);
-        console.log("  projectName:", projectName);
 
         const root = {
           name: projectName,
@@ -613,10 +700,9 @@
           parent: null,
         };
 
-        files.forEach((file, index) => {
+        files.forEach((file) => {
           let relativePath = file.path.replace(/\\/g, "/");
 
-          // basePath-г хасах
           if (basePath) {
             const baseWithSlash = basePath.endsWith("/")
               ? basePath
@@ -631,17 +717,7 @@
             }
           }
 
-          if (index < 3) {
-            console.log(`  File ${index}: ${file.path}`);
-            console.log(`    relativePath: ${relativePath}`);
-            if (file.errorCount) {
-              console.log(`    ❌ Has ${file.errorCount} error(s)`);
-            }
-          }
-
           const parts = relativePath.split("/").filter((p) => p);
-
-          // Хэрэв parts хоосон бол алгасах
           if (parts.length === 0) return;
 
           let current = root;
@@ -673,23 +749,18 @@
             parent: current,
             level: currentLevel + 1,
             path: relativePath,
-            errorCount: file.errorCount || 0, // ✅ ШИНЭ: error count дамжуулах
-            color: file.color, // ✅ ШИНЭ: color дамжуулах
+            errorCount: file.errorCount || 0,
+            color: file.color,
           });
         });
 
-        console.log("  Root children:", Object.keys(root.children));
-
-        // ШИНЭ: Хэрэв Root-д зөвхөн 1 child folder байвал, түүнийг Root болгох
         const childFolders = Object.keys(root.children);
         if (childFolders.length === 1 && root.files.length === 0) {
           const onlyChild = root.children[childFolders[0]];
-          // Child-ийн нэрийг Root болгох
           onlyChild.name = onlyChild.name;
           onlyChild.parent = null;
           onlyChild.level = 0;
           onlyChild.path = onlyChild.name;
-          console.log("  ⚡ Promoting single child to root:", onlyChild.name);
           return onlyChild;
         }
 
@@ -699,16 +770,12 @@
       function findBasePath(files) {
         if (files.length === 0) return "";
         const paths = files.map((f) => f.path.replace(/\\/g, "/"));
-
-        // Эхний файлын path-г хэсэглэх
         const parts = paths[0].split("/").filter((p) => p);
         let commonParts = [];
 
-        // Бүх файлд нийтлэг path олох (файл нэргүй, зөвхөн folder)
         for (let i = 0; i < parts.length; i++) {
           const testPath = "/" + parts.slice(0, i + 1).join("/");
           const allMatch = paths.every((p) => p.startsWith(testPath + "/"));
-
           if (allMatch) {
             commonParts = parts.slice(0, i + 1);
           } else {
@@ -716,17 +783,10 @@
           }
         }
 
-        const result = "/" + commonParts.join("/");
-        console.log("  findBasePath result:", result);
-        return result;
+        return "/" + commonParts.join("/");
       }
 
-      function calculateTreeLayout(
-        node,
-        startX = 5000,
-        startY = 500,
-        level = 0,
-      ) {
+      function calculateTreeLayout(node, startX = 5000, startY = 500, level = 0) {
         const positions = [];
         const horizontalSpacing = 180;
         const verticalSpacing = 250;
@@ -738,17 +798,13 @@
         if (allItems.length === 0) return positions;
 
         function calculateSubtreeWidth(item) {
-          if (item.type === "file") {
-            return horizontalSpacing;
-          }
+          if (item.type === "file") return horizontalSpacing;
 
           const subFolders = Object.values(item.children || {});
           const subFiles = item.files || [];
           const allSubItems = [...subFolders, ...subFiles];
 
-          if (allSubItems.length === 0) {
-            return horizontalSpacing;
-          }
+          if (allSubItems.length === 0) return horizontalSpacing;
 
           let totalWidth = 0;
           allSubItems.forEach((subItem) => {
@@ -779,12 +835,7 @@
           });
 
           if (item.type === "folder") {
-            const childPositions = calculateTreeLayout(
-              item,
-              itemX,
-              itemY,
-              level + 1,
-            );
+            const childPositions = calculateTreeLayout(item, itemX, itemY, level + 1);
             positions.push(...childPositions);
           }
 
@@ -808,9 +859,6 @@
         hierarchyData = buildHierarchy(roadmapData.files);
         const positions = calculateTreeLayout(hierarchyData);
 
-        console.log(`📊 Calculated ${positions.length} positions`);
-
-        // Root (Project) node-г эхлээд нэмэх
         const rootElement = createNode(hierarchyData, 5000, 500);
         nodesContainer.appendChild(rootElement);
         allNodes.push({
@@ -860,12 +908,8 @@
         const node = document.createElement("div");
         node.className = `node ${data.type}`;
 
-        // ✅ ШИНЭ: Алдаатай файл эсэхийг шалгаж class нэмэх
         if (data.type === "file" && data.errorCount && data.errorCount > 0) {
           node.classList.add("has-error");
-          console.log(
-            `   🔴 Creating error node: ${data.name} (${data.errorCount} errors)`,
-          );
         }
 
         node.style.left = `${x}px`;
@@ -878,7 +922,6 @@
             ? countFiles(data)
             : data.functions?.length || 0;
 
-        // ✅ ШИНЭ: Error indicator нэмэх
         const errorIndicator =
           data.type === "file" && data.errorCount && data.errorCount > 0
             ? `<div class="error-badge-indicator">!</div>`
@@ -913,11 +956,7 @@
 
       function drawConnection(x1, y1, x2, y2, childId, parentId) {
         const svg = document.getElementById("connectionsSvg");
-
-        const path = document.createElementNS(
-          "http://www.w3.org/2000/svg",
-          "path",
-        );
+        const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
 
         const midY = (y1 + y2) / 2;
         const d = `M ${x1} ${y1} C ${x1} ${midY}, ${x2} ${midY}, ${x2} ${y2}`;
@@ -934,7 +973,6 @@
       function focusOnFile(fileData) {
         console.log("🎯 Focusing on file:", fileData.name);
 
-        // ✅ ШИНЭ: Error status-г log хийх
         if (fileData.errorCount && fileData.errorCount > 0) {
           console.log(`   ❌ File has ${fileData.errorCount} error(s)`);
         }
@@ -942,13 +980,10 @@
         focusedFile = fileData;
 
         const relevantNodeIds = new Set();
-
-        // 1. Зөвхөн сонгосон файлыг нэмэх
         relevantNodeIds.add(getNodeId(fileData));
 
-        // 2. Эцэг folder-уудыг нэмэх (Root хүртэл)
         let current = fileData.parent;
-        while (current) {
+        while (current && current.name !== 'Root') {
           relevantNodeIds.add(getNodeId(current));
           current = current.parent;
         }
@@ -958,12 +993,12 @@
         allNodes.forEach((nodeObj) => {
           const nodeId = getNodeId(nodeObj.data);
           const isFile = nodeId === getNodeId(fileData);
-          const isRelevant = relevantNodeIds.has(nodeId);
+          const isInPath = relevantNodeIds.has(nodeId) && !isFile;
 
           if (isFile) {
             nodeObj.element.classList.add("focused");
             nodeObj.element.classList.remove("dimmed", "small");
-          } else if (isRelevant) {
+          } else if (isInPath) {
             nodeObj.element.classList.add("small");
             nodeObj.element.classList.remove("dimmed", "focused");
           } else {
@@ -973,9 +1008,9 @@
         });
 
         connections.forEach(({ line, childId, parentId }) => {
-          const isRelevant =
-            relevantNodeIds.has(childId) && relevantNodeIds.has(parentId);
-          if (isRelevant) {
+          const bothInPath = relevantNodeIds.has(childId) && parentId && relevantNodeIds.has(parentId);
+          
+          if (bothInPath) {
             line.classList.add("highlight");
           } else {
             line.classList.remove("highlight");
@@ -984,7 +1019,6 @@
 
         showFunctionPanel(fileData);
 
-        // Breadcrumb - бүх эцгүүдийг оруулах (project нэр ч орно)
         const pathParts = [];
         current = fileData;
         while (current) {
@@ -999,7 +1033,15 @@
         const header = document.getElementById("panelHeader");
         const list = document.getElementById("functionList");
 
-        // ✅ ШИНЭ: Error warning харуулах
+        // Get dependencies for this file
+        const dependencies = roadmapData.dependencies || [];
+        const fileDeps = dependencies.filter(
+          (dep) => dep.importerFilePath === fileData.fullPath || dep.importedFilePath === fileData.fullPath
+        );
+
+        const imports = fileDeps.filter((dep) => dep.importerFilePath === fileData.fullPath);
+        const importedBy = fileDeps.filter((dep) => dep.importedFilePath === fileData.fullPath);
+
         const errorWarning =
           fileData.errorCount && fileData.errorCount > 0
             ? `
@@ -1015,34 +1057,122 @@
 
         header.innerHTML = `
           <div class="function-panel-title">📄 ${fileData.name}</div>
-          <div class="function-panel-subtitle">${fileData.functions?.length || 0} functions • Click to go to code</div>
+          <div class="function-panel-subtitle">${fileData.functions?.length || 0} functions</div>
           ${errorWarning}
         `;
 
-        list.innerHTML =
-          fileData.functions
-            ?.map(
-              (fn) => `
-          <div class="function-card" onclick="goToFunction('${escapeHtml(fileData.fullPath)}', ${fn.startLine || 1})">
-            <div class="function-icon">${getFunctionIcon(fn.name)}</div>
-            <div class="function-details">
-              <div class="function-name">${escapeHtml(fn.name)}</div>
-              <div class="function-meta">
-                ${fn.startLine ? `Line ${fn.startLine}` : ""}
-                ${
-                  fn.calls && fn.calls.length > 0
-                    ? ` • Calls: ${fn.calls.slice(0, 2).join(", ")}${fn.calls.length > 2 ? "..." : ""}`
-                    : ""
-                }
+        const dependenciesSection = `
+          <div class="dependencies-section">
+            <div class="section-title">🔗 Dependencies</div>
+            
+            ${imports.length > 0 ? `
+              <div class="dep-subsection">
+                <div class="dep-subtitle">📥 Imports from (${imports.length})</div>
+                ${imports.map((dep) => {
+                  const fileName = dep.importedFilePath.split('/').pop() || dep.importedFilePath;
+                  const importedNames = dep.importedNames.join(', ');
+                  return `
+                    <div class="dep-item" onclick="jumpToFile('${escapeHtml(dep.importedFilePath)}')">
+                      <div class="dep-icon">📄</div>
+                      <div class="dep-details">
+                        <div class="dep-file-name">${escapeHtml(fileName)}</div>
+                        <div class="dep-imported-names">${escapeHtml(importedNames)}</div>
+                      </div>
+                      <div class="dep-arrow">→</div>
+                    </div>
+                  `;
+                }).join('')}
               </div>
-            </div>
-            <div class="function-goto">→</div>
-          </div>
-        `,
-            )
-            .join("") || "<p style='color: #666;'>No functions found</p>";
+            ` : ''}
 
+            ${importedBy.length > 0 ? `
+              <div class="dep-subsection">
+                <div class="dep-subtitle">📤 Imported by (${importedBy.length})</div>
+                ${importedBy.map((dep) => {
+                  const fileName = dep.importerFilePath.split('/').pop() || dep.importerFilePath;
+                  const importedNames = dep.importedNames.join(', ');
+                  return `
+                    <div class="dep-item" onclick="jumpToFile('${escapeHtml(dep.importerFilePath)}')">
+                      <div class="dep-icon">📄</div>
+                      <div class="dep-details">
+                        <div class="dep-file-name">${escapeHtml(fileName)}</div>
+                        <div class="dep-imported-names">${escapeHtml(importedNames)}</div>
+                      </div>
+                      <div class="dep-arrow">→</div>
+                    </div>
+                  `;
+                }).join('')}
+              </div>
+            ` : ''}
+
+            ${imports.length === 0 && importedBy.length === 0 ? `
+              <div class="no-deps">No dependencies found</div>
+            ` : ''}
+          </div>
+        `;
+
+        const functionsSection = `
+          <div class="functions-section">
+            <div class="section-title">⚡ Functions (${fileData.functions?.length || 0})</div>
+            ${fileData.functions
+              ?.map(
+                (fn) => `
+              <div class="function-card" onclick="goToFunction('${escapeHtml(fileData.fullPath)}', ${fn.startLine || 1})">
+                <div class="function-icon">${getFunctionIcon(fn.name)}</div>
+                <div class="function-details">
+                  <div class="function-name">${escapeHtml(fn.name)}</div>
+                  <div class="function-meta">
+                    ${fn.startLine ? `Line ${fn.startLine}` : ""}
+                    ${
+                      fn.calls && fn.calls.length > 0
+                        ? ` • Calls: ${fn.calls.slice(0, 2).join(", ")}${fn.calls.length > 2 ? "..." : ""}`
+                        : ""
+                    }
+                  </div>
+                </div>
+                <div class="function-goto">→</div>
+              </div>
+            `,
+              )
+              .join("") || "<p style='color: #666; padding: 12px;'>No functions found</p>"}
+          </div>
+        `;
+
+        list.innerHTML = dependenciesSection + functionsSection;
         panel.classList.add("visible");
+      }
+
+      function jumpToFile(filePath) {
+        console.log("🎯 Jumping to file:", filePath);
+        
+        const findFileNode = (node) => {
+          if (node.type === 'file' && node.fullPath === filePath) {
+            return node;
+          }
+          
+          if (node.files) {
+            for (const file of node.files) {
+              if (file.fullPath === filePath) {
+                return file;
+              }
+            }
+          }
+          
+          if (node.children) {
+            for (const child of Object.values(node.children)) {
+              const found = findFileNode(child);
+              if (found) return found;
+            }
+          }
+          
+          return null;
+        };
+        
+        const fileNode = findFileNode(hierarchyData);
+        
+        if (fileNode) {
+          focusOnFile(fileNode);
+        }
       }
 
       function escapeHtml(text) {
@@ -1072,10 +1202,8 @@
         focusedFile = null;
 
         if (allNodes.length > 0) {
-          let minX = Infinity,
-            maxX = -Infinity;
-          let minY = Infinity,
-            maxY = -Infinity;
+          let minX = Infinity, maxX = -Infinity;
+          let minY = Infinity, maxY = -Infinity;
 
           allNodes.forEach((nodeObj) => {
             minX = Math.min(minX, nodeObj.x);
@@ -1086,7 +1214,6 @@
 
           const graphWidth = maxX - minX + 200;
           const graphHeight = maxY - minY + 200;
-
           const graphCenterX = (minX + maxX) / 2;
           const graphCenterY = (minY + maxY) / 2;
 
@@ -1102,10 +1229,8 @@
           const containerCenterX = 5000;
           const containerCenterY = 5000;
 
-          translateX =
-            canvasCenterX - (graphCenterX - containerCenterX) * scale;
-          translateY =
-            canvasCenterY - (graphCenterY - containerCenterY) * scale;
+          translateX = canvasCenterX - (graphCenterX - containerCenterX) * scale;
+          translateY = canvasCenterY - (graphCenterY - containerCenterY) * scale;
         } else {
           scale = 0.5;
           translateX = 0;
@@ -1121,8 +1246,7 @@
         });
 
         updateTransform();
-        document.getElementById("zoomLevel").textContent =
-          `${Math.round(scale * 100)}%`;
+        document.getElementById("zoomLevel").textContent = `${Math.round(scale * 100)}%`;
         updateBreadcrumb("Full Map");
         document.getElementById("functionPanel").classList.remove("visible");
       }
@@ -1146,8 +1270,7 @@
       function setZoom(newScale) {
         scale = newScale;
         updateTransform();
-        document.getElementById("zoomLevel").textContent =
-          `${Math.round(scale * 100)}%`;
+        document.getElementById("zoomLevel").textContent = `${Math.round(scale * 100)}%`;
       }
 
       function updateTransform() {
@@ -1198,18 +1321,14 @@
             const graphY = (mouseY - translateY) / scale;
 
             const delta = e.deltaY > 0 ? -0.01 : 0.01;
-            const newScale = Math.max(
-              MIN_SCALE,
-              Math.min(MAX_SCALE, scale + delta),
-            );
+            const newScale = Math.max(MIN_SCALE, Math.min(MAX_SCALE, scale + delta));
 
             translateX = mouseX - graphX * newScale;
             translateY = mouseY - graphY * newScale;
 
             scale = newScale;
             updateTransform();
-            document.getElementById("zoomLevel").textContent =
-              `${Math.round(scale * 100)}%`;
+            document.getElementById("zoomLevel").textContent = `${Math.round(scale * 100)}%`;
           } else {
             e.preventDefault();
             translateX -= e.deltaX * 0.5;
@@ -1220,7 +1339,6 @@
         { passive: false },
       );
 
-      // Initialize
       if (roadmapData && roadmapData.files && roadmapData.files.length > 0) {
         console.log(`✅ Found ${roadmapData.files.length} files`);
         renderGraph();

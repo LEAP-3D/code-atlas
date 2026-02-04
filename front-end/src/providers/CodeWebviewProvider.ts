@@ -4,10 +4,12 @@ import * as fs from "fs";
 import { fileIndex } from "../state/fileIndex";
 import { functionIndex } from "../state/functionIndex";
 import { callGraphIndex } from "../state/callGraphIndex";
+import { dependencyIndex } from "../state/dependencyIndex"; // ✅ ШИНЭ
 import {
   RoadmapData,
   RoadmapFile,
   RoadmapFunction,
+  RoadmapDependency, // ✅ ШИНЭ
 } from "../roadmap/roadmapModel";
 
 export class CodeWebviewProvider {
@@ -133,6 +135,7 @@ export class CodeWebviewProvider {
       console.log(`   Files: ${roadmapData.totalFiles}`);
       console.log(`   Functions: ${roadmapData.totalFunctions}`);
       console.log(`   Connections: ${roadmapData.totalConnections}`);
+      console.log(`   Dependencies: ${roadmapData.dependencies.length}`); // ✅ ШИНЭ
 
       // Inject data as JSON
       const dataScript = `<script>window.ROADMAP_DATA = ${JSON.stringify(
@@ -158,15 +161,18 @@ export class CodeWebviewProvider {
     const files = fileIndex.getAll();
     const allFunctions = functionIndex.getAll();
     const allEdges = callGraphIndex.getAll();
+    const allDependencies = dependencyIndex.getAll(); // ✅ ШИНЭ
 
     console.log(`   📁 Files indexed: ${files.length}`);
     console.log(`   ⚡ Functions indexed: ${allFunctions.length}`);
     console.log(`   🔗 Call edges: ${allEdges.length}`);
+    console.log(`   📦 Dependencies: ${allDependencies.length}`); // ✅ ШИНЭ
 
     if (files.length === 0) {
       console.warn("⚠️  No files indexed!");
       return {
         files: [],
+        dependencies: [], // ✅ ШИНЭ
         totalFiles: 0,
         totalFunctions: 0,
         totalConnections: 0,
@@ -253,8 +259,17 @@ export class CodeWebviewProvider {
       });
     }
 
+    // ✅ ШИНЭ: Transform dependencies to simpler format for frontend
+    const dependenciesForFrontend: RoadmapDependency[] = allDependencies.map((dep) => ({
+      importerFilePath: dep.importerFilePath,
+      importedFilePath: dep.importedFilePath,
+      importedNames: dep.importedNames,
+      importPath: dep.importPath,
+    }));
+
     const result: RoadmapData = {
       files: roadmapFiles,
+      dependencies: dependenciesForFrontend, // ✅ ШИНЭ
       totalFiles: roadmapFiles.length,
       totalFunctions: roadmapFiles.reduce(
         (sum, f) => sum + f.functions.length,
@@ -267,6 +282,7 @@ export class CodeWebviewProvider {
     console.log(`   📁 Files with functions: ${result.totalFiles}`);
     console.log(`   ⚡ Total functions: ${result.totalFunctions}`);
     console.log(`   🔗 Total connections: ${result.totalConnections}`);
+    console.log(`   📦 Total dependencies: ${dependenciesForFrontend.length}`); // ✅ ШИНЭ
 
     // Show files with errors
     const filesWithErrors = roadmapFiles.filter(
@@ -276,6 +292,18 @@ export class CodeWebviewProvider {
       console.log(`\n   ❌ Files with errors: ${filesWithErrors.length}`);
       filesWithErrors.forEach((f) => {
         console.log(`      - ${f.name}: ${f.errorCount} error(s)`);
+      });
+    }
+
+    // ✅ ШИНЭ: Show sample dependencies
+    if (dependenciesForFrontend.length > 0) {
+      console.log("\n📦 Sample dependencies:");
+      dependenciesForFrontend.slice(0, 3).forEach((dep) => {
+        const importerName = dep.importerFilePath.split(/[/\\]/).pop();
+        const importedName = dep.importedFilePath.split(/[/\\]/).pop();
+        console.log(
+          `   ${importerName} imports [${dep.importedNames.join(", ")}] from ${importedName}`,
+        );
       });
     }
 

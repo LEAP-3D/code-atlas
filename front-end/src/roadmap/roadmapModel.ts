@@ -17,8 +17,17 @@ export interface RoadmapFile {
   errorCount?: number; // Number of errors in this file
 }
 
+// ✅ ШИНЭ: Dependency interface
+export interface RoadmapDependency {
+  importerFilePath: string;   // File that imports
+  importedFilePath: string;   // File being imported
+  importedNames: string[];    // Names imported (e.g., ["MovieCard", "Header"])
+  importPath: string;         // Original import string (e.g., "@/components/MovieCard")
+}
+
 export interface RoadmapData {
   files: RoadmapFile[];
+  dependencies: RoadmapDependency[]; // ✅ ШИНЭ
   totalFiles: number;
   totalFunctions: number;
   totalConnections: number;
