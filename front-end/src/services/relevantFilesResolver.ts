@@ -20,7 +20,7 @@ class RelevantFilesResolver {
 
     // Get all functions in the current file
     const currentFileFunctions = functionIndex
-      .getAll()
+      .getAll() 
       .filter((fn) => fn.filePath === filePath);
 
     // For each function in the current file

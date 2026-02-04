@@ -31,7 +31,8 @@ export class CodeWebviewProvider {
     panel.webview.html = this.getHtml(panel.webview, context, data);
   }
 
-  static showRoadmap(context: vscode.ExtensionContext) {
+  // ✅ FIX: Return WebviewPanel so extension.ts can access panel.webview
+  static showRoadmap(context: vscode.ExtensionContext): vscode.WebviewPanel {
     const panel = vscode.window.createWebviewPanel(
       "roadmapView",
       "📊 Project Roadmap",
@@ -41,70 +42,11 @@ export class CodeWebviewProvider {
 
     panel.webview.html = this.getRoadmapHtml(panel.webview, context);
 
-    // Handle messages from webview
-    panel.webview.onDidReceiveMessage(
-      async (message) => {
-        console.log("📨 [CodeWebviewProvider] Received message:", message);
+    // ✅ NOTE: Message handlers are now set up in extension.ts
+    // This allows extension.ts to access the panel reference directly
 
-        if (message.command === "goToFunction") {
-          try {
-            const filePath = message.filePath;
-            const line = message.line || 1;
-
-            console.log(`🎯 [goToFunction] Opening: ${filePath}:${line}`);
-
-            // Validate file exists
-            if (!fs.existsSync(filePath)) {
-              throw new Error(`File not found: ${filePath}`);
-            }
-
-            // Open file
-            const uri = vscode.Uri.file(filePath);
-            const document = await vscode.workspace.openTextDocument(uri);
-            const editor = await vscode.window.showTextDocument(
-              document,
-              vscode.ViewColumn.One,
-            );
-
-            // Navigate to line (VS Code uses 0-based indexing)
-            const targetLine = Math.max(0, line - 1);
-            const range = new vscode.Range(targetLine, 0, targetLine, 0);
-
-            // Set cursor position
-            editor.selection = new vscode.Selection(range.start, range.start);
-
-            // Reveal line in center
-            editor.revealRange(range, vscode.TextEditorRevealType.InCenter);
-
-            // Highlight line temporarily (2 seconds)
-            const decoration = vscode.window.createTextEditorDecorationType({
-              backgroundColor: new vscode.ThemeColor(
-                "editor.findMatchHighlightBackground",
-              ),
-              isWholeLine: true,
-            });
-
-            editor.setDecorations(decoration, [range]);
-
-            setTimeout(() => {
-              decoration.dispose();
-            }, 2000);
-
-            const fileName = path.basename(filePath);
-            vscode.window.showInformationMessage(
-              `📍 Jumped to ${fileName}:${line}`,
-            );
-          } catch (error) {
-            const errorMsg =
-              error instanceof Error ? error.message : "Unknown error";
-            console.error("❌ [goToFunction] Error:", errorMsg);
-            vscode.window.showErrorMessage(`Failed to open file: ${errorMsg}`);
-          }
-        }
-      },
-      undefined,
-      context.subscriptions,
-    );
+    // ✅ Return the panel so extension.ts can set up message handlers
+    return panel;
   }
 
   private static getRoadmapHtml(
@@ -173,7 +115,7 @@ export class CodeWebviewProvider {
       };
     }
 
-    // ✅ ЗАСВАР: Бүх workspace-ийн diagnostics-ийг цуглуулах
+    // ✅ Collect diagnostics from all files
     const errorsByFile = new Map<string, number>();
 
     console.log(

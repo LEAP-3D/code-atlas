@@ -1,35 +1,509 @@
-<!DOCTYPE html>
+<!doctype html>
 <html>
   <head>
-    <link rel="stylesheet" href="styles.css" />
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Debug Flow</title>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      body {
+        font-family: var(--vscode-font-family);
+        background: var(--vscode-editor-background);
+        color: var(--vscode-editor-foreground);
+        padding: 24px;
+        line-height: 1.6;
+      }
+
+      .container {
+        max-width: 1200px;
+        margin: 0 auto;
+      }
+
+      /* Header */
+      .header {
+        border-bottom: 2px solid var(--vscode-panel-border);
+        padding-bottom: 20px;
+        margin-bottom: 24px;
+      }
+
+      .title {
+        font-size: 24px;
+        font-weight: 600;
+        margin-bottom: 8px;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+      }
+
+      .subtitle {
+        font-size: 14px;
+        color: var(--vscode-descriptionForeground);
+        margin-left: 36px;
+      }
+
+      /* Stats Bar */
+      .stats-bar {
+        display: flex;
+        gap: 12px;
+        margin-top: 16px;
+        flex-wrap: wrap;
+      }
+
+      .stat {
+        background: var(--vscode-badge-background);
+        color: var(--vscode-badge-foreground);
+        padding: 6px 14px;
+        border-radius: 6px;
+        font-size: 13px;
+        font-weight: 500;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+      }
+
+      /* Section */
+      .section {
+        background: var(--vscode-sideBar-background);
+        border: 1px solid var(--vscode-panel-border);
+        border-radius: 8px;
+        padding: 20px;
+        margin-bottom: 20px;
+      }
+
+      .section-header {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin-bottom: 16px;
+        padding-bottom: 12px;
+        border-bottom: 1px solid var(--vscode-panel-border);
+      }
+
+      .section-icon {
+        font-size: 22px;
+      }
+
+      .section-title {
+        font-size: 16px;
+        font-weight: 600;
+      }
+
+      .section-count {
+        margin-left: auto;
+        background: var(--vscode-badge-background);
+        color: var(--vscode-badge-foreground);
+        padding: 4px 10px;
+        border-radius: 12px;
+        font-size: 12px;
+        font-weight: 600;
+      }
+
+      /* Error Message */
+      .error-box {
+        background: rgba(244, 63, 94, 0.1);
+        border-left: 4px solid #f43f5e;
+        padding: 16px;
+        border-radius: 6px;
+        font-family: "Courier New", monospace;
+        font-size: 13px;
+        line-height: 1.6;
+        color: #fca5a5;
+      }
+
+      /* Items List */
+      .items-list {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+      }
+
+      .item {
+        background: var(--vscode-editor-background);
+        border: 1px solid var(--vscode-input-border);
+        border-radius: 6px;
+        padding: 12px 14px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        transition: all 0.2s;
+      }
+
+      .item:hover {
+        background: var(--vscode-list-hoverBackground);
+        border-color: var(--vscode-focusBorder);
+      }
+
+      .item-icon {
+        font-size: 18px;
+        flex-shrink: 0;
+      }
+
+      .item-text {
+        flex: 1;
+        font-size: 14px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      /* Import Section */
+      .import-section .item-icon {
+        color: #8b5cf6;
+      }
+
+      .import-section .section-icon {
+        color: #8b5cf6;
+      }
+
+      /* Export Section */
+      .export-section .item-icon {
+        color: #10b981;
+      }
+
+      .export-section .section-icon {
+        color: #10b981;
+      }
+
+      /* Function Section */
+      .function-section .item-icon {
+        color: #3b82f6;
+      }
+
+      .function-section .section-icon {
+        color: #3b82f6;
+      }
+
+      /* File Section */
+      .file-section .item-icon {
+        color: #f59e0b;
+      }
+
+      .file-section .section-icon {
+        color: #f59e0b;
+      }
+
+      /* Two Column Grid */
+      .two-column {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 20px;
+      }
+
+      @media (max-width: 900px) {
+        .two-column {
+          grid-template-columns: 1fr;
+        }
+      }
+
+      /* Empty State */
+      .empty {
+        text-align: center;
+        padding: 24px;
+        color: var(--vscode-descriptionForeground);
+        font-size: 13px;
+      }
+
+      .empty-icon {
+        font-size: 36px;
+        opacity: 0.5;
+        margin-bottom: 8px;
+      }
+
+      /* Code Block */
+      .code-block {
+        background: var(--vscode-textCodeBlock-background);
+        border: 1px solid var(--vscode-panel-border);
+        border-radius: 6px;
+        padding: 16px;
+        font-family: "Courier New", monospace;
+        font-size: 13px;
+        line-height: 1.6;
+        overflow-x: auto;
+        white-space: pre-wrap;
+        word-wrap: break-word;
+      }
+
+      /* Suggestion */
+      .suggestion {
+        background: rgba(16, 185, 129, 0.1);
+        border-left: 4px solid #10b981;
+        padding: 14px;
+        border-radius: 6px;
+        font-size: 14px;
+        line-height: 1.6;
+      }
+
+      /* Mermaid */
+      .mermaid-container {
+        background: var(--vscode-editor-background);
+        border: 1px solid var(--vscode-panel-border);
+        border-radius: 8px;
+        padding: 20px;
+        overflow: auto;
+      }
+
+      .mermaid {
+        text-align: center;
+      }
+
+      /* Selected Code */
+      .selected-code {
+        background: var(--vscode-textCodeBlock-background);
+        border: 1px solid var(--vscode-panel-border);
+        border-radius: 8px;
+        padding: 20px;
+        margin-bottom: 24px;
+      }
+
+      .selected-code h2 {
+        font-size: 18px;
+        margin-bottom: 12px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+
+      .selected-code pre {
+        background: var(--vscode-editor-background);
+        padding: 16px;
+        border-radius: 6px;
+        overflow-x: auto;
+        font-size: 13px;
+        line-height: 1.6;
+      }
+    </style>
   </head>
   <body>
-    <h2>Selected Code</h2>
+    <div class="container">
+      <!-- Header -->
+      <div class="header">
+        <div class="title">
+          <span>🐞</span>
+          <span id="mainTitle">Debug Flow</span>
+        </div>
+        <div class="subtitle" id="subtitle">
+          Analyzing execution flow and dependencies
+        </div>
+        <div class="stats-bar" id="statsBar"></div>
+      </div>
 
-    <pre><code>{{SELECTED}}</code></pre>
+      <!-- Selected Code -->
+      <div class="selected-code">
+        <h2><span>📝</span> Selected Code</h2>
+        <pre><code id="selectedCode">{{SELECTED}}</code></pre>
+      </div>
 
-    <section>
-      <h2>📄 File Summary</h2>
-      <pre>{{SUMMARY}}</pre>
+      <!-- File Summary -->
+      <div class="section">
+        <div class="section-header">
+          <span class="section-icon">📄</span>
+          <span class="section-title">File Summary</span>
+        </div>
+        <div class="code-block" id="summary">{{SUMMARY}}</div>
+      </div>
 
-      <h2>⚠ Error</h2>
-      <pre>{{ERROR}}</pre>
+      <!-- Error -->
+      <div class="section">
+        <div class="section-header">
+          <span class="section-icon">❌</span>
+          <span class="section-title">Error</span>
+        </div>
+        <div class="error-box" id="error">{{ERROR}}</div>
+      </div>
 
-      <h2>🧩 Relevant Code</h2>
-      <pre><code>{{RELEVANT}}</code></pre>
+      <!-- Two Column: Imports and Exports -->
+      <div class="two-column">
+        <!-- Imports -->
+        <div class="section import-section">
+          <div class="section-header">
+            <span class="section-icon">📥</span>
+            <span class="section-title">Imports From</span>
+            <span class="section-count" id="importCount">0</span>
+          </div>
+          <div class="items-list" id="importsList"></div>
+        </div>
 
-      <h2>🧠 Execution Structure</h2>
+        <!-- Exports -->
+        <div class="section export-section">
+          <div class="section-header">
+            <span class="section-icon">📤</span>
+            <span class="section-title">Imported By</span>
+            <span class="section-count" id="exportCount">0</span>
+          </div>
+          <div class="items-list" id="exportsList"></div>
+        </div>
+      </div>
 
-      <pre class="mermaid">
-      {{MERMAID}}
-      </pre>
+      <!-- Function Calls -->
+      <div class="section function-section">
+        <div class="section-header">
+          <span class="section-icon">⚡</span>
+          <span class="section-title">Function Calls</span>
+          <span class="section-count" id="functionCount">0</span>
+        </div>
+        <div class="items-list" id="functionsList"></div>
+      </div>
 
-      <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
-      <script>
-        mermaid.initialize({ startOnLoad: true });
-      </script>
-    </section>
+      <!-- Related Files -->
+      <div class="section file-section">
+        <div class="section-header">
+          <span class="section-icon">📄</span>
+          <span class="section-title">Related Files</span>
+          <span class="section-count" id="fileCount">0</span>
+        </div>
+        <div class="items-list" id="filesList"></div>
+      </div>
 
-    <script src="script.js"></script>
+      <!-- Relevant Code -->
+      <div class="section">
+        <div class="section-header">
+          <span class="section-icon">🧩</span>
+          <span class="section-title">Relevant Code</span>
+        </div>
+        <div class="code-block" id="relevantCode">{{RELEVANT}}</div>
+      </div>
+
+      <!-- Suggestion -->
+      <div class="section">
+        <div class="section-header">
+          <span class="section-icon">💡</span>
+          <span class="section-title">Suggestion</span>
+        </div>
+        <div class="suggestion" id="suggestion">
+          Review the error message for guidance.
+        </div>
+      </div>
+
+      <!-- Execution Structure -->
+      <div class="section">
+        <div class="section-header">
+          <span class="section-icon">🔀</span>
+          <span class="section-title">Execution Flow Diagram</span>
+        </div>
+        <div class="mermaid-container">
+          <pre class="mermaid" id="mermaidDiagram">{{MERMAID}}</pre>
+        </div>
+      </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+    <script>
+      mermaid.initialize({
+        startOnLoad: true,
+        theme: "dark",
+      });
+
+      // Parse selected code for import/export data
+      function parseData(text) {
+        const data = {
+          imports: [],
+          exports: [],
+          functions: [],
+          files: [],
+        };
+
+        const lines = text.split("\n");
+        let section = null;
+
+        for (const line of lines) {
+          const trim = line.trim();
+
+          if (trim.startsWith("📥 IMPORTS FROM")) {
+            section = "imports";
+          } else if (trim.startsWith("📤 IMPORTED BY")) {
+            section = "exports";
+          } else if (trim.startsWith("⚡ FUNCTION CALLS")) {
+            section = "functions";
+          } else if (trim.startsWith("📄 RELATED FILES")) {
+            section = "files";
+          } else if (trim.startsWith("•")) {
+            const item = trim.substring(1).trim();
+            if (item && item !== "(none)" && section) {
+              data[section].push(item);
+            }
+          }
+        }
+
+        return data;
+      }
+
+      // Render items
+      function renderItems(id, items, icon) {
+        const el = document.getElementById(id);
+        if (items.length === 0) {
+          el.innerHTML =
+            '<div class="empty"><div class="empty-icon">∅</div>None found</div>';
+        } else {
+          el.innerHTML = items
+            .map(
+              (item) =>
+                `<div class="item"><div class="item-icon">${icon}</div><div class="item-text">${item}</div></div>`,
+            )
+            .join("");
+        }
+      }
+
+      // Extract suggestion
+      function extractSuggestion(text) {
+        const match = text.match(/Suggestion:\s*(.+?)(?=\n\n|$)/s);
+        return match
+          ? match[1].trim()
+          : "Review the error message for specific guidance.";
+      }
+
+      // Initialize
+      function init() {
+        const selectedText =
+          document.getElementById("selectedCode").textContent;
+        const data = parseData(selectedText);
+
+        // Update counts
+        document.getElementById("importCount").textContent =
+          data.imports.length;
+        document.getElementById("exportCount").textContent =
+          data.exports.length;
+        document.getElementById("functionCount").textContent =
+          data.functions.length;
+        document.getElementById("fileCount").textContent = data.files.length;
+
+        // Stats bar
+        const stats = [];
+        if (data.imports.length > 0)
+          stats.push(
+            `<div class="stat"><span>📥</span>${data.imports.length} Imports</div>`,
+          );
+        if (data.exports.length > 0)
+          stats.push(
+            `<div class="stat"><span>📤</span>${data.exports.length} Exports</div>`,
+          );
+        if (data.functions.length > 0)
+          stats.push(
+            `<div class="stat"><span>⚡</span>${data.functions.length} Functions</div>`,
+          );
+        if (data.files.length > 0)
+          stats.push(
+            `<div class="stat"><span>📄</span>${data.files.length} Files</div>`,
+          );
+        document.getElementById("statsBar").innerHTML = stats.join("");
+
+        // Render lists
+        renderItems("importsList", data.imports, "📥");
+        renderItems("exportsList", data.exports, "📤");
+        renderItems("functionsList", data.functions, "⚡");
+        renderItems("filesList", data.files, "📄");
+
+        // Suggestion
+        const summaryText = document.getElementById("summary").textContent;
+        const suggestion = extractSuggestion(summaryText);
+        document.getElementById("suggestion").textContent = suggestion;
+      }
+
+      init();
+    </script>
   </body>
 </html>

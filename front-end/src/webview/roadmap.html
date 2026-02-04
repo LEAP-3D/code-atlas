@@ -146,15 +146,29 @@
       }
 
       .connection-line {
-        stroke: #3a3a3a;
+        stroke: #4a4a4a;
         stroke-width: 2;
         fill: none;
-        transition: stroke 0.3s;
+        transition:
+          stroke 0.3s,
+          stroke-width 0.3s;
+        opacity: 0.6;
       }
 
       .connection-line.highlight {
         stroke: #4ec9b0;
         stroke-width: 3;
+        opacity: 1;
+      }
+
+      /* ✅ NEW: Arrow marker for connections */
+      .connection-arrow {
+        fill: #4a4a4a;
+        transition: fill 0.3s;
+      }
+
+      .connection-line.highlight + .connection-arrow {
+        fill: #4ec9b0;
       }
 
       .nodes-layer {
@@ -225,7 +239,6 @@
         border-color: #3b82f6;
       }
 
-      /* ✅ ШИНЭ: Алдаатай файлыг улаанаар */
       .node.file.has-error .node-circle {
         border-color: #ef4444;
         background: linear-gradient(135deg, #2a1a1a 0%, #3a2020 100%);
@@ -305,7 +318,6 @@
         right: 2px;
       }
 
-      /* ✅ ШИНЭ: Error badge */
       .error-badge-indicator {
         position: absolute;
         top: -8px;
@@ -322,6 +334,19 @@
         font-weight: bold;
         z-index: 10;
         box-shadow: 0 2px 8px rgba(239, 68, 68, 0.5);
+        animation: pulse 2s infinite;
+      }
+
+      @keyframes pulse {
+        0%,
+        100% {
+          transform: scale(1);
+          opacity: 1;
+        }
+        50% {
+          transform: scale(1.1);
+          opacity: 0.8;
+        }
       }
 
       .hint {
@@ -475,7 +500,6 @@
         pointer-events: none;
       }
 
-      /* ✅ ШИНЭ: Error warning banner */
       .error-warning {
         background: rgba(239, 68, 68, 0.15);
         border: 1px solid #ef4444;
@@ -485,6 +509,17 @@
         display: flex;
         align-items: center;
         gap: 12px;
+      }
+
+      .error-warning.clickable {
+        cursor: pointer;
+        transition: all 0.2s;
+      }
+
+      .error-warning.clickable:hover {
+        background: rgba(239, 68, 68, 0.25);
+        border-color: #f87171;
+        transform: scale(1.02);
       }
 
       .error-warning-icon {
@@ -505,6 +540,248 @@
       .error-warning-subtitle {
         font-size: 12px;
         color: #fca5a5;
+      }
+
+      .error-warning.clickable .error-warning-subtitle {
+        font-weight: 600;
+      }
+
+      /* ERROR DETAIL PANEL */
+      .error-detail-panel {
+        position: fixed;
+        right: -450px;
+        top: 70px;
+        bottom: 20px;
+        width: 430px;
+        background: #1a1a1a;
+        border: 2px solid #ef4444;
+        border-radius: 12px;
+        padding: 24px;
+        overflow-y: auto;
+        transition: right 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        z-index: 25;
+        box-shadow: -8px 0 32px rgba(239, 68, 68, 0.4);
+      }
+
+      .error-detail-panel.visible {
+        right: 20px;
+      }
+
+      .error-panel-header {
+        margin-bottom: 20px;
+        padding-bottom: 16px;
+        border-bottom: 1px solid #3a3a3a;
+      }
+
+      .error-panel-title {
+        display: flex;
+        align-items: flex-start;
+        gap: 12px;
+      }
+
+      .error-icon-large {
+        font-size: 32px;
+      }
+
+      .error-panel-title-text {
+        font-size: 18px;
+        font-weight: 600;
+        color: #ef4444;
+        margin-bottom: 4px;
+      }
+
+      .error-panel-subtitle {
+        font-size: 13px;
+        color: #888;
+      }
+
+      .error-panel-content {
+        display: flex;
+        flex-direction: column;
+        gap: 20px;
+      }
+
+      .error-section {
+        background: rgba(0, 0, 0, 0.3);
+        border: 1px solid #3a3a3a;
+        border-radius: 8px;
+        padding: 16px;
+      }
+
+      .error-section-title {
+        font-size: 14px;
+        font-weight: 600;
+        margin-bottom: 12px;
+        color: #e0e0e0;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+
+      .error-message-box {
+        background: rgba(239, 68, 68, 0.1);
+        border: 1px solid #ef4444;
+        border-radius: 6px;
+        padding: 12px;
+        font-size: 13px;
+        line-height: 1.5;
+        color: #fca5a5;
+        font-family: "Courier New", monospace;
+      }
+
+      .error-location {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 12px;
+        background: rgba(255, 255, 255, 0.03);
+        border: 1px solid #3a3a3a;
+        border-radius: 6px;
+        cursor: pointer;
+        transition: all 0.2s;
+      }
+
+      .error-location:hover {
+        background: rgba(78, 201, 176, 0.1);
+        border-color: #4ec9b0;
+        transform: translateX(4px);
+      }
+
+      .error-location-icon {
+        font-size: 24px;
+      }
+
+      .error-location-details {
+        flex: 1;
+        min-width: 0;
+      }
+
+      .error-location-file {
+        font-size: 14px;
+        font-weight: 600;
+        color: #fff;
+        margin-bottom: 4px;
+      }
+
+      .error-location-line {
+        font-size: 12px;
+        color: #888;
+        margin-bottom: 2px;
+      }
+
+      .error-location-function {
+        font-size: 11px;
+        color: #4ec9b0;
+      }
+
+      .error-suggestion {
+        font-size: 13px;
+        line-height: 1.6;
+        color: #4ec9b0;
+        background: rgba(78, 201, 176, 0.1);
+        border-left: 3px solid #4ec9b0;
+        padding: 12px;
+        border-radius: 4px;
+      }
+
+      .error-related-list {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+      }
+
+      .error-related-item {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 10px;
+        background: rgba(255, 255, 255, 0.03);
+        border: 1px solid #3a3a3a;
+        border-radius: 6px;
+        cursor: pointer;
+        transition: all 0.2s;
+      }
+
+      .error-related-item:hover {
+        background: rgba(78, 201, 176, 0.1);
+        border-color: #4ec9b0;
+        transform: translateX(4px);
+      }
+
+      .error-related-icon {
+        font-size: 18px;
+      }
+
+      .error-related-name {
+        flex: 1;
+        font-size: 13px;
+        font-weight: 500;
+        color: #e0e0e0;
+      }
+
+      .btn-debug-flow {
+        width: 100%;
+        padding: 14px 20px;
+        background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+        color: white;
+        border: none;
+        border-radius: 8px;
+        font-size: 14px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.3s;
+        box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+      }
+
+      .btn-debug-flow:hover {
+        background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(239, 68, 68, 0.5);
+      }
+
+      .btn-debug-flow:active {
+        transform: translateY(0);
+      }
+
+      .close-error-panel {
+        position: absolute;
+        top: 16px;
+        right: 16px;
+        background: #2a2a2a;
+        border: 1px solid #ef4444;
+        color: #ef4444;
+        width: 28px;
+        height: 28px;
+        border-radius: 50%;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 16px;
+        transition: all 0.2s;
+        z-index: 10;
+      }
+
+      .close-error-panel:hover {
+        background: #ef4444;
+        color: white;
+        transform: rotate(90deg);
+      }
+
+      .error-goto {
+        color: #4ec9b0;
+        font-size: 18px;
+        opacity: 0.7;
+        transition: all 0.2s;
+      }
+
+      .error-location:hover .error-goto {
+        opacity: 1;
+        transform: translateX(4px);
       }
     </style>
   </head>
@@ -529,9 +806,39 @@
 
       <div class="canvas" id="canvas">
         <div class="graph-container" id="graphContainer">
-          <svg class="connections" id="connectionsSvg"></svg>
+          <svg class="connections" id="connectionsSvg">
+            <defs>
+              <marker
+                id="arrowhead"
+                markerWidth="10"
+                markerHeight="10"
+                refX="9"
+                refY="3"
+                orient="auto"
+              >
+                <polygon points="0 0, 10 3, 0 6" class="connection-arrow" />
+              </marker>
+              <marker
+                id="arrowhead-highlight"
+                markerWidth="10"
+                markerHeight="10"
+                refX="9"
+                refY="3"
+                orient="auto"
+              >
+                <polygon points="0 0, 10 3, 0 6" fill="#4ec9b0" />
+              </marker>
+            </defs>
+          </svg>
           <div class="nodes-layer" id="nodesContainer"></div>
         </div>
+      </div>
+
+      <!-- ✅ FIX: Error Detail Panel added to HTML body -->
+      <div class="error-detail-panel" id="errorDetailPanel">
+        <button class="close-error-panel" onclick="closeErrorPanel()">×</button>
+        <div class="error-panel-header" id="errorPanelHeader"></div>
+        <div class="error-panel-content" id="errorPanelContent"></div>
       </div>
 
       <div class="function-panel" id="functionPanel">
@@ -547,10 +854,8 @@
     </div>
 
     <script>
-      // VS Code API
       const vscode = acquireVsCodeApi();
 
-      // Функц руу очих
       function goToFunction(filePath, line) {
         console.log("🎯 Going to function:", filePath, "line:", line);
         vscode.postMessage({
@@ -560,19 +865,165 @@
         });
       }
 
+      // ============================================
+      // ERROR DETAIL PANEL FUNCTIONS
+      // ============================================
+
+      function showErrorDetail(errorData) {
+        console.log("❌ Showing error detail:", errorData);
+
+        document.getElementById("functionPanel").classList.remove("visible");
+
+        const errorPanel = document.getElementById("errorDetailPanel");
+        const header = document.getElementById("errorPanelHeader");
+        const content = document.getElementById("errorPanelContent");
+
+        header.innerHTML = `
+    <div class="error-panel-title">
+      <span class="error-icon-large">⚠️</span>
+      <div>
+        <div class="error-panel-title-text">${errorData.errorType || "Error"}</div>
+        <div class="error-panel-subtitle">${errorData.fileName}:${errorData.line}</div>
+      </div>
+    </div>
+  `;
+
+        content.innerHTML = `
+    <div class="error-section">
+      <div class="error-section-title">📋 Error Message</div>
+      <div class="error-message-box">${escapeHtml(errorData.message)}</div>
+    </div>
+    
+    <div class="error-section">
+      <div class="error-section-title">📍 Location</div>
+      <div class="error-location" onclick="goToFunction('${escapeHtml(errorData.filePath)}', ${errorData.line})">
+        <div class="error-location-icon">📄</div>
+        <div class="error-location-details">
+          <div class="error-location-file">${errorData.fileName}</div>
+          <div class="error-location-line">Line ${errorData.line}, Column ${errorData.column || 1}</div>
+          <div class="error-location-function">in function: ${errorData.functionName}</div>
+        </div>
+        <div class="error-goto">→</div>
+      </div>
+    </div>
+    
+    <div class="error-section">
+      <div class="error-section-title">💡 Suggestion</div>
+      <div class="error-suggestion">${errorData.suggestion || "Review the error message for guidance."}</div>
+    </div>
+    
+    ${
+      errorData.relatedFunctions && errorData.relatedFunctions.length > 0
+        ? `
+    <div class="error-section">
+      <div class="error-section-title">🔗 Related Functions (${errorData.relatedFunctions.length})</div>
+      <div class="error-related-list">
+        ${errorData.relatedFunctions
+          .map(
+            (func) => `
+          <div class="error-related-item" onclick="searchFunction('${escapeHtml(func)}')">
+            <div class="error-related-icon">⚡</div>
+            <div class="error-related-name">${escapeHtml(func)}</div>
+          </div>
+        `,
+          )
+          .join("")}
+      </div>
+    </div>
+    `
+        : ""
+    }
+    
+    ${
+      errorData.relatedFiles && errorData.relatedFiles.length > 0
+        ? `
+    <div class="error-section">
+      <div class="error-section-title">📂 Related Files (${errorData.relatedFiles.length})</div>
+      <div class="error-related-list">
+        ${errorData.relatedFiles
+          .map((filePath) => {
+            const fileName = filePath.split(/[/\\]/).pop() || filePath;
+            return `
+          <div class="error-related-item" onclick="goToFunction('${escapeHtml(filePath)}', 1)">
+            <div class="error-related-icon">📄</div>
+            <div class="error-related-name">${escapeHtml(fileName)}</div>
+          </div>
+        `;
+          })
+          .join("")}
+      </div>
+    </div>
+    `
+        : ""
+    }
+    
+    <div class="error-section">
+      <button class="btn-debug-flow" onclick="openDebugFlow('${escapeHtml(errorData.filePath)}', '${escapeHtml(errorData.functionName)}')">
+        🔍 Show Debug Execution Flow
+      </button>
+    </div>
+  `;
+
+        errorPanel.classList.add("visible");
+      }
+
+      function closeErrorPanel() {
+        document.getElementById("errorDetailPanel").classList.remove("visible");
+      }
+
+      function searchFunction(functionName) {
+        console.log("🔍 Searching for function:", functionName);
+        vscode.postMessage({
+          command: "searchFunction",
+          functionName: functionName,
+        });
+      }
+
+      function openDebugFlow(filePath, functionName) {
+        console.log("🐞 Opening debug flow:", filePath, functionName);
+        vscode.postMessage({
+          command: "showDebugFlow",
+          filePath: filePath,
+          functionName: functionName,
+        });
+      }
+
+      function requestErrorDetails(filePath) {
+        console.log("📨 Requesting error details for:", filePath);
+        vscode.postMessage({
+          command: "getErrorDetails",
+          filePath: filePath,
+        });
+      }
+
+      window.addEventListener("message", (event) => {
+        const message = event.data;
+
+        if (message.command === "displayErrorDetails") {
+          console.log("📥 Received error details:", message.errors);
+
+          if (message.errors && message.errors.length > 0) {
+            showErrorDetail(message.errors[0]);
+          } else {
+            console.log("No errors found");
+          }
+        }
+      });
+
+      // ============================================
+      // GRAPH DATA AND RENDERING
+      // ============================================
+
       let roadmapData = window.ROADMAP_DATA || { files: [] };
       console.log("🗺️ [INIT] Roadmap data:", roadmapData);
 
-      // ✅ ШИНЭ: Error data check
       console.log("🔍 [INIT] Checking for files with errors...");
       const filesWithErrors = roadmapData.files.filter(
         (f) => f.errorCount && f.errorCount > 0,
       );
       console.log(`   Found ${filesWithErrors.length} files with errors:`);
       filesWithErrors.forEach((f) => {
-        console.log(
-          `      ❌ ${f.name}: ${f.errorCount} error(s) - color: ${f.color}`,
-        );
+        console.log(`      ❌ ${f.name}: ${f.errorCount} error(s)`);
       });
 
       let hierarchyData = null;
@@ -590,16 +1041,13 @@
       const MAX_SCALE = 3;
       const ZOOM_STEP = 0.15;
 
-      // Build hierarchy
       function buildHierarchy(files) {
         const basePath = findBasePath(files);
-
-        // Project нэрийг basePath-аас авах (хамгийн сүүлийн folder)
         const pathParts = basePath ? basePath.split("/").filter((p) => p) : [];
         const projectName =
           pathParts.length > 0 ? pathParts[pathParts.length - 1] : "Project";
 
-        console.log("🔍 buildHierarchy debug:");
+        console.log("🔍 buildHierarchy:");
         console.log("  basePath:", basePath);
         console.log("  projectName:", projectName);
 
@@ -616,7 +1064,6 @@
         files.forEach((file, index) => {
           let relativePath = file.path.replace(/\\/g, "/");
 
-          // basePath-г хасах
           if (basePath) {
             const baseWithSlash = basePath.endsWith("/")
               ? basePath
@@ -640,8 +1087,6 @@
           }
 
           const parts = relativePath.split("/").filter((p) => p);
-
-          // Хэрэв parts хоосон бол алгасах
           if (parts.length === 0) return;
 
           let current = root;
@@ -673,18 +1118,14 @@
             parent: current,
             level: currentLevel + 1,
             path: relativePath,
-            errorCount: file.errorCount || 0, // ✅ ШИНЭ: error count дамжуулах
-            color: file.color, // ✅ ШИНЭ: color дамжуулах
+            errorCount: file.errorCount || 0,
+            color: file.color,
           });
         });
 
-        console.log("  Root children:", Object.keys(root.children));
-
-        // ШИНЭ: Хэрэв Root-д зөвхөн 1 child folder байвал, түүнийг Root болгох
         const childFolders = Object.keys(root.children);
         if (childFolders.length === 1 && root.files.length === 0) {
           const onlyChild = root.children[childFolders[0]];
-          // Child-ийн нэрийг Root болгох
           onlyChild.name = onlyChild.name;
           onlyChild.parent = null;
           onlyChild.level = 0;
@@ -699,12 +1140,9 @@
       function findBasePath(files) {
         if (files.length === 0) return "";
         const paths = files.map((f) => f.path.replace(/\\/g, "/"));
-
-        // Эхний файлын path-г хэсэглэх
         const parts = paths[0].split("/").filter((p) => p);
         let commonParts = [];
 
-        // Бүх файлд нийтлэг path олох (файл нэргүй, зөвхөн folder)
         for (let i = 0; i < parts.length; i++) {
           const testPath = "/" + parts.slice(0, i + 1).join("/");
           const allMatch = paths.every((p) => p.startsWith(testPath + "/"));
@@ -801,7 +1239,12 @@
         const svg = document.getElementById("connectionsSvg");
 
         nodesContainer.innerHTML = "";
+
+        // ✅ FIX: Keep defs when clearing SVG
+        const defs = svg.querySelector("defs");
         svg.innerHTML = "";
+        if (defs) svg.appendChild(defs);
+
         allNodes = [];
         connections = [];
 
@@ -810,7 +1253,6 @@
 
         console.log(`📊 Calculated ${positions.length} positions`);
 
-        // Root (Project) node-г эхлээд нэмэх
         const rootElement = createNode(hierarchyData, 5000, 500);
         nodesContainer.appendChild(rootElement);
         allNodes.push({
@@ -820,6 +1262,7 @@
           y: 500,
         });
 
+        // ✅ FIX: Draw connections with arrows
         positions.forEach((pos) => {
           if (pos.parentX !== undefined && pos.parentY !== undefined) {
             drawConnection(
@@ -845,7 +1288,9 @@
           });
         });
 
-        console.log(`✅ Rendered ${allNodes.length} nodes`);
+        console.log(
+          `✅ Rendered ${allNodes.length} nodes and ${connections.length} connections`,
+        );
         updateBreadcrumb("Full Map");
       }
 
@@ -860,7 +1305,6 @@
         const node = document.createElement("div");
         node.className = `node ${data.type}`;
 
-        // ✅ ШИНЭ: Алдаатай файл эсэхийг шалгаж class нэмэх
         if (data.type === "file" && data.errorCount && data.errorCount > 0) {
           node.classList.add("has-error");
           console.log(
@@ -878,7 +1322,6 @@
             ? countFiles(data)
             : data.functions?.length || 0;
 
-        // ✅ ШИНЭ: Error indicator нэмэх
         const errorIndicator =
           data.type === "file" && data.errorCount && data.errorCount > 0
             ? `<div class="error-badge-indicator">!</div>`
@@ -911,6 +1354,7 @@
         return count;
       }
 
+      // ✅ FIX: Improved connection drawing with arrows
       function drawConnection(x1, y1, x2, y2, childId, parentId) {
         const svg = document.getElementById("connectionsSvg");
 
@@ -923,18 +1367,20 @@
         const d = `M ${x1} ${y1} C ${x1} ${midY}, ${x2} ${midY}, ${x2} ${y2}`;
 
         path.setAttribute("d", d);
+        path.setAttribute("marker-end", "url(#arrowhead)");
         path.classList.add("connection-line");
         path.dataset.childId = childId;
         path.dataset.parentId = parentId;
 
         svg.appendChild(path);
         connections.push({ line: path, childId, parentId });
+
+        console.log(`🔗 Drew connection: ${parentId} → ${childId}`);
       }
 
       function focusOnFile(fileData) {
         console.log("🎯 Focusing on file:", fileData.name);
 
-        // ✅ ШИНЭ: Error status-г log хийх
         if (fileData.errorCount && fileData.errorCount > 0) {
           console.log(`   ❌ File has ${fileData.errorCount} error(s)`);
         }
@@ -942,11 +1388,8 @@
         focusedFile = fileData;
 
         const relevantNodeIds = new Set();
-
-        // 1. Зөвхөн сонгосон файлыг нэмэх
         relevantNodeIds.add(getNodeId(fileData));
 
-        // 2. Эцэг folder-уудыг нэмэх (Root хүртэл)
         let current = fileData.parent;
         while (current) {
           relevantNodeIds.add(getNodeId(current));
@@ -977,14 +1420,15 @@
             relevantNodeIds.has(childId) && relevantNodeIds.has(parentId);
           if (isRelevant) {
             line.classList.add("highlight");
+            line.setAttribute("marker-end", "url(#arrowhead-highlight)");
           } else {
             line.classList.remove("highlight");
+            line.setAttribute("marker-end", "url(#arrowhead)");
           }
         });
 
         showFunctionPanel(fileData);
 
-        // Breadcrumb - бүх эцгүүдийг оруулах (project нэр ч орно)
         const pathParts = [];
         current = fileData;
         while (current) {
@@ -999,15 +1443,14 @@
         const header = document.getElementById("panelHeader");
         const list = document.getElementById("functionList");
 
-        // ✅ ШИНЭ: Error warning харуулах
         const errorWarning =
           fileData.errorCount && fileData.errorCount > 0
             ? `
-            <div class="error-warning">
+            <div class="error-warning clickable" onclick="requestErrorDetails('${escapeHtml(fileData.fullPath)}')">
               <div class="error-warning-icon">⚠️</div>
               <div class="error-warning-text">
                 <div class="error-warning-title">${fileData.errorCount} Error${fileData.errorCount > 1 ? "s" : ""} Found</div>
-                <div class="error-warning-subtitle">This file has compilation errors</div>
+                <div class="error-warning-subtitle">Click to see error details →</div>
               </div>
             </div>
           `
@@ -1118,6 +1561,7 @@
 
         connections.forEach(({ line }) => {
           line.classList.remove("highlight");
+          line.setAttribute("marker-end", "url(#arrowhead)");
         });
 
         updateTransform();
