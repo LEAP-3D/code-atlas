@@ -7,11 +7,13 @@ import { scanWorkspaceFiles } from "./analyzers/core/workspaceScanner";
 import { fileIndex } from "./state/fileIndex";
 import { functionIndex } from "./state/functionIndex";
 import { triggerIndex } from "./state/triggerIndex";
+import { dependencyIndex } from "./state/dependencyIndex"; // ✅ ШИНЭ
 import { buildExecutionMermaid } from "./analyzers/debug/executionMermaidBuilder";
 import { loadWorkspaceFileContents } from "./analyzers/core/fileContentLoader";
 import { analyzeFunctionBoundaries } from "./analyzers/core/functionBoundaryAnalyzer";
 import { analyzeFunctionCalls } from "./analyzers/core/functionCallAnalyzer";
 import { analyzeRuntimeTriggers } from "./analyzers/runtime/runtimeTriggerAnalyzer";
+import { analyzeImportDependencies } from "./analyzers/dependencies/importDependencyAnalyzer"; // ✅ ШИНЭ
 import { mapErrorsToFunctions } from "./analyzers/debug/errorFunctionMapper";
 import { buildCallerChain } from "./analyzers/debug/executionChainBuilder";
 import { AIService } from "./services/aiService";
@@ -168,17 +170,22 @@ export function activate(context: vscode.ExtensionContext) {
         await loadWorkspaceFileContents(files);
         analyzeFunctionBoundaries(fileIndex.getAll());
         analyzeFunctionCalls(fileIndex.getAll());
+        
+        // ✅ ШИНЭ: Import dependencies шинжлэх
+        analyzeImportDependencies(fileIndex.getAll());
 
         const fileCount = fileIndex.getAll().length;
         const functionCount = functionIndex.getAll().length;
+        const dependencyCount = dependencyIndex.getAll().length; // ✅ ШИНЭ
 
         if (functionCount === 0) {
           vscode.window.showWarningMessage("No functions found.");
           return;
         }
 
+        // ✅ ШИНЭ: Dependencies тоог харуулах
         vscode.window.showInformationMessage(
-          `✓ Roadmap ready: ${fileCount} files, ${functionCount} functions`,
+          `✓ Roadmap ready: ${fileCount} files, ${functionCount} functions, ${dependencyCount} imports`,
         );
 
         CodeWebviewProvider.showRoadmap(context);
@@ -291,7 +298,7 @@ export function activate(context: vscode.ExtensionContext) {
           },
           async () => {
             const answer = await aiService.askWithContext(
-              relevantFilesWithContent, // ✅ Агуулга бүхий объект илгээх
+              relevantFilesWithContent,
               question,
             );
 
