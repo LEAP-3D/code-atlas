@@ -694,6 +694,7 @@
       let connections = [];
       let focusedFile = null;
       let scale = 0.5;
+      let savedViewState = null; // ✅ Position хадгалах
       let translateX = 0;
       let translateY = 0;
       let isDragging = false;
@@ -976,6 +977,15 @@
 
       function focusOnFile(fileData) {
         console.log("🎯 Focus:", fileData.name);
+        // ✅ ЗАСВАР: Одоогийн position-г хадгалах (анх удаа л)
+        if (!savedViewState) {
+          savedViewState = {
+            scale: scale,
+            translateX: translateX,
+            translateY: translateY,
+          };
+          console.log("💾 Saved view state:", savedViewState);
+        }
 
         focusedFile = fileData;
 
@@ -1227,35 +1237,45 @@
       function resetView() {
         focusedFile = null;
 
-        if (allNodes.length > 0) {
-          let minX = Infinity,
-            maxX = -Infinity,
-            minY = Infinity,
-            maxY = -Infinity;
-          allNodes.forEach((n) => {
-            minX = Math.min(minX, n.x);
-            maxX = Math.max(maxX, n.x);
-            minY = Math.min(minY, n.y);
-            maxY = Math.max(maxY, n.y);
-          });
-
-          const gw = maxX - minX + 200,
-            gh = maxY - minY + 200;
-          const gcx = (minX + maxX) / 2,
-            gcy = (minY + maxY) / 2;
-          const rect = canvas.getBoundingClientRect();
-          const ccx = rect.width / 2,
-            ccy = rect.height / 2;
-
-          scale = Math.max(
-            MIN_SCALE,
-            Math.min((rect.width * 0.9) / gw, (rect.height * 0.9) / gh, 1),
-          );
-          translateX = ccx - (gcx - 5000) * scale;
-          translateY = ccy - (gcy - 5000) * scale;
+        // ✅ ЗАСВАР: Хэрэв хадгалсан state байвал түүнийг restore хийх
+        if (savedViewState) {
+          console.log("♻️ Restoring saved view state:", savedViewState);
+          scale = savedViewState.scale;
+          translateX = savedViewState.translateX;
+          translateY = savedViewState.translateY;
+          savedViewState = null; // Clear after restore
         } else {
-          scale = 0.5;
-          translateX = translateY = 0;
+          // Default reset logic (анх удаа л)
+          if (allNodes.length > 0) {
+            let minX = Infinity,
+              maxX = -Infinity,
+              minY = Infinity,
+              maxY = -Infinity;
+            allNodes.forEach((n) => {
+              minX = Math.min(minX, n.x);
+              maxX = Math.max(maxX, n.x);
+              minY = Math.min(minY, n.y);
+              maxY = Math.max(maxY, n.y);
+            });
+
+            const gw = maxX - minX + 200,
+              gh = maxY - minY + 200;
+            const gcx = (minX + maxX) / 2,
+              gcy = (minY + maxY) / 2;
+            const rect = canvas.getBoundingClientRect();
+            const ccx = rect.width / 2,
+              ccy = rect.height / 2;
+
+            scale = Math.max(
+              MIN_SCALE,
+              Math.min((rect.width * 0.9) / gw, (rect.height * 0.9) / gh, 1),
+            );
+            translateX = ccx - (gcx - 5000) * scale;
+            translateY = ccy - (gcy - 5000) * scale;
+          } else {
+            scale = 0.5;
+            translateX = translateY = 0;
+          }
         }
 
         allNodes.forEach((n) =>
