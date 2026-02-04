@@ -1,5 +1,3 @@
-// front-end/src/extension.ts
-
 import * as vscode from "vscode";
 import { CodeTreeProvider } from "./providers/CodeTreeProvider";
 import { CodeWebviewProvider } from "./providers/CodeWebviewProvider";
@@ -18,6 +16,7 @@ import { mapErrorsToFunctions } from "./analyzers/debug/errorFunctionMapper";
 import { buildCallerChain } from "./analyzers/debug/executionChainBuilder";
 import { AIService } from "./services/aiService";
 import { relevantFilesResolver } from "./services/relevantFilesResolver";
+import * as fs from "fs";
 
 export function activate(context: vscode.ExtensionContext) {
   // ============================================
@@ -230,9 +229,48 @@ export function activate(context: vscode.ExtensionContext) {
         const relevantFiles =
           relevantFilesResolver.getRelevantFiles(currentFilePath);
 
+        // ✅ ЗАСВАР: Файлын агуулгыг нэмж өгөх
+        const relevantFilesWithContent = relevantFiles.map((rf) => {
+          try {
+            // fileIndex-ээс авах оролдлого
+            const indexedFile = fileIndex
+              .getAll()
+              .find((f) => f.path === rf.path);
+
+            if (indexedFile) {
+              return {
+                path: rf.path,
+                content: indexedFile.text,
+              };
+            }
+
+            // fileIndex дээр олдохгүй бол файлаас шууд уншиж авах
+            if (fs.existsSync(rf.path)) {
+              const content = fs.readFileSync(rf.path, "utf-8");
+              return {
+                path: rf.path,
+                content: content,
+              };
+            }
+
+            // Файл олдохгүй бол хоосон агуулга өгөх
+            console.warn(`⚠️ File not found: ${rf.path}`);
+            return {
+              path: rf.path,
+              content: `// File not found: ${rf.path}`,
+            };
+          } catch (error) {
+            console.error(`Error reading file ${rf.path}:`, error);
+            return {
+              path: rf.path,
+              content: `// Error reading file: ${error instanceof Error ? error.message : "Unknown error"}`,
+            };
+          }
+        });
+
         const providerName = aiService.getProviderConfig().name;
         vscode.window.showInformationMessage(
-          `📁 ${relevantFiles.length} файл → ${providerName}`,
+          `📁 ${relevantFilesWithContent.length} файл → ${providerName}`,
         );
 
         // 5. Асуулт авах
@@ -253,13 +291,13 @@ export function activate(context: vscode.ExtensionContext) {
           },
           async () => {
             const answer = await aiService.askWithContext(
-              relevantFiles,
+              relevantFilesWithContent, // ✅ Агуулга бүхий объект илгээх
               question,
             );
 
             // 7. Хариуг харуулах
             const doc = await vscode.workspace.openTextDocument({
-              content: `# ${providerName} Хариулт\n\n**Асуулт:** ${question}\n\n**Контекст:** ${relevantFiles.length} файл\n- ${relevantFiles.map((f) => f.path).join("\n- ")}\n\n---\n\n${answer}`,
+              content: `# ${providerName} Хариулт\n\n**Асуулт:** ${question}\n\n**Контекст:** ${relevantFilesWithContent.length} файл\n- ${relevantFilesWithContent.map((f) => f.path).join("\n- ")}\n\n---\n\n${answer}`,
               language: "markdown",
             });
             await vscode.window.showTextDocument(doc, { preview: true });
