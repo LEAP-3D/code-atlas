@@ -954,14 +954,12 @@
         </div>
       </div>
 
-      <!-- Error Detail Panel -->
       <div class="error-detail-panel" id="errorDetailPanel">
         <button class="close-error-panel" onclick="closeErrorPanel()">×</button>
         <div class="error-panel-header" id="errorPanelHeader"></div>
         <div class="error-panel-content" id="errorPanelContent"></div>
       </div>
 
-      <!-- Function/Dependencies Panel -->
       <div class="function-panel" id="functionPanel">
         <button class="close-panel" onclick="closeFunctionPanel()">×</button>
         <div class="function-panel-header" id="panelHeader"></div>
@@ -993,9 +991,6 @@
           .replace(/"/g, '\\"');
       }
 
-      // ============================================
-      // ERROR DETAIL PANEL
-      // ============================================
       function showErrorDetail(errorData) {
         console.log("❌ Error detail:", errorData);
         document.getElementById("functionPanel").classList.remove("visible");
@@ -1124,9 +1119,6 @@
         }
       });
 
-      // ============================================
-      // ROADMAP DATA AND RENDERING
-      // ============================================
       let roadmapData = window.ROADMAP_DATA || { files: [], dependencies: [] };
       console.log(
         "🗺️ Roadmap:",
