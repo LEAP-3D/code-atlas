@@ -614,6 +614,10 @@
         transform: translateX(4px);
       }
 
+      .dep-item:active {
+        transform: translateX(2px) scale(0.98);
+      }
+
       .dep-icon {
         font-size: 16px;
         flex-shrink: 0;
@@ -950,12 +954,14 @@
         </div>
       </div>
 
+      <!-- Error Detail Panel -->
       <div class="error-detail-panel" id="errorDetailPanel">
         <button class="close-error-panel" onclick="closeErrorPanel()">×</button>
         <div class="error-panel-header" id="errorPanelHeader"></div>
         <div class="error-panel-content" id="errorPanelContent"></div>
       </div>
 
+      <!-- Function/Dependencies Panel -->
       <div class="function-panel" id="functionPanel">
         <button class="close-panel" onclick="closeFunctionPanel()">×</button>
         <div class="function-panel-header" id="panelHeader"></div>
@@ -963,7 +969,7 @@
       </div>
 
       <div class="hint" id="hint">
-        🖱️ Drag • Cmd+Scroll zoom • Click files • 🟢 Dependencies • 🔴 Errors
+        🖱️ Drag • Cmd+Scroll zoom • Click files • 🔴 Errors • 🟢 Dependencies
       </div>
     </div>
 
@@ -979,6 +985,17 @@
         });
       }
 
+      function escapeHtml(text) {
+        if (!text) return "";
+        return text
+          .replace(/\\/g, "\\\\")
+          .replace(/'/g, "\\'")
+          .replace(/"/g, '\\"');
+      }
+
+      // ============================================
+      // ERROR DETAIL PANEL
+      // ============================================
       function showErrorDetail(errorData) {
         console.log("❌ Error detail:", errorData);
         document.getElementById("functionPanel").classList.remove("visible");
@@ -1107,12 +1124,15 @@
         }
       });
 
+      // ============================================
+      // ROADMAP DATA AND RENDERING
+      // ============================================
       let roadmapData = window.ROADMAP_DATA || { files: [], dependencies: [] };
       console.log(
         "🗺️ Roadmap:",
         roadmapData.files.length,
         "files",
-        roadmapData.dependencies.length,
+        roadmapData.dependencies?.length || 0,
         "deps",
       );
 
@@ -1149,6 +1169,7 @@
 
         files.forEach((file) => {
           let relativePath = file.path.replace(/\\/g, "/");
+
           if (basePath) {
             const baseWithSlash = basePath.endsWith("/")
               ? basePath
@@ -1406,14 +1427,16 @@
 
       function focusOnFile(fileData) {
         console.log("🎯 Focus:", fileData.name);
+
         focusedFile = fileData;
 
         const relevantNodeIds = new Set();
         const dependencyNodeIds = new Set();
+
         relevantNodeIds.add(getNodeId(fileData));
 
         let current = fileData.parent;
-        while (current) {
+        while (current && current.name !== "Root") {
           relevantNodeIds.add(getNodeId(current));
           current = current.parent;
         }
@@ -1735,14 +1758,6 @@
       function updateTransform() {
         document.getElementById("graphContainer").style.transform =
           `translate(calc(-50% + ${translateX}px), calc(-50% + ${translateY}px)) scale(${scale})`;
-      }
-
-      function escapeHtml(text) {
-        if (!text) return "";
-        return text
-          .replace(/\\/g, "\\\\")
-          .replace(/'/g, "\\'")
-          .replace(/"/g, '\\"');
       }
 
       const canvas = document.getElementById("canvas");
