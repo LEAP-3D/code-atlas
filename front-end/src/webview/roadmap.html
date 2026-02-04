@@ -157,6 +157,12 @@
         stroke-width: 3;
       }
 
+      .connection-line.dependency-line {
+        stroke: #10b981;
+        stroke-width: 2.5;
+        stroke-dasharray: 5, 5;
+      }
+
       .nodes-layer {
         position: absolute;
         width: 100%;
@@ -238,6 +244,23 @@
       .node.file.has-error .node-badge {
         background: rgba(239, 68, 68, 0.3);
         color: #ef4444;
+      }
+
+      .node.dependency .node-circle {
+        width: 110px;
+        height: 110px;
+        border-color: #10b981;
+        background: linear-gradient(135deg, #1a2e1a 0%, #2a3a2a 100%);
+        box-shadow: 0 8px 32px rgba(16, 185, 129, 0.3);
+      }
+
+      .node.dependency:hover .node-circle {
+        box-shadow: 0 12px 40px rgba(16, 185, 129, 0.5);
+      }
+
+      .node.dependency .node-badge {
+        background: rgba(16, 185, 129, 0.3);
+        color: #10b981;
       }
 
       .node-icon {
@@ -504,7 +527,6 @@
         color: #fca5a5;
       }
 
-      /* Dependencies Section Styles */
       .dependencies-section {
         margin-bottom: 24px;
         padding-bottom: 24px;
@@ -643,17 +665,14 @@
       </div>
 
       <div class="hint" id="hint">
-        🖱️ Drag to pan • Cmd/Ctrl + Scroll to zoom • Click files to see
-        functions • Click function to go to code • 🔴 Red = Errors
+        🖱️ Drag • Cmd+Scroll zoom • Click files • 🟢 Green = Dependencies
       </div>
     </div>
 
     <script>
-      // VS Code API
       const vscode = acquireVsCodeApi();
 
       function goToFunction(filePath, line) {
-        console.log("🎯 Going to function:", filePath, "line:", line);
         vscode.postMessage({
           command: "goToFunction",
           filePath: filePath,
@@ -662,12 +681,13 @@
       }
 
       let roadmapData = window.ROADMAP_DATA || { files: [], dependencies: [] };
-      console.log("🗺️ [INIT] Roadmap data:", roadmapData);
-
-      const filesWithErrors = roadmapData.files.filter(
-        (f) => f.errorCount && f.errorCount > 0,
+      console.log(
+        "🗺️ Roadmap loaded:",
+        roadmapData.files.length,
+        "files,",
+        roadmapData.dependencies.length,
+        "deps",
       );
-      console.log(`   Found ${filesWithErrors.length} files with errors`);
 
       let hierarchyData = null;
       let allNodes = [];
@@ -711,9 +731,8 @@
               relativePath = relativePath.substring(baseWithSlash.length);
             } else if (relativePath.startsWith(basePath)) {
               relativePath = relativePath.substring(basePath.length);
-              if (relativePath.startsWith("/")) {
+              if (relativePath.startsWith("/"))
                 relativePath = relativePath.substring(1);
-              }
             }
           }
 
@@ -757,10 +776,8 @@
         const childFolders = Object.keys(root.children);
         if (childFolders.length === 1 && root.files.length === 0) {
           const onlyChild = root.children[childFolders[0]];
-          onlyChild.name = onlyChild.name;
           onlyChild.parent = null;
           onlyChild.level = 0;
-          onlyChild.path = onlyChild.name;
           return onlyChild;
         }
 
@@ -775,79 +792,74 @@
 
         for (let i = 0; i < parts.length; i++) {
           const testPath = "/" + parts.slice(0, i + 1).join("/");
-          const allMatch = paths.every((p) => p.startsWith(testPath + "/"));
-          if (allMatch) {
+          if (paths.every((p) => p.startsWith(testPath + "/"))) {
             commonParts = parts.slice(0, i + 1);
-          } else {
-            break;
-          }
+          } else break;
         }
 
         return "/" + commonParts.join("/");
       }
 
-      function calculateTreeLayout(node, startX = 5000, startY = 500, level = 0) {
+      function calculateTreeLayout(
+        node,
+        startX = 5000,
+        startY = 500,
+        level = 0,
+      ) {
         const positions = [];
-        const horizontalSpacing = 180;
-        const verticalSpacing = 250;
-
+        const spacing = { h: 180, v: 250 };
         const folders = Object.values(node.children || {});
         const files = node.files || [];
         const allItems = [...folders, ...files];
 
         if (allItems.length === 0) return positions;
 
-        function calculateSubtreeWidth(item) {
-          if (item.type === "file") return horizontalSpacing;
-
-          const subFolders = Object.values(item.children || {});
-          const subFiles = item.files || [];
-          const allSubItems = [...subFolders, ...subFiles];
-
-          if (allSubItems.length === 0) return horizontalSpacing;
-
-          let totalWidth = 0;
-          allSubItems.forEach((subItem) => {
-            totalWidth += calculateSubtreeWidth(subItem);
-          });
-
-          return Math.max(totalWidth, horizontalSpacing);
+        function calcWidth(item) {
+          if (item.type === "file") return spacing.h;
+          const subItems = [
+            ...Object.values(item.children || {}),
+            ...(item.files || []),
+          ];
+          if (subItems.length === 0) return spacing.h;
+          return Math.max(
+            subItems.reduce((sum, sub) => sum + calcWidth(sub), 0),
+            spacing.h,
+          );
         }
 
-        const itemWidths = allItems.map((item) => calculateSubtreeWidth(item));
-        const totalWidth = itemWidths.reduce((sum, w) => sum + w, 0);
-
+        const widths = allItems.map(calcWidth);
+        const totalWidth = widths.reduce((a, b) => a + b, 0);
         let currentX = startX - totalWidth / 2;
-        const currentY = startY + verticalSpacing;
 
-        allItems.forEach((item, index) => {
-          const itemWidth = itemWidths[index];
-          const itemX = currentX + itemWidth / 2;
-          const itemY = currentY;
-
+        allItems.forEach((item, i) => {
+          const itemX = currentX + widths[i] / 2;
           positions.push({
             node: item,
             x: itemX,
-            y: itemY,
+            y: startY + spacing.v,
             level: level + 1,
             parentX: startX,
             parentY: startY,
           });
 
           if (item.type === "folder") {
-            const childPositions = calculateTreeLayout(item, itemX, itemY, level + 1);
-            positions.push(...childPositions);
+            positions.push(
+              ...calculateTreeLayout(
+                item,
+                itemX,
+                startY + spacing.v,
+                level + 1,
+              ),
+            );
           }
 
-          currentX += itemWidth;
+          currentX += widths[i];
         });
 
         return positions;
       }
 
       function renderGraph() {
-        console.log("🎨 Rendering hierarchical graph...");
-
         const nodesContainer = document.getElementById("nodesContainer");
         const svg = document.getElementById("connectionsSvg");
 
@@ -859,17 +871,17 @@
         hierarchyData = buildHierarchy(roadmapData.files);
         const positions = calculateTreeLayout(hierarchyData);
 
-        const rootElement = createNode(hierarchyData, 5000, 500);
-        nodesContainer.appendChild(rootElement);
+        const rootEl = createNode(hierarchyData, 5000, 500);
+        nodesContainer.appendChild(rootEl);
         allNodes.push({
-          element: rootElement,
+          element: rootEl,
           data: hierarchyData,
           x: 5000,
           y: 500,
         });
 
         positions.forEach((pos) => {
-          if (pos.parentX !== undefined && pos.parentY !== undefined) {
+          if (pos.parentX !== undefined) {
             drawConnection(
               pos.parentX,
               pos.parentY,
@@ -882,19 +894,12 @@
         });
 
         positions.forEach((pos) => {
-          const element = createNode(pos.node, pos.x, pos.y);
-          nodesContainer.appendChild(element);
-
-          allNodes.push({
-            element,
-            data: pos.node,
-            x: pos.x,
-            y: pos.y,
-          });
+          const el = createNode(pos.node, pos.x, pos.y);
+          nodesContainer.appendChild(el);
+          allNodes.push({ element: el, data: pos.node, x: pos.x, y: pos.y });
         });
 
-        console.log(`✅ Rendered ${allNodes.length} nodes`);
-        updateBreadcrumb("Full Map");
+        console.log("✅ Rendered", allNodes.length, "nodes");
       }
 
       function getNodeId(node) {
@@ -907,10 +912,8 @@
       function createNode(data, x, y) {
         const node = document.createElement("div");
         node.className = `node ${data.type}`;
-
-        if (data.type === "file" && data.errorCount && data.errorCount > 0) {
+        if (data.type === "file" && data.errorCount > 0)
           node.classList.add("has-error");
-        }
 
         node.style.left = `${x}px`;
         node.style.top = `${y}px`;
@@ -921,15 +924,14 @@
           data.type === "folder"
             ? countFiles(data)
             : data.functions?.length || 0;
-
-        const errorIndicator =
-          data.type === "file" && data.errorCount && data.errorCount > 0
-            ? `<div class="error-badge-indicator">!</div>`
+        const errorInd =
+          data.type === "file" && data.errorCount > 0
+            ? '<div class="error-badge-indicator">!</div>'
             : "";
 
         node.innerHTML = `
           <div class="node-circle">
-            ${errorIndicator}
+            ${errorInd}
             ${badge > 0 ? `<div class="node-badge">${badge}</div>` : ""}
             <div class="node-icon">${icon}</div>
             <div class="node-name">${data.name}</div>
@@ -948,73 +950,107 @@
 
       function countFiles(folder) {
         let count = folder.files?.length || 0;
-        Object.values(folder.children || {}).forEach((child) => {
-          count += countFiles(child);
+        Object.values(folder.children || {}).forEach((c) => {
+          count += countFiles(c);
         });
         return count;
       }
 
       function drawConnection(x1, y1, x2, y2, childId, parentId) {
         const svg = document.getElementById("connectionsSvg");
-        const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
-
+        const path = document.createElementNS(
+          "http://www.w3.org/2000/svg",
+          "path",
+        );
         const midY = (y1 + y2) / 2;
-        const d = `M ${x1} ${y1} C ${x1} ${midY}, ${x2} ${midY}, ${x2} ${y2}`;
-
-        path.setAttribute("d", d);
+        path.setAttribute(
+          "d",
+          `M ${x1} ${y1} C ${x1} ${midY}, ${x2} ${midY}, ${x2} ${y2}`,
+        );
         path.classList.add("connection-line");
         path.dataset.childId = childId;
         path.dataset.parentId = parentId;
-
         svg.appendChild(path);
         connections.push({ line: path, childId, parentId });
       }
 
       function focusOnFile(fileData) {
-        console.log("🎯 Focusing on file:", fileData.name);
-
-        if (fileData.errorCount && fileData.errorCount > 0) {
-          console.log(`   ❌ File has ${fileData.errorCount} error(s)`);
-        }
+        console.log("🎯 Focus:", fileData.name);
 
         focusedFile = fileData;
 
         const relevantNodeIds = new Set();
+        const dependencyNodeIds = new Set();
+
         relevantNodeIds.add(getNodeId(fileData));
 
         let current = fileData.parent;
-        while (current && current.name !== 'Root') {
+        while (current && current.name !== "Root") {
           relevantNodeIds.add(getNodeId(current));
           current = current.parent;
         }
 
-        console.log("Relevant nodes:", relevantNodeIds);
+        const deps = roadmapData.dependencies || [];
+        const imports = deps.filter(
+          (d) => d.importerFilePath === fileData.fullPath,
+        );
+        const importedBy = deps.filter(
+          (d) => d.importedFilePath === fileData.fullPath,
+        );
+
+        console.log(
+          "  📥 Imports:",
+          imports.length,
+          "📤 ImportedBy:",
+          importedBy.length,
+        );
+
+        imports.forEach((dep) => {
+          const node = findFileNodeByPath(dep.importedFilePath);
+          if (node) dependencyNodeIds.add(getNodeId(node));
+        });
+
+        importedBy.forEach((dep) => {
+          const node = findFileNodeByPath(dep.importerFilePath);
+          if (node) dependencyNodeIds.add(getNodeId(node));
+        });
 
         allNodes.forEach((nodeObj) => {
           const nodeId = getNodeId(nodeObj.data);
           const isFile = nodeId === getNodeId(fileData);
           const isInPath = relevantNodeIds.has(nodeId) && !isFile;
+          const isDep = dependencyNodeIds.has(nodeId);
 
-          if (isFile) {
-            nodeObj.element.classList.add("focused");
-            nodeObj.element.classList.remove("dimmed", "small");
-          } else if (isInPath) {
-            nodeObj.element.classList.add("small");
-            nodeObj.element.classList.remove("dimmed", "focused");
-          } else {
-            nodeObj.element.classList.add("dimmed");
-            nodeObj.element.classList.remove("focused", "small");
-          }
+          nodeObj.element.classList.remove(
+            "focused",
+            "dimmed",
+            "small",
+            "dependency",
+          );
+
+          if (isFile) nodeObj.element.classList.add("focused");
+          else if (isDep) nodeObj.element.classList.add("dependency");
+          else if (isInPath) nodeObj.element.classList.add("small");
+          else nodeObj.element.classList.add("dimmed");
         });
 
         connections.forEach(({ line, childId, parentId }) => {
-          const bothInPath = relevantNodeIds.has(childId) && parentId && relevantNodeIds.has(parentId);
-          
-          if (bothInPath) {
-            line.classList.add("highlight");
-          } else {
-            line.classList.remove("highlight");
-          }
+          const bothInPath =
+            relevantNodeIds.has(childId) &&
+            parentId &&
+            relevantNodeIds.has(parentId);
+          const childIsDep = dependencyNodeIds.has(childId);
+          const parentIsDep = dependencyNodeIds.has(parentId);
+          const connectsToDep =
+            (childId === getNodeId(fileData) && parentIsDep) ||
+            (parentId === getNodeId(fileData) && childIsDep) ||
+            (childIsDep && relevantNodeIds.has(parentId)) ||
+            (parentIsDep && relevantNodeIds.has(childId));
+
+          line.classList.remove("highlight", "dependency-line");
+
+          if (bothInPath) line.classList.add("highlight");
+          else if (connectsToDep) line.classList.add("dependency-line");
         });
 
         showFunctionPanel(fileData);
@@ -1028,159 +1064,149 @@
         updateBreadcrumb(pathParts.join(" / "));
       }
 
+      function findFileNodeByPath(filePath) {
+        function search(node) {
+          if (node.type === "file" && node.fullPath === filePath) return node;
+          if (node.files) {
+            for (const f of node.files) {
+              if (f.fullPath === filePath) return f;
+            }
+          }
+          if (node.children) {
+            for (const c of Object.values(node.children)) {
+              const found = search(c);
+              if (found) return found;
+            }
+          }
+          return null;
+        }
+        return search(hierarchyData);
+      }
+
       function showFunctionPanel(fileData) {
         const panel = document.getElementById("functionPanel");
         const header = document.getElementById("panelHeader");
         const list = document.getElementById("functionList");
 
-        // Get dependencies for this file
-        const dependencies = roadmapData.dependencies || [];
-        const fileDeps = dependencies.filter(
-          (dep) => dep.importerFilePath === fileData.fullPath || dep.importedFilePath === fileData.fullPath
+        const deps = roadmapData.dependencies || [];
+        const imports = deps.filter(
+          (d) => d.importerFilePath === fileData.fullPath,
+        );
+        const importedBy = deps.filter(
+          (d) => d.importedFilePath === fileData.fullPath,
         );
 
-        const imports = fileDeps.filter((dep) => dep.importerFilePath === fileData.fullPath);
-        const importedBy = fileDeps.filter((dep) => dep.importedFilePath === fileData.fullPath);
-
-        const errorWarning =
-          fileData.errorCount && fileData.errorCount > 0
+        const errWarn =
+          fileData.errorCount > 0
             ? `
-            <div class="error-warning">
-              <div class="error-warning-icon">⚠️</div>
-              <div class="error-warning-text">
-                <div class="error-warning-title">${fileData.errorCount} Error${fileData.errorCount > 1 ? "s" : ""} Found</div>
-                <div class="error-warning-subtitle">This file has compilation errors</div>
-              </div>
+          <div class="error-warning">
+            <div class="error-warning-icon">⚠️</div>
+            <div class="error-warning-text">
+              <div class="error-warning-title">${fileData.errorCount} Error${fileData.errorCount > 1 ? "s" : ""}</div>
+              <div class="error-warning-subtitle">Compilation errors</div>
             </div>
-          `
+          </div>`
             : "";
 
         header.innerHTML = `
           <div class="function-panel-title">📄 ${fileData.name}</div>
           <div class="function-panel-subtitle">${fileData.functions?.length || 0} functions</div>
-          ${errorWarning}
+          ${errWarn}
         `;
 
-        const dependenciesSection = `
+        const depsSection = `
           <div class="dependencies-section">
             <div class="section-title">🔗 Dependencies</div>
-            
-            ${imports.length > 0 ? `
+            ${
+              imports.length > 0
+                ? `
               <div class="dep-subsection">
-                <div class="dep-subtitle">📥 Imports from (${imports.length})</div>
-                ${imports.map((dep) => {
-                  const fileName = dep.importedFilePath.split('/').pop() || dep.importedFilePath;
-                  const importedNames = dep.importedNames.join(', ');
-                  return `
-                    <div class="dep-item" onclick="jumpToFile('${escapeHtml(dep.importedFilePath)}')">
-                      <div class="dep-icon">📄</div>
-                      <div class="dep-details">
-                        <div class="dep-file-name">${escapeHtml(fileName)}</div>
-                        <div class="dep-imported-names">${escapeHtml(importedNames)}</div>
-                      </div>
-                      <div class="dep-arrow">→</div>
+                <div class="dep-subtitle">📥 Imports (${imports.length})</div>
+                ${imports
+                  .map(
+                    (d) => `
+                  <div class="dep-item" onclick="jumpToFile('${d.importedFilePath.replace(/\\/g, "\\\\")}')">
+                    <div class="dep-icon">📄</div>
+                    <div class="dep-details">
+                      <div class="dep-file-name">${d.importedFilePath.split("/").pop()}</div>
+                      <div class="dep-imported-names">${d.importedNames.join(", ")}</div>
                     </div>
-                  `;
-                }).join('')}
-              </div>
-            ` : ''}
-
-            ${importedBy.length > 0 ? `
+                    <div class="dep-arrow">→</div>
+                  </div>
+                `,
+                  )
+                  .join("")}
+              </div>`
+                : ""
+            }
+            ${
+              importedBy.length > 0
+                ? `
               <div class="dep-subsection">
                 <div class="dep-subtitle">📤 Imported by (${importedBy.length})</div>
-                ${importedBy.map((dep) => {
-                  const fileName = dep.importerFilePath.split('/').pop() || dep.importerFilePath;
-                  const importedNames = dep.importedNames.join(', ');
-                  return `
-                    <div class="dep-item" onclick="jumpToFile('${escapeHtml(dep.importerFilePath)}')">
-                      <div class="dep-icon">📄</div>
-                      <div class="dep-details">
-                        <div class="dep-file-name">${escapeHtml(fileName)}</div>
-                        <div class="dep-imported-names">${escapeHtml(importedNames)}</div>
-                      </div>
-                      <div class="dep-arrow">→</div>
+                ${importedBy
+                  .map(
+                    (d) => `
+                  <div class="dep-item" onclick="jumpToFile('${d.importerFilePath.replace(/\\/g, "\\\\")}')">
+                    <div class="dep-icon">📄</div>
+                    <div class="dep-details">
+                      <div class="dep-file-name">${d.importerFilePath.split("/").pop()}</div>
+                      <div class="dep-imported-names">${d.importedNames.join(", ")}</div>
                     </div>
-                  `;
-                }).join('')}
-              </div>
-            ` : ''}
-
-            ${imports.length === 0 && importedBy.length === 0 ? `
-              <div class="no-deps">No dependencies found</div>
-            ` : ''}
+                    <div class="dep-arrow">→</div>
+                  </div>
+                `,
+                  )
+                  .join("")}
+              </div>`
+                : ""
+            }
+            ${imports.length === 0 && importedBy.length === 0 ? '<div class="no-deps">No dependencies</div>' : ""}
           </div>
         `;
 
-        const functionsSection = `
+        const funcSection = `
           <div class="functions-section">
             <div class="section-title">⚡ Functions (${fileData.functions?.length || 0})</div>
-            ${fileData.functions
-              ?.map(
-                (fn) => `
-              <div class="function-card" onclick="goToFunction('${escapeHtml(fileData.fullPath)}', ${fn.startLine || 1})">
+            ${
+              fileData.functions
+                ?.map(
+                  (fn) => `
+              <div class="function-card" onclick="goToFunction('${fileData.fullPath.replace(/\\/g, "\\\\")}', ${fn.startLine || 1})">
                 <div class="function-icon">${getFunctionIcon(fn.name)}</div>
                 <div class="function-details">
-                  <div class="function-name">${escapeHtml(fn.name)}</div>
-                  <div class="function-meta">
-                    ${fn.startLine ? `Line ${fn.startLine}` : ""}
-                    ${
-                      fn.calls && fn.calls.length > 0
-                        ? ` • Calls: ${fn.calls.slice(0, 2).join(", ")}${fn.calls.length > 2 ? "..." : ""}`
-                        : ""
-                    }
-                  </div>
+                  <div class="function-name">${fn.name}</div>
+                  <div class="function-meta">${fn.startLine ? `Line ${fn.startLine}` : ""}${fn.calls?.length > 0 ? ` • Calls: ${fn.calls.slice(0, 2).join(", ")}${fn.calls.length > 2 ? "..." : ""}` : ""}</div>
                 </div>
                 <div class="function-goto">→</div>
               </div>
             `,
-              )
-              .join("") || "<p style='color: #666; padding: 12px;'>No functions found</p>"}
+                )
+                .join("") ||
+              '<p style="color:#666;padding:12px">No functions</p>'
+            }
           </div>
         `;
 
-        list.innerHTML = dependenciesSection + functionsSection;
+        list.innerHTML = depsSection + funcSection;
         panel.classList.add("visible");
       }
 
       function jumpToFile(filePath) {
-        console.log("🎯 Jumping to file:", filePath);
-        
-        const findFileNode = (node) => {
-          if (node.type === 'file' && node.fullPath === filePath) {
-            return node;
+        console.log("🎯 Jump to:", filePath);
+        const node = findFileNodeByPath(filePath);
+        if (node) {
+          focusOnFile(node);
+          const nodeObj = allNodes.find(
+            (n) => getNodeId(n.data) === getNodeId(node),
+          );
+          if (nodeObj) {
+            const rect = canvas.getBoundingClientRect();
+            translateX = rect.width / 2 - (nodeObj.x - 5000) * scale;
+            translateY = rect.height / 2 - (nodeObj.y - 5000) * scale;
+            updateTransform();
           }
-          
-          if (node.files) {
-            for (const file of node.files) {
-              if (file.fullPath === filePath) {
-                return file;
-              }
-            }
-          }
-          
-          if (node.children) {
-            for (const child of Object.values(node.children)) {
-              const found = findFileNode(child);
-              if (found) return found;
-            }
-          }
-          
-          return null;
-        };
-        
-        const fileNode = findFileNode(hierarchyData);
-        
-        if (fileNode) {
-          focusOnFile(fileNode);
         }
-      }
-
-      function escapeHtml(text) {
-        if (!text) return "";
-        return text
-          .replace(/\\/g, "\\\\")
-          .replace(/'/g, "\\'")
-          .replace(/"/g, '\\"');
       }
 
       function closeFunctionPanel() {
@@ -1189,12 +1215,12 @@
       }
 
       function getFunctionIcon(name) {
-        const lower = name.toLowerCase();
-        if (lower.startsWith("use")) return "🪝";
-        if (lower.startsWith("handle")) return "🎯";
-        if (lower.includes("fetch") || lower.includes("api")) return "📡";
-        if (lower.includes("render")) return "🎨";
-        if (lower.includes("analyze") || lower.includes("build")) return "⚙️";
+        const l = name.toLowerCase();
+        if (l.startsWith("use")) return "🪝";
+        if (l.startsWith("handle")) return "🎯";
+        if (l.includes("fetch") || l.includes("api")) return "📡";
+        if (l.includes("render")) return "🎨";
+        if (l.includes("analyze") || l.includes("build")) return "⚙️";
         return "⚡";
       }
 
@@ -1202,80 +1228,77 @@
         focusedFile = null;
 
         if (allNodes.length > 0) {
-          let minX = Infinity, maxX = -Infinity;
-          let minY = Infinity, maxY = -Infinity;
-
-          allNodes.forEach((nodeObj) => {
-            minX = Math.min(minX, nodeObj.x);
-            maxX = Math.max(maxX, nodeObj.x);
-            minY = Math.min(minY, nodeObj.y);
-            maxY = Math.max(maxY, nodeObj.y);
+          let minX = Infinity,
+            maxX = -Infinity,
+            minY = Infinity,
+            maxY = -Infinity;
+          allNodes.forEach((n) => {
+            minX = Math.min(minX, n.x);
+            maxX = Math.max(maxX, n.x);
+            minY = Math.min(minY, n.y);
+            maxY = Math.max(maxY, n.y);
           });
 
-          const graphWidth = maxX - minX + 200;
-          const graphHeight = maxY - minY + 200;
-          const graphCenterX = (minX + maxX) / 2;
-          const graphCenterY = (minY + maxY) / 2;
+          const gw = maxX - minX + 200,
+            gh = maxY - minY + 200;
+          const gcx = (minX + maxX) / 2,
+            gcy = (minY + maxY) / 2;
+          const rect = canvas.getBoundingClientRect();
+          const ccx = rect.width / 2,
+            ccy = rect.height / 2;
 
-          const canvasRect = canvas.getBoundingClientRect();
-          const canvasCenterX = canvasRect.width / 2;
-          const canvasCenterY = canvasRect.height / 2;
-
-          const scaleX = (canvasRect.width * 0.9) / graphWidth;
-          const scaleY = (canvasRect.height * 0.9) / graphHeight;
-          scale = Math.min(scaleX, scaleY, 1);
-          scale = Math.max(scale, MIN_SCALE);
-
-          const containerCenterX = 5000;
-          const containerCenterY = 5000;
-
-          translateX = canvasCenterX - (graphCenterX - containerCenterX) * scale;
-          translateY = canvasCenterY - (graphCenterY - containerCenterY) * scale;
+          scale = Math.max(
+            MIN_SCALE,
+            Math.min((rect.width * 0.9) / gw, (rect.height * 0.9) / gh, 1),
+          );
+          translateX = ccx - (gcx - 5000) * scale;
+          translateY = ccy - (gcy - 5000) * scale;
         } else {
           scale = 0.5;
-          translateX = 0;
-          translateY = 0;
+          translateX = translateY = 0;
         }
 
-        allNodes.forEach((nodeObj) => {
-          nodeObj.element.classList.remove("focused", "dimmed", "small");
-        });
-
-        connections.forEach(({ line }) => {
-          line.classList.remove("highlight");
-        });
+        allNodes.forEach((n) =>
+          n.element.classList.remove(
+            "focused",
+            "dimmed",
+            "small",
+            "dependency",
+          ),
+        );
+        connections.forEach(({ line }) =>
+          line.classList.remove("highlight", "dependency-line"),
+        );
 
         updateTransform();
-        document.getElementById("zoomLevel").textContent = `${Math.round(scale * 100)}%`;
+        document.getElementById("zoomLevel").textContent =
+          `${Math.round(scale * 100)}%`;
         updateBreadcrumb("Full Map");
         document.getElementById("functionPanel").classList.remove("visible");
       }
 
       function updateBreadcrumb(text) {
-        document.getElementById("breadcrumb").innerHTML = `
-          <span class="breadcrumb-item" onclick="resetView()">${text}</span>
-        `;
+        document.getElementById("breadcrumb").innerHTML =
+          `<span class="breadcrumb-item" onclick="resetView()">${text}</span>`;
       }
 
       function zoomIn() {
-        const newScale = Math.min(scale + ZOOM_STEP, MAX_SCALE);
-        setZoom(newScale);
+        setZoom(Math.min(scale + ZOOM_STEP, MAX_SCALE));
       }
-
       function zoomOut() {
-        const newScale = Math.max(scale - ZOOM_STEP, MIN_SCALE);
-        setZoom(newScale);
+        setZoom(Math.max(scale - ZOOM_STEP, MIN_SCALE));
       }
 
       function setZoom(newScale) {
         scale = newScale;
         updateTransform();
-        document.getElementById("zoomLevel").textContent = `${Math.round(scale * 100)}%`;
+        document.getElementById("zoomLevel").textContent =
+          `${Math.round(scale * 100)}%`;
       }
 
       function updateTransform() {
-        const container = document.getElementById("graphContainer");
-        container.style.transform = `translate(calc(-50% + ${translateX}px), calc(-50% + ${translateY}px)) scale(${scale})`;
+        document.getElementById("graphContainer").style.transform =
+          `translate(calc(-50% + ${translateX}px), calc(-50% + ${translateY}px)) scale(${scale})`;
       }
 
       const canvas = document.getElementById("canvas");
@@ -1312,23 +1335,22 @@
         (e) => {
           if (e.metaKey || e.ctrlKey) {
             e.preventDefault();
-
             const rect = canvas.getBoundingClientRect();
-            const mouseX = e.clientX - rect.left;
-            const mouseY = e.clientY - rect.top;
-
-            const graphX = (mouseX - translateX) / scale;
-            const graphY = (mouseY - translateY) / scale;
-
+            const mx = e.clientX - rect.left,
+              my = e.clientY - rect.top;
+            const gx = (mx - translateX) / scale,
+              gy = (my - translateY) / scale;
             const delta = e.deltaY > 0 ? -0.01 : 0.01;
-            const newScale = Math.max(MIN_SCALE, Math.min(MAX_SCALE, scale + delta));
-
-            translateX = mouseX - graphX * newScale;
-            translateY = mouseY - graphY * newScale;
-
+            const newScale = Math.max(
+              MIN_SCALE,
+              Math.min(MAX_SCALE, scale + delta),
+            );
+            translateX = mx - gx * newScale;
+            translateY = my - gy * newScale;
             scale = newScale;
             updateTransform();
-            document.getElementById("zoomLevel").textContent = `${Math.round(scale * 100)}%`;
+            document.getElementById("zoomLevel").textContent =
+              `${Math.round(scale * 100)}%`;
           } else {
             e.preventDefault();
             translateX -= e.deltaX * 0.5;
@@ -1339,23 +1361,19 @@
         { passive: false },
       );
 
-      if (roadmapData && roadmapData.files && roadmapData.files.length > 0) {
-        console.log(`✅ Found ${roadmapData.files.length} files`);
+      if (roadmapData?.files?.length > 0) {
+        console.log("✅ Init:", roadmapData.files.length, "files");
         renderGraph();
-
+        setTimeout(resetView, 100);
         setTimeout(() => {
-          resetView();
-        }, 100);
-
-        setTimeout(() => {
-          const hint = document.getElementById("hint");
-          hint.style.opacity = "0";
-          setTimeout(() => (hint.style.display = "none"), 300);
+          const h = document.getElementById("hint");
+          h.style.opacity = "0";
+          setTimeout(() => (h.style.display = "none"), 300);
         }, 5000);
       } else {
-        console.error("❌ No files found");
+        console.error("❌ No files");
         document.getElementById("nodesContainer").innerHTML =
-          '<div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); text-align: center; color: #666;"><div style="font-size: 64px; margin-bottom: 16px;">📭</div><h3>No files found</h3><p>Make sure you have TypeScript files in your workspace</p></div>';
+          '<div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center;color:#666"><div style="font-size:64px;margin-bottom:16px">📭</div><h3>No files found</h3></div>';
       }
     </script>
   </body>
