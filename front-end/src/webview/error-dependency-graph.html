@@ -56,11 +56,6 @@
         font-weight: 600;
       }
 
-      .header-subtitle {
-        font-size: 11px;
-        color: #888;
-      }
-
       .controls {
         display: flex;
         gap: 8px;
@@ -186,8 +181,8 @@
         border: 2px solid #3a3a3a;
         border-radius: 10px;
         padding: 12px;
-        min-width: 180px;
-        max-width: 220px;
+        min-width: 200px;
+        max-width: 240px;
         box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
         transition: all 0.3s;
         backdrop-filter: blur(10px);
@@ -203,8 +198,8 @@
         background: linear-gradient(135deg, #3a1a1a 0%, #4a2020 100%);
         border: 3px solid #ef4444;
         box-shadow: 0 6px 28px rgba(239, 68, 68, 0.6);
-        min-width: 260px;
-        max-width: 300px;
+        min-width: 280px;
+        max-width: 320px;
       }
 
       .node.error:hover .node-card {
@@ -273,72 +268,118 @@
         white-space: nowrap;
       }
 
-      .node-stats {
-        display: grid;
-        grid-template-columns: repeat(3, 1fr);
-        gap: 8px;
-        margin-bottom: 10px;
-        padding-top: 10px;
-        border-top: 1px solid #3a3a3a;
-      }
-
-      .stat {
-        text-align: center;
-      }
-
-      .stat-value {
-        font-size: 16px;
-        font-weight: 600;
-        color: #fff;
-        margin-bottom: 2px;
-      }
-
-      .stat-label {
-        font-size: 8px;
-        color: #888;
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
-      }
-
+      /* ENHANCED DETAILS SECTION */
       .node-details {
         background: rgba(78, 201, 176, 0.08);
-        border: 1px solid #4ec9b0;
-        border-radius: 6px;
-        padding: 8px;
-        margin-top: 10px;
-        font-size: 10px;
+        border: 1px solid rgba(78, 201, 176, 0.3);
+        border-radius: 8px;
+        padding: 10px;
+        margin: 10px 0;
       }
 
       .node.import .node-details {
-        border-color: #10b981;
+        border-color: rgba(16, 185, 129, 0.3);
         background: rgba(16, 185, 129, 0.08);
       }
 
       .node.export .node-details {
-        border-color: #3b82f6;
+        border-color: rgba(59, 130, 246, 0.3);
         background: rgba(59, 130, 246, 0.08);
       }
 
-      .detail-row {
+      .node.error .node-details {
+        border-color: rgba(239, 68, 68, 0.3);
+        background: rgba(239, 68, 68, 0.08);
+      }
+
+      .details-header {
         display: flex;
-        justify-content: space-between;
-        padding: 4px 0;
-        border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        align-items: center;
+        gap: 6px;
+        margin-bottom: 8px;
+        padding-bottom: 6px;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.1);
       }
 
-      .detail-row:last-child {
-        border-bottom: none;
-      }
-
-      .detail-label {
-        color: #888;
-        font-size: 9px;
-      }
-
-      .detail-value {
-        color: #fff;
+      .details-title {
+        font-size: 10px;
         font-weight: 600;
+        color: #4ec9b0;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+      }
+
+      .node.import .details-title {
+        color: #10b981;
+      }
+
+      .node.export .details-title {
+        color: #3b82f6;
+      }
+
+      .node.error .details-title {
+        color: #ef4444;
+      }
+
+      .detail-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 8px;
+        margin-bottom: 8px;
+      }
+
+      .detail-stat {
+        background: rgba(0, 0, 0, 0.2);
+        padding: 6px;
+        border-radius: 5px;
+        text-align: center;
+      }
+
+      .detail-stat-value {
+        font-size: 16px;
+        font-weight: 700;
+        color: #fff;
+        margin-bottom: 2px;
+      }
+
+      .detail-stat-label {
+        font-size: 8px;
+        color: #888;
+        text-transform: uppercase;
+        letter-spacing: 0.3px;
+      }
+
+      .detail-list {
+        margin-top: 8px;
+      }
+
+      .detail-section {
+        margin-bottom: 6px;
+      }
+
+      .detail-section-title {
         font-size: 9px;
+        font-weight: 600;
+        color: #888;
+        margin-bottom: 4px;
+        text-transform: uppercase;
+        letter-spacing: 0.3px;
+      }
+
+      .detail-items {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 4px;
+      }
+
+      .detail-tag {
+        background: rgba(255, 255, 255, 0.05);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        padding: 3px 6px;
+        border-radius: 4px;
+        font-size: 9px;
+        color: #ccc;
+        white-space: nowrap;
       }
 
       .node-actions {
@@ -558,10 +599,10 @@
           <button class="control-btn" onclick="resetView()">Reset</button>
           <button class="control-btn" onclick="zoomIn()">+</button>
           <button class="control-btn copy" onclick="copyAllFiles()">
-            📋 Copy All Files
+            📋 Copy All
           </button>
           <button class="control-btn primary" onclick="openErrorFile()">
-            📂 Open File
+            📂 Open
           </button>
         </div>
       </div>
@@ -593,7 +634,7 @@
 
       <div class="loading" id="loading">
         <div class="loading-spinner"></div>
-        <div class="loading-text">Building dependency graph...</div>
+        <div class="loading-text">Building graph...</div>
       </div>
     </div>
 
@@ -607,8 +648,6 @@
         allFiles: [],
       };
 
-      console.log("🐛 Error Graph Data:", errorData);
-
       let scale = 1;
       let translateX = 0;
       let translateY = 0;
@@ -617,7 +656,6 @@
       let startY = 0;
       let nodes = [];
 
-      // IMPROVED: Better spacing for imports
       function calculateOptimalLayout(relatedFiles) {
         const centerX = window.innerWidth / 2;
         const centerY = window.innerHeight / 2;
@@ -627,25 +665,23 @@
 
         const positions = [];
 
-        // IMPORTS: Left side with MORE SPACING (150px)
-        const importSpacing = 150; // Increased from 120px
+        const importSpacing = 160;
         const importStartY = centerY - (imports.length * importSpacing) / 2;
         imports.forEach((file, index) => {
           positions.push({
             file: file,
-            x: centerX - 450, // Increased from 400px
+            x: centerX - 480,
             y: importStartY + index * importSpacing,
             type: "import",
           });
         });
 
-        // EXPORTS: Right side with MORE SPACING (150px)
-        const exportSpacing = 150; // Increased from 120px
+        const exportSpacing = 160;
         const exportStartY = centerY - (exports.length * exportSpacing) / 2;
         exports.forEach((file, index) => {
           positions.push({
             file: file,
-            x: centerX + 450, // Increased from 400px
+            x: centerX + 480,
             y: exportStartY + index * exportSpacing,
             type: "export",
           });
@@ -658,7 +694,6 @@
         document.getElementById("loading").style.display = "none";
 
         if (!errorData.errorFile) {
-          showError("No error file specified");
           return;
         }
 
@@ -666,7 +701,6 @@
         document.getElementById("errorFileName").textContent = fileName;
 
         buildDependencyGraph();
-
         setTimeout(() => resetView(), 100);
       }
 
@@ -679,12 +713,9 @@
         nodes = [];
 
         const relatedFiles = getRelatedFiles();
-        console.log("📁 Related files:", relatedFiles.length);
-
         const centerX = window.innerWidth / 2;
         const centerY = window.innerHeight / 2;
 
-        // Error file at center
         const errorNode = createNode(
           errorData.errorFile,
           centerX,
@@ -694,15 +725,12 @@
         container.appendChild(errorNode.element);
         nodes.push(errorNode);
 
-        // Calculate optimal positions
         const positions = calculateOptimalLayout(relatedFiles);
 
-        // Create nodes with optimized positions
         positions.forEach((pos) => {
           const node = createNode(pos.file.path, pos.x, pos.y, false, pos.type);
           container.appendChild(node.element);
           nodes.push(node);
-
           drawConnection(centerX, centerY, pos.x, pos.y, pos.type);
         });
       }
@@ -758,58 +786,109 @@
           (d) => d.importedFilePath === filePath,
         );
 
-        // ALWAYS SHOW FILE DETAILS (not just on click)
+        // Calculate statistics
+        const totalCalls =
+          fileData?.functions?.reduce((sum, fn) => sum + fn.calls.length, 0) ||
+          0;
+        const avgCallsPerFunction =
+          functionCount > 0 ? (totalCalls / functionCount).toFixed(1) : 0;
+
+        // Get import/export names
+        const importNames = imports.flatMap((d) => d.importedNames);
+        const exportNames = exports.flatMap((d) => d.importedNames);
+
+        // ENHANCED DETAILS SECTION
         const detailsHTML = `
           <div class="node-details">
-            <div class="detail-row">
-              <span class="detail-label">Functions</span>
-              <span class="detail-value">${functionCount}</span>
+            <div class="details-header">
+              <span class="details-title">📊 File Statistics</span>
             </div>
-            <div class="detail-row">
-              <span class="detail-label">Imports</span>
-              <span class="detail-value">${imports.length}</span>
+            
+            <div class="detail-grid">
+              <div class="detail-stat">
+                <div class="detail-stat-value">${functionCount}</div>
+                <div class="detail-stat-label">Functions</div>
+              </div>
+              <div class="detail-stat">
+                <div class="detail-stat-value">${totalCalls}</div>
+                <div class="detail-stat-label">Total Calls</div>
+              </div>
+              <div class="detail-stat">
+                <div class="detail-stat-value">${imports.length}</div>
+                <div class="detail-stat-label">Imports</div>
+              </div>
+              <div class="detail-stat">
+                <div class="detail-stat-value">${exports.length}</div>
+                <div class="detail-stat-label">Used By</div>
+              </div>
             </div>
-            <div class="detail-row">
-              <span class="detail-label">Used By</span>
-              <span class="detail-value">${exports.length}</span>
-            </div>
+
             ${
-              isError
+              importNames.length > 0
                 ? `
-            <div class="detail-row">
-              <span class="detail-label">Errors</span>
-              <span class="detail-value" style="color: #ef4444;">${errorCount}</span>
+            <div class="detail-section">
+              <div class="detail-section-title">📥 Importing</div>
+              <div class="detail-items">
+                ${importNames
+                  .slice(0, 5)
+                  .map(
+                    (name) => `
+                  <div class="detail-tag">${name}</div>
+                `,
+                  )
+                  .join("")}
+                ${importNames.length > 5 ? `<div class="detail-tag">+${importNames.length - 5}</div>` : ""}
+              </div>
+            </div>
+            `
+                : ""
+            }
+
+            ${
+              exportNames.length > 0
+                ? `
+            <div class="detail-section">
+              <div class="detail-section-title">📤 Exporting</div>
+              <div class="detail-items">
+                ${exportNames
+                  .slice(0, 5)
+                  .map(
+                    (name) => `
+                  <div class="detail-tag">${name}</div>
+                `,
+                  )
+                  .join("")}
+                ${exportNames.length > 5 ? `<div class="detail-tag">+${exportNames.length - 5}</div>` : ""}
+              </div>
+            </div>
+            `
+                : ""
+            }
+
+            ${
+              isError && errorCount > 0
+                ? `
+            <div class="detail-section">
+              <div class="detail-section-title" style="color: #ef4444;">⚠️ Errors (${errorCount})</div>
+              <div class="detail-items">
+                ${errorData.errors
+                  .slice(0, 3)
+                  .map(
+                    (err) => `
+                  <div class="detail-tag" style="border-color: #ef4444; color: #fca5a5;">
+                    Line ${err.line}
+                  </div>
+                `,
+                  )
+                  .join("")}
+                ${errorCount > 3 ? `<div class="detail-tag" style="border-color: #ef4444;">+${errorCount - 3}</div>` : ""}
+              </div>
             </div>
             `
                 : ""
             }
           </div>
         `;
-
-        let errorDetailsHTML = "";
-        if (isError && errorCount > 0) {
-          errorDetailsHTML = `
-            <div class="error-details">
-              <div class="error-title">
-                <span>⚠️</span>
-                <span>${errorCount} Error${errorCount > 1 ? "s" : ""}</span>
-              </div>
-              <div class="error-list">
-                ${errorData.errors
-                  .slice(0, 3)
-                  .map(
-                    (err) => `
-                  <div class="error-item">
-                    Line ${err.line}: ${err.message.substring(0, 50)}${err.message.length > 50 ? "..." : ""}
-                  </div>
-                `,
-                  )
-                  .join("")}
-                ${errorCount > 3 ? `<div class="error-item">+${errorCount - 3} more...</div>` : ""}
-              </div>
-            </div>
-          `;
-        }
 
         node.innerHTML = `
           <div class="node-card">
@@ -820,7 +899,6 @@
             </div>
             <div class="node-path">${filePath}</div>
             ${detailsHTML}
-            ${errorDetailsHTML}
             <div class="node-actions">
               <button class="node-btn" onclick="copyFile('${filePath.replace(/\\/g, "\\\\")}')">
                 📋 Copy
@@ -850,7 +928,6 @@
 
         const dx = x2 - x1;
         const dy = y2 - y1;
-
         const cx1 = x1 + dx * 0.3;
         const cy1 = y1 + dy * 0.3;
         const cx2 = x2 - dx * 0.3;
@@ -885,72 +962,35 @@
         marker.appendChild(arrowPath);
         svg.appendChild(marker);
         path.setAttribute("marker-end", `url(#${markerId})`);
-
         svg.appendChild(path);
       }
 
-      // NEW: Copy single file content
       async function copyFile(filePath) {
-        try {
-          const response = await fetch(`vscode-resource:${filePath}`);
-          const content = await response.text();
-
-          await navigator.clipboard.writeText(content);
-          showToast(`📋 Copied ${filePath.split(/[/\\]/).pop()}`);
-        } catch (error) {
-          // Fallback: Send message to extension
-          vscode.postMessage({
-            command: "copyFile",
-            filePath: filePath,
-          });
-        }
+        vscode.postMessage({
+          command: "copyFile",
+          filePath: filePath,
+        });
+        showToast(`📋 Copied ${filePath.split(/[/\\]/).pop()}`);
       }
 
-      // NEW: Copy ALL related files with 1 line spacing
       function copyAllFiles() {
         const allFilePaths = [
           errorData.errorFile,
           ...getRelatedFiles().map((f) => f.path),
         ];
 
-        let combinedContent = "";
-
-        allFilePaths.forEach((filePath, index) => {
-          const fileName = filePath.split(/[/\\]/).pop();
-          const fileData = errorData.allFiles.find((f) => f.path === filePath);
-
-          // Get file content (mock for now - will be handled by extension)
-          const content = `// ${fileName}\n// Path: ${filePath}\n\n[File content will be inserted here]\n`;
-
-          combinedContent += content;
-
-          // Add 1 line spacing between files
-          if (index < allFilePaths.length - 1) {
-            combinedContent += "\n";
-          }
-        });
-
-        // Send to extension to get actual file contents
         vscode.postMessage({
           command: "copyAllFiles",
           files: allFilePaths,
         });
 
-        showToast(`📋 Copied ${allFilePaths.length} files to clipboard!`);
+        showToast(`📋 Copied ${allFilePaths.length} files!`);
       }
 
       function openFile(filePath) {
         vscode.postMessage({
           command: "openFile",
           filePath: filePath,
-        });
-      }
-
-      function goToLine(filePath, line) {
-        vscode.postMessage({
-          command: "goToLine",
-          filePath: filePath,
-          line: line,
         });
       }
 
@@ -990,15 +1030,6 @@
       function updateTransform() {
         document.getElementById("graphContainer").style.transform =
           `translate(${translateX}px, ${translateY}px) scale(${scale})`;
-      }
-
-      function showError(message) {
-        document.getElementById("loading").innerHTML = `
-          <div style="text-align: center;">
-            <div style="font-size: 40px; margin-bottom: 12px;">⚠️</div>
-            <div style="font-size: 13px; color: #ef4444;">${message}</div>
-          </div>
-        `;
       }
 
       const canvas = document.getElementById("canvas");
