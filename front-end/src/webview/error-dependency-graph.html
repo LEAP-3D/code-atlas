@@ -15,6 +15,7 @@
         background: #0a0a0a;
         color: #e0e0e0;
         overflow: hidden;
+        user-select: none;
       }
 
       .container {
@@ -88,6 +89,17 @@
         font-weight: 600;
       }
 
+      .control-btn.ai {
+        background: #f59e0b;
+        border-color: #f59e0b;
+        color: white;
+        font-weight: 600;
+      }
+
+      .control-btn.ai:hover {
+        background: #d97706;
+      }
+
       .control-btn.copy {
         background: #8b5cf6;
         border-color: #8b5cf6;
@@ -116,6 +128,7 @@
         width: 100%;
         height: 100%;
         transform-origin: center center;
+        will-change: transform;
       }
 
       svg.connections {
@@ -145,9 +158,21 @@
         stroke-width: 2.5;
       }
 
-      .connection-line:hover {
+      .connection-line.highlight {
+        stroke: #fbbf24;
+        stroke-width: 4;
         opacity: 1;
-        stroke-width: 3;
+        animation: pulse-line 1s ease-in-out 3;
+      }
+
+      @keyframes pulse-line {
+        0%,
+        100% {
+          opacity: 1;
+        }
+        50% {
+          opacity: 0.5;
+        }
       }
 
       .connection-arrow {
@@ -167,13 +192,40 @@
 
       .node {
         position: absolute;
-        cursor: pointer;
-        transition: all 0.3s;
+        cursor: move;
+        transition: all 0.2s ease-out;
         z-index: 3;
+        will-change: transform;
       }
 
       .node:hover {
         z-index: 100;
+      }
+
+      .node.dragging {
+        cursor: grabbing;
+        z-index: 1000;
+        opacity: 0.9;
+        transition: none;
+      }
+
+      .node.highlight {
+        z-index: 200;
+        animation: highlight-pulse 0.6s ease-in-out 2;
+      }
+
+      @keyframes highlight-pulse {
+        0%,
+        100% {
+          transform: translate(-50%, -50%) scale(1);
+        }
+        50% {
+          transform: translate(-50%, -50%) scale(1.15);
+        }
+      }
+
+      .node.error {
+        cursor: default !important;
       }
 
       .node-card {
@@ -192,6 +244,16 @@
         transform: scale(1.08);
         box-shadow: 0 8px 32px rgba(78, 201, 176, 0.6);
         border-color: #4ec9b0;
+      }
+
+      .node.dragging .node-card {
+        box-shadow: 0 12px 48px rgba(78, 201, 176, 0.8);
+        border-color: #4ec9b0;
+      }
+
+      .node.highlight .node-card {
+        border-color: #fbbf24 !important;
+        box-shadow: 0 0 40px rgba(251, 191, 36, 0.8) !important;
       }
 
       .node.error .node-card {
@@ -268,7 +330,6 @@
         white-space: nowrap;
       }
 
-      /* ENHANCED DETAILS SECTION */
       .node-details {
         background: rgba(78, 201, 176, 0.08);
         border: 1px solid rgba(78, 201, 176, 0.3);
@@ -333,6 +394,13 @@
         padding: 6px;
         border-radius: 5px;
         text-align: center;
+        cursor: pointer;
+        transition: all 0.2s;
+      }
+
+      .detail-stat:hover {
+        background: rgba(78, 201, 176, 0.2);
+        transform: translateY(-2px);
       }
 
       .detail-stat-value {
@@ -347,10 +415,6 @@
         color: #888;
         text-transform: uppercase;
         letter-spacing: 0.3px;
-      }
-
-      .detail-list {
-        margin-top: 8px;
       }
 
       .detail-section {
@@ -380,6 +444,18 @@
         font-size: 9px;
         color: #ccc;
         white-space: nowrap;
+        cursor: pointer;
+        transition: all 0.2s;
+      }
+
+      .detail-tag:hover {
+        background: rgba(78, 201, 176, 0.2);
+        border-color: #4ec9b0;
+        transform: scale(1.05);
+      }
+
+      .detail-tag:active {
+        transform: scale(0.95);
       }
 
       .node-actions {
@@ -405,43 +481,6 @@
         background: #3a3a3a;
         border-color: #4ec9b0;
         transform: translateY(-2px);
-      }
-
-      .error-details {
-        background: rgba(239, 68, 68, 0.15);
-        border: 1px solid #ef4444;
-        border-radius: 6px;
-        padding: 8px;
-        margin-top: 10px;
-        margin-bottom: 10px;
-      }
-
-      .error-title {
-        font-size: 11px;
-        font-weight: 600;
-        color: #ef4444;
-        margin-bottom: 6px;
-        display: flex;
-        align-items: center;
-        gap: 4px;
-      }
-
-      .error-list {
-        display: flex;
-        flex-direction: column;
-        gap: 4px;
-        max-height: 120px;
-        overflow-y: auto;
-      }
-
-      .error-item {
-        font-size: 9px;
-        color: #fca5a5;
-        padding: 4px 6px;
-        background: rgba(0, 0, 0, 0.3);
-        border-radius: 3px;
-        border-left: 2px solid #ef4444;
-        line-height: 1.3;
       }
 
       .legend {
@@ -598,6 +637,9 @@
           <button class="control-btn" onclick="zoomOut()">−</button>
           <button class="control-btn" onclick="resetView()">Reset</button>
           <button class="control-btn" onclick="zoomIn()">+</button>
+          <button class="control-btn ai" onclick="copyForAI()">
+            🤖 Copy for AI
+          </button>
           <button class="control-btn copy" onclick="copyAllFiles()">
             📋 Copy All
           </button>
@@ -627,7 +669,7 @@
           </div>
           <div class="legend-item">
             <div class="legend-line error"></div>
-            <span>Error file</span>
+            <span>Error file (fixed)</span>
           </div>
         </div>
       </div>
@@ -655,6 +697,11 @@
       let startX = 0;
       let startY = 0;
       let nodes = [];
+      let draggedNode = null;
+
+      // Performance optimization
+      let rafId = null;
+      let pendingTransform = null;
 
       function calculateOptimalLayout(relatedFiles) {
         const centerX = window.innerWidth / 2;
@@ -731,7 +778,33 @@
           const node = createNode(pos.file.path, pos.x, pos.y, false, pos.type);
           container.appendChild(node.element);
           nodes.push(node);
-          drawConnection(centerX, centerY, pos.x, pos.y, pos.type);
+        });
+
+        updateConnections();
+      }
+
+      function updateConnections() {
+        const svg = document.getElementById("connectionsSvg");
+        svg.innerHTML = "";
+
+        const centerNode = nodes.find((n) => n.isError);
+        if (!centerNode) return;
+
+        nodes.forEach((node) => {
+          if (!node.isError) {
+            const type = node.element.classList.contains("import")
+              ? "import"
+              : "export";
+            drawConnection(
+              centerNode.x,
+              centerNode.y,
+              node.x,
+              node.y,
+              type,
+              centerNode.filePath,
+              node.filePath,
+            );
+          }
         });
       }
 
@@ -773,10 +846,12 @@
         node.style.left = `${x}px`;
         node.style.top = `${y}px`;
         node.style.transform = "translate(-50%, -50%)";
+        node.dataset.filePath = filePath;
 
         const fileName = filePath.split(/[/\\]/).pop();
         const fileData = errorData.allFiles.find((f) => f.path === filePath);
-        const functionCount = fileData?.functions?.length || 0;
+        const functions = fileData?.functions || [];
+        const functionCount = functions.length;
         const errorCount = isError ? errorData.errors.length : 0;
 
         const imports = errorData.dependencies.filter(
@@ -786,18 +861,23 @@
           (d) => d.importedFilePath === filePath,
         );
 
-        // Calculate statistics
-        const totalCalls =
-          fileData?.functions?.reduce((sum, fn) => sum + fn.calls.length, 0) ||
-          0;
-        const avgCallsPerFunction =
-          functionCount > 0 ? (totalCalls / functionCount).toFixed(1) : 0;
-
-        // Get import/export names
+        const totalCalls = functions.reduce(
+          (sum, fn) => sum + fn.calls.length,
+          0,
+        );
         const importNames = imports.flatMap((d) => d.importedNames);
         const exportNames = exports.flatMap((d) => d.importedNames);
 
-        // ENHANCED DETAILS SECTION
+        // FIXED: Remove duplicate error lines
+        const uniqueErrors = [];
+        const seenLines = new Set();
+        errorData.errors.forEach((err) => {
+          if (!seenLines.has(err.line)) {
+            seenLines.add(err.line);
+            uniqueErrors.push(err);
+          }
+        });
+
         const detailsHTML = `
           <div class="node-details">
             <div class="details-header">
@@ -805,19 +885,19 @@
             </div>
             
             <div class="detail-grid">
-              <div class="detail-stat">
+              <div class="detail-stat" onclick="showFunctions('${filePath.replace(/\\/g, "\\\\")}')">
                 <div class="detail-stat-value">${functionCount}</div>
                 <div class="detail-stat-label">Functions</div>
               </div>
-              <div class="detail-stat">
+              <div class="detail-stat" onclick="showCalls('${filePath.replace(/\\/g, "\\\\")}')">
                 <div class="detail-stat-value">${totalCalls}</div>
                 <div class="detail-stat-label">Total Calls</div>
               </div>
-              <div class="detail-stat">
+              <div class="detail-stat" onclick="showImports('${filePath.replace(/\\/g, "\\\\")}')">
                 <div class="detail-stat-value">${imports.length}</div>
                 <div class="detail-stat-label">Imports</div>
               </div>
-              <div class="detail-stat">
+              <div class="detail-stat" onclick="showExports('${filePath.replace(/\\/g, "\\\\")}')">
                 <div class="detail-stat-value">${exports.length}</div>
                 <div class="detail-stat-label">Used By</div>
               </div>
@@ -831,11 +911,15 @@
               <div class="detail-items">
                 ${importNames
                   .slice(0, 5)
-                  .map(
-                    (name) => `
-                  <div class="detail-tag">${name}</div>
-                `,
-                  )
+                  .map((name) => {
+                    const dep = imports.find((d) =>
+                      d.importedNames.includes(name),
+                    );
+                    const targetFile = dep ? dep.importedFilePath : null;
+                    return `<div class="detail-tag" onclick="highlightFile('${targetFile ? targetFile.replace(/\\/g, "\\\\") : ""}', '${name}')" title="Click to highlight: ${name}">
+                    ${name}
+                  </div>`;
+                  })
                   .join("")}
                 ${importNames.length > 5 ? `<div class="detail-tag">+${importNames.length - 5}</div>` : ""}
               </div>
@@ -852,11 +936,15 @@
               <div class="detail-items">
                 ${exportNames
                   .slice(0, 5)
-                  .map(
-                    (name) => `
-                  <div class="detail-tag">${name}</div>
-                `,
-                  )
+                  .map((name) => {
+                    const dep = exports.find((d) =>
+                      d.importedNames.includes(name),
+                    );
+                    const targetFile = dep ? dep.importerFilePath : null;
+                    return `<div class="detail-tag" onclick="highlightFile('${targetFile ? targetFile.replace(/\\/g, "\\\\") : ""}', '${name}')" title="Click to highlight: ${name}">
+                    ${name}
+                  </div>`;
+                  })
                   .join("")}
                 ${exportNames.length > 5 ? `<div class="detail-tag">+${exportNames.length - 5}</div>` : ""}
               </div>
@@ -866,22 +954,30 @@
             }
 
             ${
-              isError && errorCount > 0
+              isError && uniqueErrors.length > 0
                 ? `
             <div class="detail-section">
-              <div class="detail-section-title" style="color: #ef4444;">⚠️ Errors (${errorCount})</div>
+              <div class="detail-section-title" style="color: #ef4444;">⚠️ Errors (${uniqueErrors.length})</div>
               <div class="detail-items">
-                ${errorData.errors
+                ${uniqueErrors
                   .slice(0, 3)
                   .map(
                     (err) => `
-                  <div class="detail-tag" style="border-color: #ef4444; color: #fca5a5;">
+                  <div class="detail-tag" style="border-color: #ef4444; color: #fca5a5;" onclick="goToLine('${filePath.replace(/\\/g, "\\\\")}', ${err.line})" title="Jump to line ${err.line}: ${err.message}">
                     Line ${err.line}
                   </div>
                 `,
                   )
                   .join("")}
-                ${errorCount > 3 ? `<div class="detail-tag" style="border-color: #ef4444;">+${errorCount - 3}</div>` : ""}
+                ${
+                  uniqueErrors.length > 3
+                    ? `
+                  <div class="detail-tag" style="border-color: #ef4444; cursor: pointer;" onclick="showAllErrors('${filePath.replace(/\\/g, "\\\\")}')" title="Click to see all ${uniqueErrors.length} errors">
+                    +${uniqueErrors.length - 3}
+                  </div>
+                `
+                    : ""
+                }
               </div>
             </div>
             `
@@ -910,6 +1006,63 @@
           </div>
         `;
 
+        // IMPROVED DRAG PERFORMANCE
+        if (!isError) {
+          let nodeDragStart = { x: 0, y: 0 };
+          let isDraggingNode = false;
+          let lastX = x;
+          let lastY = y;
+
+          node.addEventListener("mousedown", (e) => {
+            if (
+              e.target.classList.contains("node-btn") ||
+              e.target.classList.contains("detail-stat") ||
+              e.target.classList.contains("detail-tag")
+            )
+              return;
+
+            isDraggingNode = true;
+            draggedNode = node;
+            nodeDragStart.x = e.clientX - lastX * scale;
+            nodeDragStart.y = e.clientY - lastY * scale;
+            node.classList.add("dragging");
+            e.stopPropagation();
+          });
+
+          document.addEventListener("mousemove", (e) => {
+            if (isDraggingNode && draggedNode === node) {
+              const newX = (e.clientX - nodeDragStart.x - translateX) / scale;
+              const newY = (e.clientY - nodeDragStart.y - translateY) / scale;
+
+              lastX = newX;
+              lastY = newY;
+
+              // Use RAF for smooth updates
+              if (rafId) cancelAnimationFrame(rafId);
+              rafId = requestAnimationFrame(() => {
+                node.style.left = `${newX}px`;
+                node.style.top = `${newY}px`;
+
+                const nodeObj = nodes.find((n) => n.element === node);
+                if (nodeObj) {
+                  nodeObj.x = newX;
+                  nodeObj.y = newY;
+                }
+
+                updateConnections();
+              });
+            }
+          });
+
+          document.addEventListener("mouseup", () => {
+            if (isDraggingNode && draggedNode === node) {
+              isDraggingNode = false;
+              draggedNode = null;
+              node.classList.remove("dragging");
+            }
+          });
+        }
+
         return {
           element: node,
           filePath: filePath,
@@ -919,7 +1072,7 @@
         };
       }
 
-      function drawConnection(x1, y1, x2, y2, type) {
+      function drawConnection(x1, y1, x2, y2, type, fromFile, toFile) {
         const svg = document.getElementById("connectionsSvg");
         const path = document.createElementNS(
           "http://www.w3.org/2000/svg",
@@ -938,6 +1091,8 @@
           `M ${x1} ${y1} C ${cx1} ${cy1}, ${cx2} ${cy2}, ${x2} ${y2}`,
         );
         path.classList.add("connection-line", type);
+        path.dataset.from = fromFile;
+        path.dataset.to = toFile;
 
         const markerId = `arrow-${type}-${Math.random().toString(36).substr(2, 9)}`;
         const marker = document.createElementNS(
@@ -965,6 +1120,127 @@
         svg.appendChild(path);
       }
 
+      // NEW: Highlight file and connection
+      function highlightFile(filePath, name) {
+        if (!filePath) return;
+
+        const targetNode = nodes.find((n) => n.filePath === filePath);
+        if (!targetNode) return;
+
+        // Clear previous highlights
+        nodes.forEach((n) => n.element.classList.remove("highlight"));
+        document.querySelectorAll(".connection-line").forEach((line) => {
+          line.classList.remove("highlight");
+        });
+
+        // Highlight node
+        targetNode.element.classList.add("highlight");
+
+        // Highlight connection
+        document.querySelectorAll(".connection-line").forEach((line) => {
+          if (line.dataset.to === filePath || line.dataset.from === filePath) {
+            line.classList.add("highlight");
+          }
+        });
+
+        showToast(`Highlighted: ${name} in ${filePath.split(/[/\\]/).pop()}`);
+
+        // Remove highlight after 3 seconds
+        setTimeout(() => {
+          targetNode.element.classList.remove("highlight");
+          document.querySelectorAll(".connection-line").forEach((line) => {
+            line.classList.remove("highlight");
+          });
+        }, 3000);
+      }
+
+      // INTERACTIVE STATS
+      function showFunctions(filePath) {
+        const fileData = errorData.allFiles.find((f) => f.path === filePath);
+        if (
+          !fileData ||
+          !fileData.functions ||
+          fileData.functions.length === 0
+        ) {
+          showToast("No functions found");
+          return;
+        }
+
+        const functions = fileData.functions
+          .map((fn) => `${fn.emoji} ${fn.name} (Line ${fn.startLine})`)
+          .join("\n");
+        showToast(`Functions:\n${functions}`);
+        console.log("Functions:", fileData.functions);
+      }
+
+      function showCalls(filePath) {
+        const fileData = errorData.allFiles.find((f) => f.path === filePath);
+        if (!fileData || !fileData.functions) {
+          showToast("No call data");
+          return;
+        }
+
+        const calls = fileData.functions.flatMap((fn) => fn.calls);
+        showToast(`Total calls: ${calls.length}`);
+        console.log("Calls:", calls);
+      }
+
+      function showImports(filePath) {
+        const imports = errorData.dependencies.filter(
+          (d) => d.importerFilePath === filePath,
+        );
+        if (imports.length === 0) {
+          showToast("No imports");
+          return;
+        }
+
+        const importNames = imports.flatMap((d) => d.importedNames).join(", ");
+        showToast(`Importing: ${importNames}`);
+        console.log("Imports:", imports);
+      }
+
+      function showExports(filePath) {
+        const exports = errorData.dependencies.filter(
+          (d) => d.importedFilePath === filePath,
+        );
+        if (exports.length === 0) {
+          showToast("Not used by any file");
+          return;
+        }
+
+        const exportTo = exports
+          .map((d) => d.importerFilePath.split(/[/\\]/).pop())
+          .join(", ");
+        showToast(`Used by: ${exportTo}`);
+        console.log("Exports:", exports);
+      }
+
+      function showAllErrors(filePath) {
+        const uniqueErrors = [];
+        const seenLines = new Set();
+        errorData.errors.forEach((err) => {
+          if (!seenLines.has(err.line)) {
+            seenLines.add(err.line);
+            uniqueErrors.push(err);
+          }
+        });
+
+        const errorList = uniqueErrors
+          .map((err) => `Line ${err.line}: ${err.message}`)
+          .join("\n");
+
+        showToast(`All Errors:\n${errorList}`);
+        console.log("All errors:", uniqueErrors);
+      }
+
+      function goToLine(filePath, line) {
+        vscode.postMessage({
+          command: "goToLine",
+          filePath: filePath,
+          line: line,
+        });
+      }
+
       async function copyFile(filePath) {
         vscode.postMessage({
           command: "copyFile",
@@ -987,6 +1263,73 @@
         showToast(`📋 Copied ${allFilePaths.length} files!`);
       }
 
+      function copyForAI() {
+        const fileName = errorData.errorFile.split(/[/\\]/).pop();
+
+        // Remove duplicates
+        const uniqueErrors = [];
+        const seenLines = new Set();
+        errorData.errors.forEach((err) => {
+          if (!seenLines.has(err.line)) {
+            seenLines.add(err.line);
+            uniqueErrors.push(err);
+          }
+        });
+
+        let aiContext = `# 🐛 Fix These Errors
+
+## Error File: ${fileName}
+
+### Errors Found:
+`;
+
+        uniqueErrors.forEach((err, index) => {
+          aiContext += `${index + 1}. **Line ${err.line}**: ${err.message}\n`;
+        });
+
+        const fileData = errorData.allFiles.find(
+          (f) => f.path === errorData.errorFile,
+        );
+        const functions = fileData?.functions?.length || 0;
+        const imports = errorData.dependencies.filter(
+          (d) => d.importerFilePath === errorData.errorFile,
+        ).length;
+        const exports = errorData.dependencies.filter(
+          (d) => d.importedFilePath === errorData.errorFile,
+        ).length;
+
+        aiContext += `\n### Context:
+- **Functions**: ${functions}
+- **Imports**: ${imports}
+- **Used By**: ${exports}
+
+### Instructions:
+Please fix ALL errors listed above in the ${fileName} file. 
+
+**Requirements:**
+1. Fix each error on the specified line
+2. Maintain existing functionality  
+3. Keep the same code style
+4. Return ONLY the corrected code for ${fileName}
+5. No explanations needed - just the fixed code
+
+---
+
+## File Content:
+\`\`\`javascript
+// ${fileName} content will be inserted here by the extension
+\`\`\`
+`;
+
+        vscode.postMessage({
+          command: "copyAIContext",
+          errorFile: errorData.errorFile,
+          context: aiContext,
+        });
+
+        showToast(`🤖 AI context copied! Paste to ChatGPT/Claude`);
+      }
+
       function openFile(filePath) {
         vscode.postMessage({
           command: "openFile",
@@ -1007,7 +1350,7 @@
         setTimeout(() => {
           toast.style.opacity = "0";
           setTimeout(() => toast.remove(), 300);
-        }, 2000);
+        }, 2500);
       }
 
       function zoomIn() {
@@ -1028,8 +1371,13 @@
       }
 
       function updateTransform() {
-        document.getElementById("graphContainer").style.transform =
-          `translate(${translateX}px, ${translateY}px) scale(${scale})`;
+        if (pendingTransform) return;
+
+        pendingTransform = requestAnimationFrame(() => {
+          document.getElementById("graphContainer").style.transform =
+            `translate(${translateX}px, ${translateY}px) scale(${scale})`;
+          pendingTransform = null;
+        });
       }
 
       const canvas = document.getElementById("canvas");
@@ -1044,7 +1392,7 @@
       });
 
       canvas.addEventListener("mousemove", (e) => {
-        if (isDragging) {
+        if (isDragging && !draggedNode) {
           translateX = e.clientX - startX;
           translateY = e.clientY - startY;
           updateTransform();
