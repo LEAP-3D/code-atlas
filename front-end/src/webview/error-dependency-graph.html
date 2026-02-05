@@ -1,0 +1,1073 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      body {
+        font-family:
+          -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        background: #0a0a0a;
+        color: #e0e0e0;
+        overflow: hidden;
+      }
+
+      .container {
+        height: 100vh;
+        display: flex;
+        flex-direction: column;
+      }
+
+      .header {
+        background: #1a1a1a;
+        padding: 12px 20px;
+        border-bottom: 1px solid #333;
+        z-index: 10;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+
+      .header-left {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+      }
+
+      .header-title {
+        font-size: 16px;
+        font-weight: 600;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+
+      .error-file-badge {
+        background: #ef4444;
+        color: white;
+        padding: 4px 12px;
+        border-radius: 6px;
+        font-size: 12px;
+        font-weight: 600;
+      }
+
+      .controls {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+      }
+
+      .control-btn {
+        background: #2a2a2a;
+        border: 1px solid #3a3a3a;
+        color: #fff;
+        padding: 6px 12px;
+        border-radius: 6px;
+        cursor: pointer;
+        font-size: 11px;
+        transition: all 0.2s;
+        display: flex;
+        align-items: center;
+        gap: 4px;
+      }
+
+      .control-btn:hover {
+        background: #3a3a3a;
+        border-color: #4ec9b0;
+      }
+
+      .control-btn.primary {
+        background: #4ec9b0;
+        border-color: #4ec9b0;
+        color: #0a0a0a;
+        font-weight: 600;
+      }
+
+      .control-btn.copy {
+        background: #8b5cf6;
+        border-color: #8b5cf6;
+        color: white;
+        font-weight: 600;
+      }
+
+      .control-btn.copy:hover {
+        background: #7c3aed;
+      }
+
+      .canvas {
+        flex: 1;
+        position: relative;
+        overflow: hidden;
+        background: radial-gradient(circle at center, #1a1a1a 0%, #0a0a0a 100%);
+        cursor: grab;
+      }
+
+      .canvas.grabbing {
+        cursor: grabbing;
+      }
+
+      .graph-container {
+        position: absolute;
+        width: 100%;
+        height: 100%;
+        transform-origin: center center;
+      }
+
+      svg.connections {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        pointer-events: none;
+        z-index: 1;
+      }
+
+      .connection-line {
+        stroke-width: 2;
+        fill: none;
+        opacity: 0.6;
+        transition: all 0.3s;
+      }
+
+      .connection-line.import {
+        stroke: #10b981;
+        stroke-width: 2.5;
+      }
+
+      .connection-line.export {
+        stroke: #3b82f6;
+        stroke-width: 2.5;
+      }
+
+      .connection-line:hover {
+        opacity: 1;
+        stroke-width: 3;
+      }
+
+      .connection-arrow {
+        fill: #10b981;
+      }
+
+      .connection-arrow.export {
+        fill: #3b82f6;
+      }
+
+      .nodes-layer {
+        position: absolute;
+        width: 100%;
+        height: 100%;
+        z-index: 2;
+      }
+
+      .node {
+        position: absolute;
+        cursor: pointer;
+        transition: all 0.3s;
+        z-index: 3;
+      }
+
+      .node:hover {
+        z-index: 100;
+      }
+
+      .node-card {
+        background: linear-gradient(135deg, #1e1e1e 0%, #2a2a2a 100%);
+        border: 2px solid #3a3a3a;
+        border-radius: 10px;
+        padding: 12px;
+        min-width: 200px;
+        max-width: 240px;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+        transition: all 0.3s;
+        backdrop-filter: blur(10px);
+      }
+
+      .node:hover .node-card {
+        transform: scale(1.08);
+        box-shadow: 0 8px 32px rgba(78, 201, 176, 0.6);
+        border-color: #4ec9b0;
+      }
+
+      .node.error .node-card {
+        background: linear-gradient(135deg, #3a1a1a 0%, #4a2020 100%);
+        border: 3px solid #ef4444;
+        box-shadow: 0 6px 28px rgba(239, 68, 68, 0.6);
+        min-width: 280px;
+        max-width: 320px;
+      }
+
+      .node.error:hover .node-card {
+        box-shadow: 0 10px 40px rgba(239, 68, 68, 0.8);
+        transform: scale(1.12);
+      }
+
+      .node.import .node-card {
+        border-color: #10b981;
+      }
+
+      .node.export .node-card {
+        border-color: #3b82f6;
+      }
+
+      .node-header {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-bottom: 8px;
+      }
+
+      .node-icon {
+        font-size: 20px;
+        flex-shrink: 0;
+      }
+
+      .node.error .node-icon {
+        font-size: 24px;
+      }
+
+      .node-title {
+        flex: 1;
+        font-size: 13px;
+        font-weight: 600;
+        color: #fff;
+        word-break: break-word;
+        line-height: 1.3;
+      }
+
+      .node.error .node-title {
+        font-size: 14px;
+      }
+
+      .node-badge {
+        background: rgba(78, 201, 176, 0.2);
+        color: #4ec9b0;
+        padding: 2px 6px;
+        border-radius: 8px;
+        font-size: 10px;
+        font-weight: 600;
+        flex-shrink: 0;
+      }
+
+      .node.error .node-badge {
+        background: rgba(239, 68, 68, 0.3);
+        color: #ef4444;
+      }
+
+      .node-path {
+        font-size: 9px;
+        color: #666;
+        margin-bottom: 10px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      /* ENHANCED DETAILS SECTION */
+      .node-details {
+        background: rgba(78, 201, 176, 0.08);
+        border: 1px solid rgba(78, 201, 176, 0.3);
+        border-radius: 8px;
+        padding: 10px;
+        margin: 10px 0;
+      }
+
+      .node.import .node-details {
+        border-color: rgba(16, 185, 129, 0.3);
+        background: rgba(16, 185, 129, 0.08);
+      }
+
+      .node.export .node-details {
+        border-color: rgba(59, 130, 246, 0.3);
+        background: rgba(59, 130, 246, 0.08);
+      }
+
+      .node.error .node-details {
+        border-color: rgba(239, 68, 68, 0.3);
+        background: rgba(239, 68, 68, 0.08);
+      }
+
+      .details-header {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        margin-bottom: 8px;
+        padding-bottom: 6px;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+      }
+
+      .details-title {
+        font-size: 10px;
+        font-weight: 600;
+        color: #4ec9b0;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+      }
+
+      .node.import .details-title {
+        color: #10b981;
+      }
+
+      .node.export .details-title {
+        color: #3b82f6;
+      }
+
+      .node.error .details-title {
+        color: #ef4444;
+      }
+
+      .detail-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 8px;
+        margin-bottom: 8px;
+      }
+
+      .detail-stat {
+        background: rgba(0, 0, 0, 0.2);
+        padding: 6px;
+        border-radius: 5px;
+        text-align: center;
+      }
+
+      .detail-stat-value {
+        font-size: 16px;
+        font-weight: 700;
+        color: #fff;
+        margin-bottom: 2px;
+      }
+
+      .detail-stat-label {
+        font-size: 8px;
+        color: #888;
+        text-transform: uppercase;
+        letter-spacing: 0.3px;
+      }
+
+      .detail-list {
+        margin-top: 8px;
+      }
+
+      .detail-section {
+        margin-bottom: 6px;
+      }
+
+      .detail-section-title {
+        font-size: 9px;
+        font-weight: 600;
+        color: #888;
+        margin-bottom: 4px;
+        text-transform: uppercase;
+        letter-spacing: 0.3px;
+      }
+
+      .detail-items {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 4px;
+      }
+
+      .detail-tag {
+        background: rgba(255, 255, 255, 0.05);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        padding: 3px 6px;
+        border-radius: 4px;
+        font-size: 9px;
+        color: #ccc;
+        white-space: nowrap;
+      }
+
+      .node-actions {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 6px;
+        margin-top: 10px;
+      }
+
+      .node-btn {
+        background: #2a2a2a;
+        border: 1px solid #3a3a3a;
+        color: #fff;
+        padding: 6px;
+        border-radius: 5px;
+        cursor: pointer;
+        font-size: 10px;
+        transition: all 0.2s;
+        text-align: center;
+      }
+
+      .node-btn:hover {
+        background: #3a3a3a;
+        border-color: #4ec9b0;
+        transform: translateY(-2px);
+      }
+
+      .error-details {
+        background: rgba(239, 68, 68, 0.15);
+        border: 1px solid #ef4444;
+        border-radius: 6px;
+        padding: 8px;
+        margin-top: 10px;
+        margin-bottom: 10px;
+      }
+
+      .error-title {
+        font-size: 11px;
+        font-weight: 600;
+        color: #ef4444;
+        margin-bottom: 6px;
+        display: flex;
+        align-items: center;
+        gap: 4px;
+      }
+
+      .error-list {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+        max-height: 120px;
+        overflow-y: auto;
+      }
+
+      .error-item {
+        font-size: 9px;
+        color: #fca5a5;
+        padding: 4px 6px;
+        background: rgba(0, 0, 0, 0.3);
+        border-radius: 3px;
+        border-left: 2px solid #ef4444;
+        line-height: 1.3;
+      }
+
+      .legend {
+        position: fixed;
+        bottom: 20px;
+        left: 20px;
+        background: rgba(26, 26, 26, 0.95);
+        border: 1px solid #3a3a3a;
+        border-radius: 10px;
+        padding: 12px;
+        z-index: 10;
+        backdrop-filter: blur(10px);
+      }
+
+      .legend-title {
+        font-size: 12px;
+        font-weight: 600;
+        margin-bottom: 10px;
+        color: #fff;
+      }
+
+      .legend-items {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+      }
+
+      .legend-item {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 10px;
+      }
+
+      .legend-line {
+        width: 24px;
+        height: 2px;
+        border-radius: 1px;
+      }
+
+      .legend-line.import {
+        background: #10b981;
+      }
+
+      .legend-line.export {
+        background: #3b82f6;
+      }
+
+      .legend-line.error {
+        background: #ef4444;
+        height: 3px;
+      }
+
+      .canvas::before {
+        content: "";
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background-image:
+          linear-gradient(rgba(255, 255, 255, 0.02) 1px, transparent 1px),
+          linear-gradient(90deg, rgba(255, 255, 255, 0.02) 1px, transparent 1px);
+        background-size: 40px 40px;
+        pointer-events: none;
+      }
+
+      .loading {
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        text-align: center;
+        z-index: 100;
+      }
+
+      .loading-spinner {
+        width: 50px;
+        height: 50px;
+        border: 3px solid #3a3a3a;
+        border-top-color: #4ec9b0;
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+        margin: 0 auto 12px;
+      }
+
+      @keyframes spin {
+        to {
+          transform: rotate(360deg);
+        }
+      }
+
+      .loading-text {
+        font-size: 13px;
+        color: #888;
+      }
+
+      .toast {
+        position: fixed;
+        bottom: 80px;
+        left: 50%;
+        transform: translateX(-50%);
+        background: #4ec9b0;
+        color: #0a0a0a;
+        padding: 12px 24px;
+        border-radius: 8px;
+        font-size: 12px;
+        font-weight: 600;
+        z-index: 1000;
+        animation: slideUp 0.3s ease;
+        box-shadow: 0 4px 20px rgba(78, 201, 176, 0.4);
+      }
+
+      @keyframes slideUp {
+        from {
+          opacity: 0;
+          transform: translateX(-50%) translateY(20px);
+        }
+        to {
+          opacity: 1;
+          transform: translateX(-50%) translateY(0);
+        }
+      }
+
+      ::-webkit-scrollbar {
+        width: 6px;
+        height: 6px;
+      }
+
+      ::-webkit-scrollbar-track {
+        background: #1a1a1a;
+      }
+
+      ::-webkit-scrollbar-thumb {
+        background: #3a3a3a;
+        border-radius: 3px;
+      }
+
+      ::-webkit-scrollbar-thumb:hover {
+        background: #4a4a4a;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <div class="header">
+        <div class="header-left">
+          <div class="header-title">
+            <span>🐛 Error Dependency Graph</span>
+            <span class="error-file-badge" id="errorFileName">Loading...</span>
+          </div>
+        </div>
+        <div class="controls">
+          <button class="control-btn" onclick="zoomOut()">−</button>
+          <button class="control-btn" onclick="resetView()">Reset</button>
+          <button class="control-btn" onclick="zoomIn()">+</button>
+          <button class="control-btn copy" onclick="copyAllFiles()">
+            📋 Copy All
+          </button>
+          <button class="control-btn primary" onclick="openErrorFile()">
+            📂 Open
+          </button>
+        </div>
+      </div>
+
+      <div class="canvas" id="canvas">
+        <div class="graph-container" id="graphContainer">
+          <svg class="connections" id="connectionsSvg"></svg>
+          <div class="nodes-layer" id="nodesContainer"></div>
+        </div>
+      </div>
+
+      <div class="legend">
+        <div class="legend-title">📊 Connections</div>
+        <div class="legend-items">
+          <div class="legend-item">
+            <div class="legend-line import"></div>
+            <span>Imports from</span>
+          </div>
+          <div class="legend-item">
+            <div class="legend-line export"></div>
+            <span>Imported by</span>
+          </div>
+          <div class="legend-item">
+            <div class="legend-line error"></div>
+            <span>Error file</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="loading" id="loading">
+        <div class="loading-spinner"></div>
+        <div class="loading-text">Building graph...</div>
+      </div>
+    </div>
+
+    <script>
+      const vscode = acquireVsCodeApi();
+
+      const errorData = window.ERROR_GRAPH_DATA || {
+        errorFile: null,
+        errors: [],
+        dependencies: [],
+        allFiles: [],
+      };
+
+      let scale = 1;
+      let translateX = 0;
+      let translateY = 0;
+      let isDragging = false;
+      let startX = 0;
+      let startY = 0;
+      let nodes = [];
+
+      function calculateOptimalLayout(relatedFiles) {
+        const centerX = window.innerWidth / 2;
+        const centerY = window.innerHeight / 2;
+
+        const imports = relatedFiles.filter((f) => f.type === "import");
+        const exports = relatedFiles.filter((f) => f.type === "export");
+
+        const positions = [];
+
+        const importSpacing = 160;
+        const importStartY = centerY - (imports.length * importSpacing) / 2;
+        imports.forEach((file, index) => {
+          positions.push({
+            file: file,
+            x: centerX - 480,
+            y: importStartY + index * importSpacing,
+            type: "import",
+          });
+        });
+
+        const exportSpacing = 160;
+        const exportStartY = centerY - (exports.length * exportSpacing) / 2;
+        exports.forEach((file, index) => {
+          positions.push({
+            file: file,
+            x: centerX + 480,
+            y: exportStartY + index * exportSpacing,
+            type: "export",
+          });
+        });
+
+        return positions;
+      }
+
+      function initGraph() {
+        document.getElementById("loading").style.display = "none";
+
+        if (!errorData.errorFile) {
+          return;
+        }
+
+        const fileName = errorData.errorFile.split(/[/\\]/).pop();
+        document.getElementById("errorFileName").textContent = fileName;
+
+        buildDependencyGraph();
+        setTimeout(() => resetView(), 100);
+      }
+
+      function buildDependencyGraph() {
+        const container = document.getElementById("nodesContainer");
+        const svg = document.getElementById("connectionsSvg");
+
+        container.innerHTML = "";
+        svg.innerHTML = "";
+        nodes = [];
+
+        const relatedFiles = getRelatedFiles();
+        const centerX = window.innerWidth / 2;
+        const centerY = window.innerHeight / 2;
+
+        const errorNode = createNode(
+          errorData.errorFile,
+          centerX,
+          centerY,
+          true,
+        );
+        container.appendChild(errorNode.element);
+        nodes.push(errorNode);
+
+        const positions = calculateOptimalLayout(relatedFiles);
+
+        positions.forEach((pos) => {
+          const node = createNode(pos.file.path, pos.x, pos.y, false, pos.type);
+          container.appendChild(node.element);
+          nodes.push(node);
+          drawConnection(centerX, centerY, pos.x, pos.y, pos.type);
+        });
+      }
+
+      function getRelatedFiles() {
+        const related = [];
+        const errorFilePath = errorData.errorFile;
+
+        errorData.dependencies
+          .filter((d) => d.importerFilePath === errorFilePath)
+          .forEach((d) => {
+            related.push({
+              path: d.importedFilePath,
+              type: "import",
+              names: d.importedNames,
+            });
+          });
+
+        errorData.dependencies
+          .filter((d) => d.importedFilePath === errorFilePath)
+          .forEach((d) => {
+            related.push({
+              path: d.importerFilePath,
+              type: "export",
+              names: d.importedNames,
+            });
+          });
+
+        const seen = new Set();
+        return related.filter((f) => {
+          if (seen.has(f.path)) return false;
+          seen.add(f.path);
+          return true;
+        });
+      }
+
+      function createNode(filePath, x, y, isError, connectionType = null) {
+        const node = document.createElement("div");
+        node.className = `node ${isError ? "error" : connectionType || ""}`;
+        node.style.left = `${x}px`;
+        node.style.top = `${y}px`;
+        node.style.transform = "translate(-50%, -50%)";
+
+        const fileName = filePath.split(/[/\\]/).pop();
+        const fileData = errorData.allFiles.find((f) => f.path === filePath);
+        const functionCount = fileData?.functions?.length || 0;
+        const errorCount = isError ? errorData.errors.length : 0;
+
+        const imports = errorData.dependencies.filter(
+          (d) => d.importerFilePath === filePath,
+        );
+        const exports = errorData.dependencies.filter(
+          (d) => d.importedFilePath === filePath,
+        );
+
+        // Calculate statistics
+        const totalCalls =
+          fileData?.functions?.reduce((sum, fn) => sum + fn.calls.length, 0) ||
+          0;
+        const avgCallsPerFunction =
+          functionCount > 0 ? (totalCalls / functionCount).toFixed(1) : 0;
+
+        // Get import/export names
+        const importNames = imports.flatMap((d) => d.importedNames);
+        const exportNames = exports.flatMap((d) => d.importedNames);
+
+        // ENHANCED DETAILS SECTION
+        const detailsHTML = `
+          <div class="node-details">
+            <div class="details-header">
+              <span class="details-title">📊 File Statistics</span>
+            </div>
+            
+            <div class="detail-grid">
+              <div class="detail-stat">
+                <div class="detail-stat-value">${functionCount}</div>
+                <div class="detail-stat-label">Functions</div>
+              </div>
+              <div class="detail-stat">
+                <div class="detail-stat-value">${totalCalls}</div>
+                <div class="detail-stat-label">Total Calls</div>
+              </div>
+              <div class="detail-stat">
+                <div class="detail-stat-value">${imports.length}</div>
+                <div class="detail-stat-label">Imports</div>
+              </div>
+              <div class="detail-stat">
+                <div class="detail-stat-value">${exports.length}</div>
+                <div class="detail-stat-label">Used By</div>
+              </div>
+            </div>
+
+            ${
+              importNames.length > 0
+                ? `
+            <div class="detail-section">
+              <div class="detail-section-title">📥 Importing</div>
+              <div class="detail-items">
+                ${importNames
+                  .slice(0, 5)
+                  .map(
+                    (name) => `
+                  <div class="detail-tag">${name}</div>
+                `,
+                  )
+                  .join("")}
+                ${importNames.length > 5 ? `<div class="detail-tag">+${importNames.length - 5}</div>` : ""}
+              </div>
+            </div>
+            `
+                : ""
+            }
+
+            ${
+              exportNames.length > 0
+                ? `
+            <div class="detail-section">
+              <div class="detail-section-title">📤 Exporting</div>
+              <div class="detail-items">
+                ${exportNames
+                  .slice(0, 5)
+                  .map(
+                    (name) => `
+                  <div class="detail-tag">${name}</div>
+                `,
+                  )
+                  .join("")}
+                ${exportNames.length > 5 ? `<div class="detail-tag">+${exportNames.length - 5}</div>` : ""}
+              </div>
+            </div>
+            `
+                : ""
+            }
+
+            ${
+              isError && errorCount > 0
+                ? `
+            <div class="detail-section">
+              <div class="detail-section-title" style="color: #ef4444;">⚠️ Errors (${errorCount})</div>
+              <div class="detail-items">
+                ${errorData.errors
+                  .slice(0, 3)
+                  .map(
+                    (err) => `
+                  <div class="detail-tag" style="border-color: #ef4444; color: #fca5a5;">
+                    Line ${err.line}
+                  </div>
+                `,
+                  )
+                  .join("")}
+                ${errorCount > 3 ? `<div class="detail-tag" style="border-color: #ef4444;">+${errorCount - 3}</div>` : ""}
+              </div>
+            </div>
+            `
+                : ""
+            }
+          </div>
+        `;
+
+        node.innerHTML = `
+          <div class="node-card">
+            <div class="node-header">
+              <div class="node-icon">${isError ? "⚠️" : "📄"}</div>
+              <div class="node-title">${fileName}</div>
+              ${functionCount > 0 ? `<div class="node-badge">${functionCount}</div>` : ""}
+            </div>
+            <div class="node-path">${filePath}</div>
+            ${detailsHTML}
+            <div class="node-actions">
+              <button class="node-btn" onclick="copyFile('${filePath.replace(/\\/g, "\\\\")}')">
+                📋 Copy
+              </button>
+              <button class="node-btn" onclick="openFile('${filePath.replace(/\\/g, "\\\\")}')">
+                📂 Open
+              </button>
+            </div>
+          </div>
+        `;
+
+        return {
+          element: node,
+          filePath: filePath,
+          x: x,
+          y: y,
+          isError: isError,
+        };
+      }
+
+      function drawConnection(x1, y1, x2, y2, type) {
+        const svg = document.getElementById("connectionsSvg");
+        const path = document.createElementNS(
+          "http://www.w3.org/2000/svg",
+          "path",
+        );
+
+        const dx = x2 - x1;
+        const dy = y2 - y1;
+        const cx1 = x1 + dx * 0.3;
+        const cy1 = y1 + dy * 0.3;
+        const cx2 = x2 - dx * 0.3;
+        const cy2 = y2 - dy * 0.3;
+
+        path.setAttribute(
+          "d",
+          `M ${x1} ${y1} C ${cx1} ${cy1}, ${cx2} ${cy2}, ${x2} ${y2}`,
+        );
+        path.classList.add("connection-line", type);
+
+        const markerId = `arrow-${type}-${Math.random().toString(36).substr(2, 9)}`;
+        const marker = document.createElementNS(
+          "http://www.w3.org/2000/svg",
+          "marker",
+        );
+        marker.setAttribute("id", markerId);
+        marker.setAttribute("markerWidth", "10");
+        marker.setAttribute("markerHeight", "10");
+        marker.setAttribute("refX", "9");
+        marker.setAttribute("refY", "3");
+        marker.setAttribute("orient", "auto");
+        marker.setAttribute("markerUnits", "strokeWidth");
+
+        const arrowPath = document.createElementNS(
+          "http://www.w3.org/2000/svg",
+          "path",
+        );
+        arrowPath.setAttribute("d", "M0,0 L0,6 L9,3 z");
+        arrowPath.classList.add("connection-arrow", type);
+
+        marker.appendChild(arrowPath);
+        svg.appendChild(marker);
+        path.setAttribute("marker-end", `url(#${markerId})`);
+        svg.appendChild(path);
+      }
+
+      async function copyFile(filePath) {
+        vscode.postMessage({
+          command: "copyFile",
+          filePath: filePath,
+        });
+        showToast(`📋 Copied ${filePath.split(/[/\\]/).pop()}`);
+      }
+
+      function copyAllFiles() {
+        const allFilePaths = [
+          errorData.errorFile,
+          ...getRelatedFiles().map((f) => f.path),
+        ];
+
+        vscode.postMessage({
+          command: "copyAllFiles",
+          files: allFilePaths,
+        });
+
+        showToast(`📋 Copied ${allFilePaths.length} files!`);
+      }
+
+      function openFile(filePath) {
+        vscode.postMessage({
+          command: "openFile",
+          filePath: filePath,
+        });
+      }
+
+      function openErrorFile() {
+        openFile(errorData.errorFile);
+      }
+
+      function showToast(message) {
+        const toast = document.createElement("div");
+        toast.className = "toast";
+        toast.textContent = message;
+        document.body.appendChild(toast);
+
+        setTimeout(() => {
+          toast.style.opacity = "0";
+          setTimeout(() => toast.remove(), 300);
+        }, 2000);
+      }
+
+      function zoomIn() {
+        scale = Math.min(3, scale * 1.2);
+        updateTransform();
+      }
+
+      function zoomOut() {
+        scale = Math.max(0.3, scale * 0.8);
+        updateTransform();
+      }
+
+      function resetView() {
+        scale = 1;
+        translateX = 0;
+        translateY = 0;
+        updateTransform();
+      }
+
+      function updateTransform() {
+        document.getElementById("graphContainer").style.transform =
+          `translate(${translateX}px, ${translateY}px) scale(${scale})`;
+      }
+
+      const canvas = document.getElementById("canvas");
+
+      canvas.addEventListener("mousedown", (e) => {
+        if (e.target === canvas || e.target.closest("#graphContainer")) {
+          isDragging = true;
+          startX = e.clientX - translateX;
+          startY = e.clientY - translateY;
+          canvas.classList.add("grabbing");
+        }
+      });
+
+      canvas.addEventListener("mousemove", (e) => {
+        if (isDragging) {
+          translateX = e.clientX - startX;
+          translateY = e.clientY - startY;
+          updateTransform();
+        }
+      });
+
+      canvas.addEventListener("mouseup", () => {
+        isDragging = false;
+        canvas.classList.remove("grabbing");
+      });
+
+      canvas.addEventListener(
+        "wheel",
+        (e) => {
+          e.preventDefault();
+          const delta = e.deltaY > 0 ? 0.9 : 1.1;
+          scale = Math.max(0.3, Math.min(3, scale * delta));
+          updateTransform();
+        },
+        { passive: false },
+      );
+
+      initGraph();
+    </script>
+  </body>
+</html>
