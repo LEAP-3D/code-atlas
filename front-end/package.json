@@ -1,8 +1,13 @@
 {
-  "name": "experiment",
-  "displayName": "experiment",
-  "description": "Visualize TypeScript call graphs and code structure using Mermaid diagrams",
+  "name": "codeatlas-saruul",
+  "displayName": "Code-Atlas",
+  "description": "Visualize call graphs and code structure through diagram",
   "version": "0.0.1",
+  "publisher": "saruul",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/LEAP-3D/shideeguibna"
+  },
   "engines": {
     "vscode": "^1.105.0"
   },
@@ -66,7 +71,7 @@
         "when": "editorTextFocus"
       },
       {
-        "command": "experiment.askClaude",
+        "command": "experiment.askAI",
         "key": "ctrl+alt+a",
         "when": "editorTextFocus"
       }
@@ -88,6 +93,7 @@
     "@types/vscode": "^1.105.0",
     "@vscode/test-cli": "^0.0.12",
     "@vscode/test-electron": "^2.5.2",
+    "@vscode/vsce": "^3.7.1",
     "eslint": "^9.39.1",
     "typescript": "^5.9.3",
     "typescript-eslint": "^8.54.0"
