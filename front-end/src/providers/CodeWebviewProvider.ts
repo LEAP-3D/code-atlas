@@ -325,7 +325,7 @@ export class CodeWebviewProvider {
     // Get file details for all related files
     const allFiles = Array.from(relatedFilePaths)
       .map((filePath) => {
-        const fileData = fileIndex.getAll().find((f) => f.path === filePath);
+        const _fileData = fileIndex.getAll().find((f) => f.path === filePath);
         const functions = functionIndex
           .getAll()
           .filter((fn) => fn.filePath === filePath);
