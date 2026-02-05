@@ -505,6 +505,14 @@
         display: flex;
         align-items: center;
         gap: 12px;
+        cursor: pointer;
+        transition: all 0.2s;
+      }
+
+      .error-warning:hover {
+        background: rgba(239, 68, 68, 0.25);
+        border-color: #f87171;
+        transform: translateX(2px);
       }
 
       .error-warning-icon {
@@ -525,6 +533,24 @@
       .error-warning-subtitle {
         font-size: 12px;
         color: #fca5a5;
+      }
+
+      .error-debug-btn {
+        background: #ef4444;
+        color: white;
+        border: none;
+        padding: 6px 12px;
+        border-radius: 6px;
+        font-size: 11px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.2s;
+        white-space: nowrap;
+      }
+
+      .error-debug-btn:hover {
+        background: #dc2626;
+        transform: scale(1.05);
       }
 
       .dependencies-section {
@@ -665,7 +691,8 @@
       </div>
 
       <div class="hint" id="hint">
-        🖱️ Drag • Cmd+Scroll zoom • Click files • 🟢 Green = Dependencies
+        🖱️ Drag • Cmd+Scroll zoom • Click files • 🔴 Red = Errors • 🟢 Green =
+        Dependencies
       </div>
     </div>
 
@@ -677,6 +704,15 @@
           command: "goToFunction",
           filePath: filePath,
           line: line || 1,
+        });
+      }
+
+      // NEW: Trigger debug execution flow command
+      function debugExecutionFlow(filePath) {
+        console.log("🐛 Debug execution flow for:", filePath);
+        vscode.postMessage({
+          command: "debugExecutionFlow",
+          filePath: filePath,
         });
       }
 
@@ -1096,15 +1132,19 @@
           (d) => d.importedFilePath === fileData.fullPath,
         );
 
+        // Enhanced error warning with debug button
         const errWarn =
           fileData.errorCount > 0
             ? `
-          <div class="error-warning">
+          <div class="error-warning" onclick="debugExecutionFlow('${fileData.fullPath.replace(/\\/g, "\\\\")}')">
             <div class="error-warning-icon">⚠️</div>
             <div class="error-warning-text">
-              <div class="error-warning-title">${fileData.errorCount} Error${fileData.errorCount > 1 ? "s" : ""}</div>
-              <div class="error-warning-subtitle">Compilation errors</div>
+              <div class="error-warning-title">${fileData.errorCount} Error${fileData.errorCount > 1 ? "s" : ""} Detected</div>
+              <div class="error-warning-subtitle">Click to debug execution flow →</div>
             </div>
+            <button class="error-debug-btn" onclick="event.stopPropagation(); debugExecutionFlow('${fileData.fullPath.replace(/\\/g, "\\\\")}')">
+              🐛 Debug
+            </button>
           </div>`
             : "";
 
