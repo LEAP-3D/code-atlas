@@ -1,26 +1,12 @@
-# Source (TS) - not needed at runtime
-src/**
-
-# Tests / lint / configs not needed in VSIX
+.vscode/**
+.vscode-test/**
+out/test/**
+.gitignore
+.yarnrc
+vsc-extension-quickstart.md
+**/tsconfig.json
 **/*.map
 **/*.ts
-.eslintrc*
-eslint.config.*
-tsconfig*.json
-.vscode/**
-.github/**
-*.log
-
-# Big / unnecessary folders
+!src/webview/**
 node_modules/**
-**/node_modules/**
-**/.DS_Store
-
-# Dev folders
-dist/**
-build/**
-out/**/*.map
-
-# Docs (optional)
-README.md
-CHANGELOG.md
+.eslintrc.json
