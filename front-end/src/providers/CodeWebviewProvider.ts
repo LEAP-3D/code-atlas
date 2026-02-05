@@ -226,6 +226,43 @@ export class CodeWebviewProvider {
               error instanceof Error ? error.message : "Unknown error";
             vscode.window.showErrorMessage(`Failed to copy files: ${errorMsg}`);
           }
+        } else if (message.command === "copyAIContext") {
+          try {
+            const errorFile = message.errorFile;
+            const aiContext = message.context || "";
+
+            console.log(`🤖 Preparing AI context for: ${errorFile}`);
+
+            if (!fs.existsSync(errorFile)) {
+              throw new Error(`Error file not found: ${errorFile}`);
+            }
+
+            // Read error file content
+            const errorFileContent = fs.readFileSync(errorFile, "utf-8");
+            const fileName = path.basename(errorFile);
+
+            // Build complete AI prompt
+            let fullContext = aiContext;
+
+            // Replace placeholder with actual file content
+            fullContext = fullContext.replace(
+              `// ${fileName} content will be inserted here by the extension`,
+              errorFileContent,
+            );
+
+            // Copy to clipboard
+            await vscode.env.clipboard.writeText(fullContext);
+
+            vscode.window.showInformationMessage(
+              `🤖 AI context copied! Ready to paste into ChatGPT/Claude`,
+            );
+          } catch (error) {
+            const errorMsg =
+              error instanceof Error ? error.message : "Unknown error";
+            vscode.window.showErrorMessage(
+              `Failed to copy AI context: ${errorMsg}`,
+            );
+          }
         }
       },
       undefined,
@@ -325,7 +362,7 @@ export class CodeWebviewProvider {
     // Get file details for all related files
     const allFiles = Array.from(relatedFilePaths)
       .map((filePath) => {
-        const _fileData = fileIndex.getAll().find((f) => f.path === filePath);
+        const fileData = fileIndex.getAll().find((f) => f.path === filePath);
         const functions = functionIndex
           .getAll()
           .filter((fn) => fn.filePath === filePath);
