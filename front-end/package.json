@@ -2,7 +2,8 @@
   "name": "codeatlas-saruul",
   "displayName": "Code-Atlas",
   "description": "Visualize call graphs and code structure through diagram",
-  "version": "0.0.3",
+  "icon": "media/roadmap.png",
+  "version": "0.0.5",
   "publisher": "saruul",
   "repository": {
     "type": "git",
@@ -16,11 +17,7 @@
     "Visualization"
   ],
   "activationEvents": [
-    "onStartupFinished",
-    "onView:codeTree",
-    "onView:userWebview",
-    "onCommand:experiment.showSelectedCode",
-    "onCommand:experiment.showRoadmap"
+    "onStartupFinished"
   ],
   "main": "./out/extension.js",
   "contributes": {
@@ -35,11 +32,6 @@
     },
     "views": {
       "experimentSidebar": [
-        {
-          "id": "aiProviderView",
-          "name": "AI Provider",
-          "type": "webview"
-        },
         {
           "id": "codeTree",
           "name": "Selected Code"
@@ -59,10 +51,6 @@
       {
         "command": "experiment.showRoadmap",
         "title": "Show Project Roadmap"
-      },
-      {
-        "command": "experiment.askAI",
-        "title": "Ask AI (with context)"
       }
     ],
     "keybindings": [
@@ -70,22 +58,16 @@
         "command": "experiment.showSelectedCode",
         "key": "ctrl+alt+c",
         "when": "editorTextFocus"
-      },
-      {
-        "command": "experiment.askAI",
-        "key": "ctrl+alt+a",
-        "when": "editorTextFocus"
       }
     ]
   },
   "scripts": {
-    "vscode:prepublish": "npm run compile",
-    "compile": "tsc -p ./",
-    "watch": "tsc -watch -p ./",
-    "pretest": "npm run compile && npm run lint",
+    "vscode:prepublish": "npm run package",
+    "compile": "node esbuild.js",
+    "watch": "node esbuild.js --watch",
+    "package": "node esbuild.js --production",
     "lint": "eslint src",
-    "test": "vscode-test",
-    "build": "tsc -p ./"
+    "build": "npm run package"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.2",
@@ -95,6 +77,7 @@
     "@vscode/test-cli": "^0.0.12",
     "@vscode/test-electron": "^2.5.2",
     "@vscode/vsce": "^3.7.1",
+    "esbuild": "^0.27.3",
     "eslint": "^9.39.1",
     "typescript": "^5.9.3",
     "typescript-eslint": "^8.54.0"
