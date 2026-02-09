@@ -60,8 +60,13 @@ export function activate(context: vscode.ExtensionContext) {
   // ============================================
   // Existing code tree
   // ============================================
-  const treeProvider = new CodeTreeProvider();
-  vscode.window.registerTreeDataProvider("codeTree", treeProvider);
+  // const treeProvider = new CodeTreeProvider();
+  // vscode.window.registerTreeDataProvider("codeTree", treeProvider);
+   const treeProvider = new CodeTreeProvider();
+  const treeDisposable = vscode.window.registerTreeDataProvider("codeTree", treeProvider);
+  context.subscriptions.push(treeDisposable);
+  
+  console.log("✅ CodeTreeProvider registered");
 
   // ============================================
   // show selected code command (debug mode)
