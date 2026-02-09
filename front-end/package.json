@@ -16,6 +16,7 @@
     "Visualization"
   ],
   "activationEvents": [
+    "onStartupFinished",
     "onView:codeTree",
     "onView:userWebview",
     "onCommand:experiment.showSelectedCode",
