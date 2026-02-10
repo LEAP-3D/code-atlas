@@ -63,9 +63,12 @@
   },
   "scripts": {
     "vscode:prepublish": "npm run package",
-    "compile": "node esbuild.js",
+    "compile": "node esbuild.js && node esbuild.webview.js",
+    "compile:ext": "node esbuild.js",
+    "compile:webview": "node esbuild.webview.js",
     "watch": "node esbuild.js --watch",
-    "package": "node esbuild.js --production",
+    "watch:webview": "node esbuild.webview.js --watch",
+    "package": "node esbuild.js --production && node esbuild.webview.js --production",
     "lint": "eslint src",
     "build": "npm run package"
   },

@@ -33,7 +33,9 @@ export class CodeWebviewProvider {
     panel.webview.html = this.getHtml(panel.webview, context, data);
   }
 
-  // NEW: Show error dependency graph
+  /**
+   * Show error dependency graph
+   */
   static showErrorDependencyGraph(
     context: vscode.ExtensionContext,
     errorFilePath: string,
@@ -55,223 +57,291 @@ export class CodeWebviewProvider {
     panel.webview.onDidReceiveMessage(
       async (message) => {
         console.log("📨 [ErrorGraph] Received message:", message);
-
-        if (message.command === "openFile") {
-          try {
-            const filePath = message.filePath;
-            console.log(`📂 Opening file: ${filePath}`);
-
-            if (!fs.existsSync(filePath)) {
-              throw new Error(`File not found: ${filePath}`);
-            }
-
-            const uri = vscode.Uri.file(filePath);
-            const document = await vscode.workspace.openTextDocument(uri);
-            await vscode.window.showTextDocument(
-              document,
-              vscode.ViewColumn.One,
-            );
-
-            vscode.window.showInformationMessage(
-              `📂 Opened ${path.basename(filePath)}`,
-            );
-          } catch (error) {
-            const errorMsg =
-              error instanceof Error ? error.message : "Unknown error";
-            vscode.window.showErrorMessage(`Failed to open file: ${errorMsg}`);
-          }
-        } else if (message.command === "goToLine") {
-          try {
-            const filePath = message.filePath;
-            const line = message.line || 1;
-
-            console.log(`🎯 Going to ${filePath}:${line}`);
-
-            if (!fs.existsSync(filePath)) {
-              throw new Error(`File not found: ${filePath}`);
-            }
-
-            const uri = vscode.Uri.file(filePath);
-            const document = await vscode.workspace.openTextDocument(uri);
-            const editor = await vscode.window.showTextDocument(
-              document,
-              vscode.ViewColumn.One,
-            );
-
-            const targetLine = Math.max(0, line - 1);
-            const range = new vscode.Range(targetLine, 0, targetLine, 0);
-
-            editor.selection = new vscode.Selection(range.start, range.start);
-            editor.revealRange(range, vscode.TextEditorRevealType.InCenter);
-
-            const decoration = vscode.window.createTextEditorDecorationType({
-              backgroundColor: new vscode.ThemeColor(
-                "editor.findMatchHighlightBackground",
-              ),
-              isWholeLine: true,
-            });
-
-            editor.setDecorations(decoration, [range]);
-
-            setTimeout(() => {
-              decoration.dispose();
-            }, 2000);
-
-            vscode.window.showInformationMessage(`🎯 Jumped to line ${line}`);
-          } catch (error) {
-            const errorMsg =
-              error instanceof Error ? error.message : "Unknown error";
-            vscode.window.showErrorMessage(`Failed to go to line: ${errorMsg}`);
-          }
-        } else if (message.command === "showAllErrors") {
-          try {
-            const errors = message.errors || [];
-
-            if (errors.length === 0) {
-              vscode.window.showInformationMessage("No errors found");
-              return;
-            }
-
-            // Show errors in Problems panel
-            vscode.window.showInformationMessage(
-              `📋 ${errors.length} error(s) in Problems panel`,
-            );
-
-            // Execute "View: Show Problems" command
-            await vscode.commands.executeCommand(
-              "workbench.action.problems.focus",
-            );
-          } catch (error) {
-            const errorMsg =
-              error instanceof Error ? error.message : "Unknown error";
-            vscode.window.showErrorMessage(
-              `Failed to show errors: ${errorMsg}`,
-            );
-          }
-        } else if (message.command === "copyFile") {
-          try {
-            const filePath = message.filePath;
-            console.log(`📋 Copying file: ${filePath}`);
-
-            if (!fs.existsSync(filePath)) {
-              throw new Error(`File not found: ${filePath}`);
-            }
-
-            const content = fs.readFileSync(filePath, "utf-8");
-            await vscode.env.clipboard.writeText(content);
-
-            const fileName = path.basename(filePath);
-            vscode.window.showInformationMessage(
-              `📋 Copied ${fileName} to clipboard`,
-            );
-          } catch (error) {
-            const errorMsg =
-              error instanceof Error ? error.message : "Unknown error";
-            vscode.window.showErrorMessage(`Failed to copy file: ${errorMsg}`);
-          }
-        } else if (message.command === "copyAllFiles") {
-          try {
-            const files = message.files || [];
-            console.log(`📋 Copying ${files.length} files`);
-
-            if (files.length === 0) {
-              vscode.window.showWarningMessage("No files to copy");
-              return;
-            }
-
-            let combinedContent = "";
-            let successCount = 0;
-
-            for (let i = 0; i < files.length; i++) {
-              const filePath = files[i];
-
-              try {
-                if (!fs.existsSync(filePath)) {
-                  console.warn(`⚠️ File not found: ${filePath}`);
-                  continue;
-                }
-
-                const fileName = path.basename(filePath);
-                const content = fs.readFileSync(filePath, "utf-8");
-
-                // Add file header with separator
-                combinedContent += `// ========================================\n`;
-                combinedContent += `// File: ${fileName}\n`;
-                combinedContent += `// Path: ${filePath}\n`;
-                combinedContent += `// ========================================\n\n`;
-                combinedContent += content;
-
-                // Add 1 line spacing between files
-                if (i < files.length - 1) {
-                  combinedContent += "\n\n";
-                }
-
-                successCount++;
-              } catch (error) {
-                console.error(`Error reading ${filePath}:`, error);
-              }
-            }
-
-            if (successCount === 0) {
-              throw new Error("No files could be read");
-            }
-
-            await vscode.env.clipboard.writeText(combinedContent);
-
-            vscode.window.showInformationMessage(
-              `📋 Copied ${successCount} file${successCount > 1 ? "s" : ""} to clipboard!`,
-            );
-          } catch (error) {
-            const errorMsg =
-              error instanceof Error ? error.message : "Unknown error";
-            vscode.window.showErrorMessage(`Failed to copy files: ${errorMsg}`);
-          }
-        } else if (message.command === "copyAIContext") {
-          try {
-            const errorFile = message.errorFile;
-            const aiContext = message.context || "";
-
-            console.log(`🤖 Preparing AI context for: ${errorFile}`);
-
-            if (!fs.existsSync(errorFile)) {
-              throw new Error(`Error file not found: ${errorFile}`);
-            }
-
-            // Read error file content
-            const errorFileContent = fs.readFileSync(errorFile, "utf-8");
-            const fileName = path.basename(errorFile);
-
-            // Build complete AI prompt
-            let fullContext = aiContext;
-
-            // Replace placeholder with actual file content
-            fullContext = fullContext.replace(
-              `// ${fileName} content will be inserted here by the extension`,
-              errorFileContent,
-            );
-
-            // Copy to clipboard
-            await vscode.env.clipboard.writeText(fullContext);
-
-            vscode.window.showInformationMessage(
-              `🤖 AI context copied! Ready to paste into ChatGPT/Claude`,
-            );
-          } catch (error) {
-            const errorMsg =
-              error instanceof Error ? error.message : "Unknown error";
-            vscode.window.showErrorMessage(
-              `Failed to copy AI context: ${errorMsg}`,
-            );
-          }
-        }
+        await this.handleWebviewMessage(message, context);
       },
       undefined,
       context.subscriptions,
     );
   }
 
-  private static getErrorGraphHtml(
+  /**
+   * Show roadmap view with new modular structure
+   */
+  static showRoadmap(context: vscode.ExtensionContext) {
+    const panel = vscode.window.createWebviewPanel(
+      "roadmapView",
+      "📊 Project Roadmap",
+      vscode.ViewColumn.Beside,
+      { enableScripts: true, localResourceRoots: [context.extensionUri] },
+    );
+
+    panel.webview.html = this.getRoadmapHtml(panel.webview, context);
+
+    // Handle messages from webview
+    panel.webview.onDidReceiveMessage(
+      async (message) => {
+        console.log("📨 [Roadmap] Received message:", message);
+        await this.handleWebviewMessage(message, context);
+      },
+      undefined,
+      context.subscriptions,
+    );
+  }
+
+  /**
+   * Handle webview messages (shared between roadmap and error graph)
+   */
+  private static async handleWebviewMessage(
+    message: {
+      command: string;
+      filePath?: string;
+      line?: number;
+      files?: string[];
+      errors?: unknown[];
+      errorFile?: string;
+      context?: string;
+    },
+    context: vscode.ExtensionContext,
+  ) {
+    switch (message.command) {
+      case "goToFunction":
+      case "openFile":
+        await this.openFileAtLine(message.filePath!, message.line);
+        break;
+
+      case "goToLine":
+        await this.openFileAtLine(message.filePath!, message.line, true);
+        break;
+
+      case "debugExecutionFlow":
+        this.showErrorDependencyGraph(context, message.filePath!);
+        break;
+
+      case "copyFile":
+        await this.copyFileToClipboard(message.filePath!);
+        break;
+
+      case "copyAllFiles":
+        await this.copyAllFilesToClipboard(message.files || []);
+        break;
+
+      case "copyAIContext":
+        await this.copyAIContext(message.errorFile!, message.context || "");
+        break;
+
+      case "showAllErrors":
+        await vscode.commands.executeCommand("workbench.action.problems.focus");
+        break;
+    }
+  }
+
+  /**
+   * Open file at specific line
+   */
+  private static async openFileAtLine(
+    filePath: string,
+    line?: number,
+    highlight = false,
+  ) {
+    try {
+      if (!fs.existsSync(filePath)) {
+        throw new Error(`File not found: ${filePath}`);
+      }
+
+      const uri = vscode.Uri.file(filePath);
+      const document = await vscode.workspace.openTextDocument(uri);
+      const editor = await vscode.window.showTextDocument(
+        document,
+        vscode.ViewColumn.One,
+      );
+
+      if (line) {
+        const targetLine = Math.max(0, line - 1);
+        const range = new vscode.Range(targetLine, 0, targetLine, 0);
+        editor.selection = new vscode.Selection(range.start, range.start);
+        editor.revealRange(range, vscode.TextEditorRevealType.InCenter);
+
+        if (highlight) {
+          const decoration = vscode.window.createTextEditorDecorationType({
+            backgroundColor: new vscode.ThemeColor(
+              "editor.findMatchHighlightBackground",
+            ),
+            isWholeLine: true,
+          });
+          editor.setDecorations(decoration, [range]);
+          setTimeout(() => decoration.dispose(), 2000);
+        }
+      }
+
+      vscode.window.showInformationMessage(
+        `📍 ${line ? `Jumped to line ${line}` : `Opened ${path.basename(filePath)}`}`,
+      );
+    } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : "Unknown error";
+      vscode.window.showErrorMessage(`Failed to open file: ${errorMsg}`);
+    }
+  }
+
+  /**
+   * Copy file content to clipboard
+   */
+  private static async copyFileToClipboard(filePath: string) {
+    try {
+      if (!fs.existsSync(filePath)) {
+        throw new Error(`File not found: ${filePath}`);
+      }
+      const content = fs.readFileSync(filePath, "utf-8");
+      await vscode.env.clipboard.writeText(content);
+      vscode.window.showInformationMessage(
+        `📋 Copied ${path.basename(filePath)} to clipboard`,
+      );
+    } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : "Unknown error";
+      vscode.window.showErrorMessage(`Failed to copy file: ${errorMsg}`);
+    }
+  }
+
+  /**
+   * Copy multiple files to clipboard
+   */
+  private static async copyAllFilesToClipboard(files: string[]) {
+    try {
+      let combinedContent = "";
+      let successCount = 0;
+
+      for (let i = 0; i < files.length; i++) {
+        const filePath = files[i];
+        if (!fs.existsSync(filePath)) {
+          continue;
+        }
+
+        const fileName = path.basename(filePath);
+        const content = fs.readFileSync(filePath, "utf-8");
+
+        combinedContent += `// ========================================\n`;
+        combinedContent += `// File: ${fileName}\n`;
+        combinedContent += `// Path: ${filePath}\n`;
+        combinedContent += `// ========================================\n\n`;
+        combinedContent += content;
+        if (i < files.length - 1) {
+          combinedContent += "\n\n";
+        }
+
+        successCount++;
+      }
+
+      if (successCount === 0) {
+        throw new Error("No files could be read");
+      }
+
+      await vscode.env.clipboard.writeText(combinedContent);
+      vscode.window.showInformationMessage(
+        `📋 Copied ${successCount} file(s) to clipboard!`,
+      );
+    } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : "Unknown error";
+      vscode.window.showErrorMessage(`Failed to copy files: ${errorMsg}`);
+    }
+  }
+
+  /**
+   * Copy AI context to clipboard
+   */
+  private static async copyAIContext(errorFile: string, aiContext: string) {
+    try {
+      if (!fs.existsSync(errorFile)) {
+        throw new Error(`Error file not found: ${errorFile}`);
+      }
+
+      const errorFileContent = fs.readFileSync(errorFile, "utf-8");
+      const fileName = path.basename(errorFile);
+
+      const fullContext = aiContext.replace(
+        `// ${fileName} content will be inserted here by the extension`,
+        errorFileContent,
+      );
+
+      await vscode.env.clipboard.writeText(fullContext);
+      vscode.window.showInformationMessage(
+        `🤖 AI context copied! Ready to paste into ChatGPT/Claude`,
+      );
+    } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : "Unknown error";
+      vscode.window.showErrorMessage(`Failed to copy AI context: ${errorMsg}`);
+    }
+  }
+
+  /**
+   * Get roadmap HTML with modular structure
+   */
+  private static getRoadmapHtml(
     webview: vscode.Webview,
+    context: vscode.ExtensionContext,
+  ): string {
+    // Get URIs for CSS and JS
+    const stylesPath = vscode.Uri.joinPath(
+      context.extensionUri,
+      "src",
+      "webview",
+      "roadmap",
+      "styles.css",
+    );
+    const stylesUri = webview.asWebviewUri(stylesPath);
+
+    const scriptPath = vscode.Uri.joinPath(
+      context.extensionUri,
+      "out",
+      "webview",
+      "roadmap.js",
+    );
+    const scriptUri = webview.asWebviewUri(scriptPath);
+
+    // Read HTML template
+    const htmlPath = path.join(
+      context.extensionPath,
+      "src",
+      "webview",
+      "roadmap",
+      "index.html",
+    );
+
+    if (!fs.existsSync(htmlPath)) {
+      console.error(`❌ HTML file not found: ${htmlPath}`);
+      return this.getErrorHtml("Roadmap HTML file not found");
+    }
+
+    let html = fs.readFileSync(htmlPath, "utf8");
+
+    try {
+      // Build roadmap data
+      const roadmapData = this.buildRoadmapData();
+
+      console.log("📊 [getRoadmapHtml] Injecting roadmap data");
+      console.log(`   Files: ${roadmapData.totalFiles}`);
+      console.log(`   Functions: ${roadmapData.totalFunctions}`);
+      console.log(`   Dependencies: ${roadmapData.dependencies.length}`);
+
+      // Create data script
+      const dataScript = `<script>window.ROADMAP_DATA = ${JSON.stringify(roadmapData, null, 2)};</script>`;
+
+      // Replace placeholders
+      html = html.replace("{{STYLES_URI}}", stylesUri.toString());
+      html = html.replace("{{SCRIPT_URI}}", scriptUri.toString());
+      html = html.replace("{{DATA_SCRIPT}}", dataScript);
+
+      return html;
+    } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : "Unknown error";
+      console.error("❌ [getRoadmapHtml] Error building roadmap:", errorMsg);
+      return this.getErrorHtml(`Error building roadmap: ${errorMsg}`);
+    }
+  }
+
+  /**
+   * Get error graph HTML
+   */
+  private static getErrorGraphHtml(
+    _webview: vscode.Webview,
     context: vscode.ExtensionContext,
     errorFilePath: string,
   ): string {
@@ -290,23 +360,14 @@ export class CodeWebviewProvider {
     let html = fs.readFileSync(htmlPath, "utf8");
 
     try {
-      // Build error graph data
       const errorGraphData = this.buildErrorGraphData(errorFilePath);
 
       console.log("🐛 [getErrorGraphHtml] Injecting error graph data");
       console.log(`   Error file: ${errorFilePath}`);
       console.log(`   Errors: ${errorGraphData.errors.length}`);
       console.log(`   Dependencies: ${errorGraphData.dependencies.length}`);
-      console.log(`   Related files: ${errorGraphData.allFiles.length}`);
 
-      // Inject data as JSON
-      const dataScript = `<script>window.ERROR_GRAPH_DATA = ${JSON.stringify(
-        errorGraphData,
-        null,
-        2,
-      )};</script>`;
-
-      // Insert before </head>
+      const dataScript = `<script>window.ERROR_GRAPH_DATA = ${JSON.stringify(errorGraphData, null, 2)};</script>`;
       html = html.replace("</head>", `${dataScript}\n</head>`);
 
       return html;
@@ -317,11 +378,10 @@ export class CodeWebviewProvider {
     }
   }
 
+  /**
+   * Build error graph data
+   */
   private static buildErrorGraphData(errorFilePath: string) {
-    console.log("🔨 [buildErrorGraphData] Building error graph...");
-    console.log(`   Error file: ${errorFilePath}`);
-
-    // Get all diagnostics for error file
     const uri = vscode.Uri.file(errorFilePath);
     const diagnostics = vscode.languages.getDiagnostics(uri);
 
@@ -333,193 +393,50 @@ export class CodeWebviewProvider {
         severity: d.severity,
       }));
 
-    console.log(`   Found ${errors.length} errors`);
-
-    // Get all dependencies
     const allDependencies = dependencyIndex.getAll();
-    console.log(`   Total dependencies in index: ${allDependencies.length}`);
-
-    // Filter dependencies related to error file
     const relatedDependencies = allDependencies.filter(
       (dep) =>
         dep.importerFilePath === errorFilePath ||
         dep.importedFilePath === errorFilePath,
     );
 
-    console.log(`   Related dependencies: ${relatedDependencies.length}`);
-
-    // Get all unique files
     const relatedFilePaths = new Set<string>();
     relatedFilePaths.add(errorFilePath);
-
     relatedDependencies.forEach((dep) => {
       relatedFilePaths.add(dep.importerFilePath);
       relatedFilePaths.add(dep.importedFilePath);
     });
 
-    console.log(`   Related files: ${relatedFilePaths.size}`);
-
-    // Get file details for all related files
-    const allFiles = Array.from(relatedFilePaths)
-      .map((filePath) => {
-        const _fileData = fileIndex.getAll().find((f) => f.path === filePath);
-        const functions = functionIndex
-          .getAll()
-          .filter((fn) => fn.filePath === filePath);
-
-        return {
-          path: filePath,
-          functions: functions.map((fn) => ({
-            name: fn.name,
-            emoji: this.getFunctionEmoji(fn.name),
-            startLine: fn.startLine,
-            endLine: fn.endLine,
-            calls: callGraphIndex
-              .getAll()
-              .filter((edge) => edge.callerId === fn.id)
-              .map((edge) => edge.calleeName),
-          })),
-        };
-      })
-      .filter((f) => f !== null);
-
-    console.log(`   Processed ${allFiles.length} files with details`);
+    const allFiles = Array.from(relatedFilePaths).map((filePath) => {
+      const functions = functionIndex
+        .getAll()
+        .filter((fn) => fn.filePath === filePath);
+      return {
+        path: filePath,
+        functions: functions.map((fn) => ({
+          name: fn.name,
+          emoji: this.getFunctionEmoji(fn.name),
+          startLine: fn.startLine,
+          endLine: fn.endLine,
+          calls: callGraphIndex
+            .getAll()
+            .filter((edge) => edge.callerId === fn.id)
+            .map((edge) => edge.calleeName),
+        })),
+      };
+    });
 
     return {
       errorFile: errorFilePath,
-      errors: errors,
+      errors,
       dependencies: relatedDependencies,
-      allFiles: allFiles,
+      allFiles,
     };
   }
 
-  static showRoadmap(context: vscode.ExtensionContext) {
-    const panel = vscode.window.createWebviewPanel(
-      "roadmapView",
-      "📊 Project Roadmap",
-      vscode.ViewColumn.Beside,
-      { enableScripts: true },
-    );
-
-    panel.webview.html = this.getRoadmapHtml(panel.webview, context);
-
-    // Handle messages from webview
-    panel.webview.onDidReceiveMessage(
-      async (message) => {
-        console.log("📨 [CodeWebviewProvider] Received message:", message);
-
-        if (message.command === "goToFunction") {
-          try {
-            const filePath = message.filePath;
-            const line = message.line || 1;
-
-            console.log(`🎯 [goToFunction] Opening: ${filePath}:${line}`);
-
-            if (!fs.existsSync(filePath)) {
-              throw new Error(`File not found: ${filePath}`);
-            }
-
-            const uri = vscode.Uri.file(filePath);
-            const document = await vscode.workspace.openTextDocument(uri);
-            const editor = await vscode.window.showTextDocument(
-              document,
-              vscode.ViewColumn.One,
-            );
-
-            const targetLine = Math.max(0, line - 1);
-            const range = new vscode.Range(targetLine, 0, targetLine, 0);
-
-            editor.selection = new vscode.Selection(range.start, range.start);
-            editor.revealRange(range, vscode.TextEditorRevealType.InCenter);
-
-            const decoration = vscode.window.createTextEditorDecorationType({
-              backgroundColor: new vscode.ThemeColor(
-                "editor.findMatchHighlightBackground",
-              ),
-              isWholeLine: true,
-            });
-
-            editor.setDecorations(decoration, [range]);
-
-            setTimeout(() => {
-              decoration.dispose();
-            }, 2000);
-
-            const fileName = path.basename(filePath);
-            vscode.window.showInformationMessage(
-              `📍 Jumped to ${fileName}:${line}`,
-            );
-          } catch (error) {
-            const errorMsg =
-              error instanceof Error ? error.message : "Unknown error";
-            console.error("❌ [goToFunction] Error:", errorMsg);
-            vscode.window.showErrorMessage(`Failed to open file: ${errorMsg}`);
-          }
-        } else if (message.command === "debugExecutionFlow") {
-          try {
-            const filePath = message.filePath;
-            console.log(`🐛 [debugExecutionFlow] Analyzing: ${filePath}`);
-
-            // Show error dependency graph instead
-            this.showErrorDependencyGraph(context, filePath);
-          } catch (error) {
-            const errorMsg =
-              error instanceof Error ? error.message : "Unknown error";
-            console.error("❌ [debugExecutionFlow] Error:", errorMsg);
-            vscode.window.showErrorMessage(
-              `Failed to show dependency graph: ${errorMsg}`,
-            );
-          }
-        }
-      },
-      undefined,
-      context.subscriptions,
-    );
-  }
-
-  private static getRoadmapHtml(
-    webview: vscode.Webview,
-    context: vscode.ExtensionContext,
-  ): string {
-    const htmlPath = path.join(
-      context.extensionPath,
-      "src",
-      "webview",
-      "roadmap.html",
-    );
-
-    if (!fs.existsSync(htmlPath)) {
-      console.error(`❌ HTML file not found: ${htmlPath}`);
-      return this.getErrorHtml("Roadmap HTML file not found");
-    }
-
-    let html = fs.readFileSync(htmlPath, "utf8");
-
-    try {
-      const roadmapData = this.buildRoadmapData();
-
-      console.log("📊 [getRoadmapHtml] Injecting roadmap data");
-      console.log(`   Files: ${roadmapData.totalFiles}`);
-      console.log(`   Functions: ${roadmapData.totalFunctions}`);
-      console.log(`   Connections: ${roadmapData.totalConnections}`);
-      console.log(`   Dependencies: ${roadmapData.dependencies.length}`);
-
-      const dataScript = `<script>window.ROADMAP_DATA = ${JSON.stringify(
-        roadmapData,
-        null,
-        2,
-      )};</script>`;
-
-      html = html.replace("</head>", `${dataScript}\n</head>`);
-
-      return html;
-    } catch (error) {
-      const errorMsg = error instanceof Error ? error.message : "Unknown error";
-      console.error("❌ [getRoadmapHtml] Error building roadmap:", errorMsg);
-      return this.getErrorHtml(`Error building roadmap: ${errorMsg}`);
-    }
-  }
-
+  /**
+   * Build roadmap data
+   */
   private static buildRoadmapData(): RoadmapData {
     console.log("🔨 [buildRoadmapData] Building roadmap...");
 
@@ -528,13 +445,7 @@ export class CodeWebviewProvider {
     const allEdges = callGraphIndex.getAll();
     const allDependencies = dependencyIndex.getAll();
 
-    console.log(`   📂 Files indexed: ${files.length}`);
-    console.log(`   ⚡ Functions indexed: ${allFunctions.length}`);
-    console.log(`   🔗 Call edges: ${allEdges.length}`);
-    console.log(`   📦 Dependencies: ${allDependencies.length}`);
-
     if (files.length === 0) {
-      console.warn("⚠️ No files indexed!");
       return {
         files: [],
         dependencies: [],
@@ -544,42 +455,28 @@ export class CodeWebviewProvider {
       };
     }
 
+    // Get errors by file
     const errorsByFile = new Map<string, number>();
-
-    console.log(
-      "\n🔍 [buildRoadmapData] Collecting diagnostics from all files...",
-    );
-
     const allDiagnostics = vscode.languages.getDiagnostics();
-
     for (const [uri, diagnostics] of allDiagnostics) {
-      const filePath = uri.fsPath;
-
       const errorCount = diagnostics.filter(
         (d) => d.severity === vscode.DiagnosticSeverity.Error,
       ).length;
-
       if (errorCount > 0) {
-        errorsByFile.set(filePath, errorCount);
-        console.log(`   ❌ ${path.basename(filePath)}: ${errorCount} error(s)`);
+        errorsByFile.set(uri.fsPath, errorCount);
       }
     }
 
-    console.log(`\n📊 Total files with errors: ${errorsByFile.size}`);
-
+    // Build roadmap files
     const roadmapFiles: RoadmapFile[] = [];
 
     for (const file of files) {
       const fileName = file.path.split(/[/\\]/).pop() || file.path;
-
       const fileFunctions = allFunctions.filter(
         (fn) => fn.filePath === file.path,
       );
 
-      console.log(`\n   📄 ${fileName}: ${fileFunctions.length} functions`);
-
       if (fileFunctions.length === 0) {
-        console.log(`      ⚠️ No functions - skipping`);
         continue;
       }
 
@@ -588,33 +485,24 @@ export class CodeWebviewProvider {
           .filter((edge) => edge.callerId === fn.id)
           .map((edge) => edge.calleeName);
 
-        if (calls.length > 0) {
-          console.log(`      ⚡ ${fn.name} → [${calls.join(", ")}]`);
-        }
-
         return {
           name: fn.name,
           filePath: fn.filePath,
           emoji: this.getFunctionEmoji(fn.name),
-          calls: calls,
+          calls,
           startLine: fn.startLine,
           endLine: fn.endLine,
         };
       });
 
       const errorCount = errorsByFile.get(file.path) || 0;
-      const fileColor = errorCount > 0 ? "#ef4444" : "#3b82f6";
-
-      console.log(
-        `      ${errorCount > 0 ? "🔴" : "🔵"} Color: ${fileColor} (${errorCount} errors)`,
-      );
 
       roadmapFiles.push({
         name: fileName,
         path: file.path,
-        functions: functions,
-        color: fileColor,
-        errorCount: errorCount,
+        functions,
+        color: errorCount > 0 ? "#ef4444" : "#3b82f6",
+        errorCount,
       });
     }
 
@@ -627,7 +515,7 @@ export class CodeWebviewProvider {
       }),
     );
 
-    const result: RoadmapData = {
+    return {
       files: roadmapFiles,
       dependencies: dependenciesForFrontend,
       totalFiles: roadmapFiles.length,
@@ -637,52 +525,13 @@ export class CodeWebviewProvider {
       ),
       totalConnections: allEdges.length,
     };
-
-    console.log("\n✅ [buildRoadmapData] Complete:");
-    console.log(`   📂 Files with functions: ${result.totalFiles}`);
-    console.log(`   ⚡ Total functions: ${result.totalFunctions}`);
-    console.log(`   🔗 Total connections: ${result.totalConnections}`);
-    console.log(`   📦 Total dependencies: ${dependenciesForFrontend.length}`);
-
-    const filesWithErrors = roadmapFiles.filter(
-      (f) => f.errorCount && f.errorCount > 0,
-    );
-    if (filesWithErrors.length > 0) {
-      console.log(`\n   ❌ Files with errors: ${filesWithErrors.length}`);
-      filesWithErrors.forEach((f) => {
-        console.log(`      - ${f.name}: ${f.errorCount} error(s)`);
-      });
-    }
-
-    if (dependenciesForFrontend.length > 0) {
-      console.log("\n📦 Sample dependencies:");
-      dependenciesForFrontend.slice(0, 3).forEach((dep) => {
-        const importerName = dep.importerFilePath.split(/[/\\]/).pop();
-        const importedName = dep.importedFilePath.split(/[/\\]/).pop();
-        console.log(
-          `   ${importerName} imports [${dep.importedNames.join(", ")}] from ${importedName}`,
-        );
-      });
-    }
-
-    if (roadmapFiles.length > 0) {
-      console.log("\n📋 Sample files:");
-      roadmapFiles.slice(0, 3).forEach((file) => {
-        console.log(
-          `   ${file.errorCount && file.errorCount > 0 ? "🔴" : "🔵"} ${file.name} (${file.errorCount || 0} errors):`,
-        );
-        file.functions.slice(0, 3).forEach((fn) => {
-          console.log(`      - ${fn.name} (calls: ${fn.calls.length})`);
-        });
-      });
-    }
-
-    return result;
   }
 
+  /**
+   * Get function emoji based on name
+   */
   private static getFunctionEmoji(name: string): string {
     const lower = name.toLowerCase();
-
     if (
       lower.startsWith("handle") ||
       lower.includes("click") ||
@@ -717,10 +566,12 @@ export class CodeWebviewProvider {
     ) {
       return "⚙️";
     }
-
     return "⚡";
   }
 
+  /**
+   * Get error HTML (fallback)
+   */
   private static getErrorHtml(errorMessage: string): string {
     return `<!DOCTYPE html>
 <html>
@@ -736,18 +587,9 @@ export class CodeWebviewProvider {
       justify-content: center;
       height: 100vh;
     }
-    .error-container {
-      text-align: center;
-      max-width: 500px;
-    }
-    .error-icon {
-      font-size: 48px;
-      margin-bottom: 16px;
-    }
-    .error-message {
-      font-size: 16px;
-      line-height: 1.5;
-    }
+    .error-container { text-align: center; max-width: 500px; }
+    .error-icon { font-size: 48px; margin-bottom: 16px; }
+    .error-message { font-size: 16px; line-height: 1.5; }
   </style>
 </head>
 <body>
@@ -759,8 +601,11 @@ export class CodeWebviewProvider {
 </html>`;
   }
 
+  /**
+   * Get debug HTML (old method - kept for backward compatibility)
+   */
   private static getHtml(
-    webview: vscode.Webview,
+    _webview: vscode.Webview,
     context: vscode.ExtensionContext,
     data: {
       summary: string;
@@ -777,6 +622,10 @@ export class CodeWebviewProvider {
       "index.html",
     );
 
+    if (!fs.existsSync(htmlPath)) {
+      return this.getErrorHtml("Debug HTML file not found");
+    }
+
     let html = fs.readFileSync(htmlPath, "utf8");
 
     html = html
@@ -789,6 +638,9 @@ export class CodeWebviewProvider {
     return html;
   }
 
+  /**
+   * Escape HTML special characters
+   */
   private static escape(text: string): string {
     return text
       .replace(/&/g, "&amp;")

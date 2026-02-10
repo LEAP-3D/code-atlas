@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Project Roadmap</title>
+  <link rel="stylesheet" href="{{STYLES_URI}}">
+</head>
+<body>
+  <div class="container">
+    <!-- Header -->
+    <div class="header">
+      <div class="header-left">
+        <h1>🗺️ Project Map</h1>
+        <div class="breadcrumb" id="breadcrumb">
+          <span class="breadcrumb-item" onclick="window.roadmapActions.resetView()">Full Map</span>
+        </div>
+      </div>
+      <div class="controls">
+        <div class="zoom-controls">
+          <button class="zoom-btn" onclick="window.roadmapActions.zoomOut()">−</button>
+          <div class="zoom-level" id="zoomLevel">50%</div>
+          <button class="zoom-btn" onclick="window.roadmapActions.zoomIn()">+</button>
+        </div>
+        <button class="reset-btn" onclick="window.roadmapActions.resetView()">Reset View</button>
+      </div>
+    </div>
+
+    <!-- Canvas -->
+    <div class="canvas" id="canvas">
+      <div class="graph-container" id="graphContainer">
+        <svg class="connections" id="connectionsSvg"></svg>
+        <div class="nodes-layer" id="nodesContainer"></div>
+      </div>
+    </div>
+
+    <!-- Function Panel -->
+    <div class="function-panel" id="functionPanel">
+      <button class="close-panel" onclick="window.roadmapActions.closeFunctionPanel()">×</button>
+      <div class="function-panel-header" id="panelHeader"></div>
+      <div class="function-list" id="functionList"></div>
+    </div>
+
+    <!-- Hint -->
+    <div class="hint" id="hint">
+      🖱️ Drag • Cmd+Scroll zoom • Click files • 🔴 Red = Errors • 🟢 Green = Dependencies
+    </div>
+  </div>
+
+  <!-- Data injection point -->
+  {{DATA_SCRIPT}}
+
+  <!-- Main script -->
+  <script src="{{SCRIPT_URI}}"></script>
+</body>
+</html>
