@@ -2,7 +2,7 @@
   "name": "codeatlas-saruul",
   "displayName": "Code-Atlas",
   "description": "Visualize call graphs and code structure through diagram",
-  "icon": "media/roadmap.png",
+  "icon": "media/image.png",
   "version": "0.0.6",
   "publisher": "saruul",
   "repository": {
@@ -26,7 +26,7 @@
         {
           "id": "experimentSidebar",
           "title": "Experiment",
-          "icon": "media/roadmap.svg"
+          "icon": "media/image.png"
         }
       ]
     },
