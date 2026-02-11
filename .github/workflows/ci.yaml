@@ -56,14 +56,14 @@ jobs:
 
       # ---------- FRONT-END BUILD ----------
       - name: Install & build front-end
-        working-directory: front-end
+        working-directory: ./front-end
         run: |
           npm install
           npm run build
 
       # ---------- BACK-END BUILD ----------
       - name: Install & build back-end
-        working-directory: back-end
+        working-directory: ./back-end
         run: |
           npm install
           npm run build
