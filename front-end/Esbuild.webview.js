@@ -8,13 +8,13 @@ async function main() {
   const ctx = await esbuild.context({
     entryPoints: ["src/webview/roadmap/main.ts"],
     bundle: true,
-    format: "iife", // Browser-д зориулсан
+    format: "iife",
     minify: production,
     sourcemap: !production,
+    sourcesContent: false,
     platform: "browser",
     outfile: "out/webview/roadmap.js",
     logLevel: "info",
-    tsconfig: "tsconfig.webview.json", // Webview tsconfig ашиглах
   });
 
   if (process.argv.includes("--watch")) {
