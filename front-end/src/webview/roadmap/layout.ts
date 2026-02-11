@@ -1,13 +1,14 @@
 // Tree layout calculation - VERTICAL (top-to-bottom like file explorer)
+// UPDATED: Adjusted spacing for larger, more readable nodes
 
 import { HierarchyNode, FileNode, NodePosition } from "./types";
 
-// Spacing configuration
+// Spacing configuration - UPDATED for larger nodes
 const SPACING = {
-  horizontal: 220, // Horizontal spacing between siblings
-  vertical: 150, // Vertical spacing from parent to child
-  nodeWidth: 180, // Node width
-  siblingGap: 40, // Extra gap between siblings
+  horizontal: 280, // Increased from 220 - more space between siblings
+  vertical: 200, // Increased from 150 - more vertical space
+  nodeWidth: 240, // Increased from 180 - account for larger circles
+  siblingGap: 60, // Increased from 40 - more gap between siblings
 };
 
 /**
@@ -37,7 +38,7 @@ function calcSubtreeWidth(item: HierarchyNode | FileNode): number {
   }
 
   // Files stack vertically (need width for indented column)
-  const filesWidth = files.length > 0 ? SPACING.nodeWidth + 150 : 0;
+  const filesWidth = files.length > 0 ? SPACING.nodeWidth + 200 : 0;
 
   // Total width is the MAXIMUM (folders and files don't add, they overlap vertically)
   return Math.max(foldersWidth, filesWidth, SPACING.nodeWidth);
@@ -59,7 +60,7 @@ function calcSubtreeWidth(item: HierarchyNode | FileNode): number {
 export function calculateTreeLayout(
   node: HierarchyNode,
   startX = 5000,
-  startY = 200,
+  startY = 250, // Increased from 200 for larger root node
   level = 0,
 ): NodePosition[] {
   const positions: NodePosition[] = [];
@@ -118,10 +119,10 @@ export function calculateTreeLayout(
       });
     } else {
       // Multiple files - indent RIGHT with tree structure
-      const fileX = startX + 150;
+      const fileX = startX + 200; // Increased indent for larger nodes
 
       files.forEach((file, index) => {
-        const fileY = firstFileY + index * 120;
+        const fileY = firstFileY + index * 220; // Increased from 160 for much more spacing between files
 
         positions.push({
           node: file,
