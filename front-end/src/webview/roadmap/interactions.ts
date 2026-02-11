@@ -32,7 +32,8 @@ export function zoomOut(): void {
 export function setZoom(newScale: number): void {
   state.setScale(newScale);
   updateTransform();
-  getElement<HTMLDivElement>("zoomLevel").textContent = `${Math.round(state.scale * 100)}%`;
+  getElement<HTMLDivElement>("zoomLevel").textContent =
+    `${Math.round(state.scale * 100)}%`;
 }
 
 /**
@@ -43,7 +44,10 @@ export function resetView(): void {
 
   if (state.allNodes.length > 0) {
     // Calculate bounds
-    let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+    let minX = Infinity,
+      maxX = -Infinity,
+      minY = Infinity,
+      maxY = -Infinity;
     state.allNodes.forEach((n) => {
       minX = Math.min(minX, n.x);
       maxX = Math.max(maxX, n.x);
@@ -64,11 +68,14 @@ export function resetView(): void {
     // Calculate optimal scale
     const newScale = Math.max(
       state.MIN_SCALE,
-      Math.min((rect.width * 0.9) / gw, (rect.height * 0.9) / gh, 1)
+      Math.min((rect.width * 0.9) / gw, (rect.height * 0.9) / gh, 1),
     );
 
     state.setScale(newScale);
-    state.setTranslate(ccx - (gcx - 5000) * newScale, ccy - (gcy - 5000) * newScale);
+    state.setTranslate(
+      ccx - (gcx - 5000) * newScale,
+      ccy - (gcy - 5000) * newScale,
+    );
   } else {
     state.setScale(0.5);
     state.setTranslate(0, 0);
@@ -76,16 +83,17 @@ export function resetView(): void {
 
   // Reset node styles
   state.allNodes.forEach((n) =>
-    n.element.classList.remove("focused", "dimmed", "small", "dependency")
+    n.element.classList.remove("focused", "dimmed", "small", "dependency"),
   );
 
   // Reset connection styles
   state.connections.forEach(({ line }) =>
-    line.classList.remove("highlight", "dependency-line")
+    line.classList.remove("highlight", "dependency-line"),
   );
 
   updateTransform();
-  getElement<HTMLDivElement>("zoomLevel").textContent = `${Math.round(state.scale * 100)}%`;
+  getElement<HTMLDivElement>("zoomLevel").textContent =
+    `${Math.round(state.scale * 100)}%`;
   updateBreadcrumb("Full Map");
   closeFunctionPanel();
 }
@@ -98,9 +106,15 @@ export function setupCanvasEvents(): void {
 
   // Mouse down - start drag
   canvas.addEventListener("mousedown", (e) => {
-    if (e.target === canvas || (e.target as HTMLElement).closest("#graphContainer")) {
+    if (
+      e.target === canvas ||
+      (e.target as HTMLElement).closest("#graphContainer")
+    ) {
       state.setDragging(true);
-      state.setDragStart(e.clientX - state.translateX, e.clientY - state.translateY);
+      state.setDragStart(
+        e.clientX - state.translateX,
+        e.clientY - state.translateY,
+      );
       canvas.classList.add("grabbing");
     }
   });
@@ -126,35 +140,55 @@ export function setupCanvasEvents(): void {
   });
 
   // Wheel - zoom or pan
-  canvas.addEventListener("wheel", (e) => {
-    if (e.metaKey || e.ctrlKey) {
-      // Zoom with Cmd/Ctrl + scroll
-      e.preventDefault();
-      
-      const rect = canvas.getBoundingClientRect();
-      const mx = e.clientX - rect.left;
-      const my = e.clientY - rect.top;
-      const gx = (mx - state.translateX) / state.scale;
-      const gy = (my - state.translateY) / state.scale;
-      
-      const delta = e.deltaY > 0 ? -0.01 : 0.01;
-      const newScale = Math.max(state.MIN_SCALE, Math.min(state.MAX_SCALE, state.scale + delta));
-      
-      state.setTranslate(mx - gx * newScale, my - gy * newScale);
-      state.setScale(newScale);
-      
-      updateTransform();
-      getElement<HTMLDivElement>("zoomLevel").textContent = `${Math.round(state.scale * 100)}%`;
-    } else {
-      // Pan with scroll
-      e.preventDefault();
-      state.setTranslate(
-        state.translateX - e.deltaX * 0.5,
-        state.translateY - e.deltaY * 0.5
-      );
-      updateTransform();
-    }
-  }, { passive: false });
+  canvas.addEventListener(
+    "wheel",
+    (e) => {
+      if (e.metaKey || e.ctrlKey) {
+        // Zoom with Cmd/Ctrl + scroll
+        e.preventDefault();
+
+        const rect = canvas.getBoundingClientRect();
+        const mx = e.clientX - rect.left;
+        const my = e.clientY - rect.top;
+
+        // Account for the -50% offset in the transform
+        // The graph container is centered at (rect.width/2, rect.height/2)
+        const centerX = rect.width / 2;
+        const centerY = rect.height / 2;
+
+        // Calculate the graph-space coordinates under the cursor
+        const gx = (mx - centerX - state.translateX) / state.scale;
+        const gy = (my - centerY - state.translateY) / state.scale;
+
+        // Figma-style zoom: proportional to current scale for smooth feel
+        const zoomFactor = e.deltaY > 0 ? 0.9 : 1.1;
+        const newScale = Math.max(
+          state.MIN_SCALE,
+          Math.min(state.MAX_SCALE, state.scale * zoomFactor),
+        );
+
+        // Calculate new translation to keep the cursor point fixed
+        state.setTranslate(
+          mx - centerX - gx * newScale,
+          my - centerY - gy * newScale,
+        );
+        state.setScale(newScale);
+
+        updateTransform();
+        getElement<HTMLDivElement>("zoomLevel").textContent =
+          `${Math.round(state.scale * 100)}%`;
+      } else {
+        // Pan with scroll
+        e.preventDefault();
+        state.setTranslate(
+          state.translateX - e.deltaX * 0.5,
+          state.translateY - e.deltaY * 0.5,
+        );
+        updateTransform();
+      }
+    },
+    { passive: false },
+  );
 }
 
 /**
