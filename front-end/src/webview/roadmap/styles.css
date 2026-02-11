@@ -7,7 +7,8 @@
 }
 
 body {
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  font-family:
+    -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   background: #0a0a0a;
   color: #e0e0e0;
   overflow: hidden;
@@ -160,22 +161,27 @@ svg.connections {
   z-index: 1;
 }
 
+/* UPDATED: Make connection lines much more visible for tree view */
+
 .connection-line {
-  stroke: #3a3a3a;
-  stroke-width: 2;
+  stroke: #6b7280; /* Lighter gray - more visible */
+  stroke-width: 3; /* Thicker lines */
   fill: none;
   transition: stroke 0.3s;
+  opacity: 0.8; /* Slightly transparent */
 }
 
 .connection-line.highlight {
   stroke: #4ec9b0;
-  stroke-width: 3;
+  stroke-width: 4;
+  opacity: 1;
 }
 
 .connection-line.dependency-line {
   stroke: #10b981;
-  stroke-width: 2.5;
-  stroke-dasharray: 5, 5;
+  stroke-width: 3.5;
+  stroke-dasharray: 8, 4;
+  opacity: 1;
 }
 
 /* Nodes */
@@ -193,7 +199,9 @@ svg.connections {
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  transition: opacity 0.3s, transform 0.3s;
+  transition:
+    opacity 0.3s,
+    transform 0.3s;
   z-index: 2;
 }
 
