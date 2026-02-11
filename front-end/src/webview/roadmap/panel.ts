@@ -15,12 +15,17 @@ export function showFunctionPanel(fileData: FileNode): void {
   const list = getElement<HTMLDivElement>("functionList");
 
   const deps: RoadmapDependency[] = state.roadmapData.dependencies || [];
-  const imports = deps.filter((d: RoadmapDependency) => d.importerFilePath === fileData.fullPath);
-  const importedBy = deps.filter((d: RoadmapDependency) => d.importedFilePath === fileData.fullPath);
+  const imports = deps.filter(
+    (d: RoadmapDependency) => d.importerFilePath === fileData.fullPath,
+  );
+  const importedBy = deps.filter(
+    (d: RoadmapDependency) => d.importedFilePath === fileData.fullPath,
+  );
 
   // Error warning
-  const errWarn = fileData.errorCount > 0
-    ? `
+  const errWarn =
+    fileData.errorCount > 0
+      ? `
       <div class="error-warning" onclick="window.roadmapActions.debugExecutionFlow('${fileData.fullPath.replace(/\\/g, "\\\\")}')">
         <div class="error-warning-icon">⚠️</div>
         <div class="error-warning-text">
@@ -31,7 +36,7 @@ export function showFunctionPanel(fileData: FileNode): void {
           🐛 Debug
         </button>
       </div>`
-    : "";
+      : "";
 
   header.innerHTML = `
     <div class="function-panel-title">📄 ${fileData.name}</div>
@@ -43,10 +48,14 @@ export function showFunctionPanel(fileData: FileNode): void {
   const depsSection = `
     <div class="dependencies-section">
       <div class="section-title">🔗 Dependencies</div>
-      ${imports.length > 0 ? `
+      ${
+        imports.length > 0
+          ? `
         <div class="dep-subsection">
           <div class="dep-subtitle">📥 Imports (${imports.length})</div>
-          ${imports.map((d) => `
+          ${imports
+            .map(
+              (d) => `
             <div class="dep-item" onclick="window.roadmapActions.jumpToFile('${d.importedFilePath.replace(/\\/g, "\\\\")}')">
               <div class="dep-icon">📄</div>
               <div class="dep-details">
@@ -55,12 +64,20 @@ export function showFunctionPanel(fileData: FileNode): void {
               </div>
               <div class="dep-arrow">→</div>
             </div>
-          `).join("")}
-        </div>` : ""}
-      ${importedBy.length > 0 ? `
+          `,
+            )
+            .join("")}
+        </div>`
+          : ""
+      }
+      ${
+        importedBy.length > 0
+          ? `
         <div class="dep-subsection">
           <div class="dep-subtitle">📤 Imported by (${importedBy.length})</div>
-          ${importedBy.map((d) => `
+          ${importedBy
+            .map(
+              (d) => `
             <div class="dep-item" onclick="window.roadmapActions.jumpToFile('${d.importerFilePath.replace(/\\/g, "\\\\")}')">
               <div class="dep-icon">📄</div>
               <div class="dep-details">
@@ -69,8 +86,12 @@ export function showFunctionPanel(fileData: FileNode): void {
               </div>
               <div class="dep-arrow">→</div>
             </div>
-          `).join("")}
-        </div>` : ""}
+          `,
+            )
+            .join("")}
+        </div>`
+          : ""
+      }
       ${imports.length === 0 && importedBy.length === 0 ? '<div class="no-deps">No dependencies</div>' : ""}
     </div>
   `;
@@ -79,7 +100,10 @@ export function showFunctionPanel(fileData: FileNode): void {
   const funcSection = `
     <div class="functions-section">
       <div class="section-title">⚡ Functions (${fileData.functions?.length || 0})</div>
-      ${fileData.functions?.map((fn) => `
+      ${
+        fileData.functions
+          ?.map(
+            (fn) => `
         <div class="function-card" onclick="window.roadmapActions.goToFunction('${fileData.fullPath.replace(/\\/g, "\\\\")}', ${fn.startLine || 1})">
           <div class="function-icon">${getFunctionIcon(fn.name)}</div>
           <div class="function-details">
@@ -88,7 +112,10 @@ export function showFunctionPanel(fileData: FileNode): void {
           </div>
           <div class="function-goto">→</div>
         </div>
-      `).join("") || '<p style="color:#666;padding:12px">No functions</p>'}
+      `,
+          )
+          .join("") || '<p style="color:#666;padding:12px">No functions</p>'
+      }
     </div>
   `;
 
@@ -98,9 +125,26 @@ export function showFunctionPanel(fileData: FileNode): void {
 
 /**
  * Close the function panel
+ * UPDATED: Clear all highlighting without resetting position
  */
 export function closeFunctionPanel(): void {
   getElement<HTMLDivElement>("functionPanel").classList.remove("visible");
+
+  // Clear focused file state
+  state.setFocusedFile(null);
+
+  // Remove all node highlighting classes
+  state.allNodes.forEach((n) =>
+    n.element.classList.remove("focused", "dimmed", "small", "dependency"),
+  );
+
+  // Remove all connection highlighting
+  state.connections.forEach(({ line }) =>
+    line.classList.remove("highlight", "dependency-line"),
+  );
+
+  // Update breadcrumb to show we're back to full map view
+  updateBreadcrumb("Full Map");
 }
 
 /**
@@ -127,15 +171,27 @@ export function focusOnFile(fileData: FileNode): void {
 
   // Find dependencies
   const deps: RoadmapDependency[] = state.roadmapData.dependencies || [];
-  const imports = deps.filter((d: RoadmapDependency) => d.importerFilePath === fileData.fullPath);
-  const importedBy = deps.filter((d: RoadmapDependency) => d.importedFilePath === fileData.fullPath);
+  const imports = deps.filter(
+    (d: RoadmapDependency) => d.importerFilePath === fileData.fullPath,
+  );
+  const importedBy = deps.filter(
+    (d: RoadmapDependency) => d.importedFilePath === fileData.fullPath,
+  );
 
-  console.log("  📥 Imports:", imports.length, "📤 ImportedBy:", importedBy.length);
+  console.log(
+    "  📥 Imports:",
+    imports.length,
+    "📤 ImportedBy:",
+    importedBy.length,
+  );
 
   // Add dependency nodes
   imports.forEach((dep) => {
     if (state.hierarchyData) {
-      const node = findFileNodeByPath(state.hierarchyData, dep.importedFilePath);
+      const node = findFileNodeByPath(
+        state.hierarchyData,
+        dep.importedFilePath,
+      );
       if (node) {
         const id = getNodeId(node);
         if (id) dependencyNodeIds.add(id);
@@ -145,7 +201,10 @@ export function focusOnFile(fileData: FileNode): void {
 
   importedBy.forEach((dep) => {
     if (state.hierarchyData) {
-      const node = findFileNodeByPath(state.hierarchyData, dep.importerFilePath);
+      const node = findFileNodeByPath(
+        state.hierarchyData,
+        dep.importerFilePath,
+      );
       if (node) {
         const id = getNodeId(node);
         if (id) dependencyNodeIds.add(id);
@@ -160,7 +219,12 @@ export function focusOnFile(fileData: FileNode): void {
     const isInPath = nodeId && relevantNodeIds.has(nodeId) && !isFile;
     const isDep = nodeId && dependencyNodeIds.has(nodeId);
 
-    nodeObj.element.classList.remove("focused", "dimmed", "small", "dependency");
+    nodeObj.element.classList.remove(
+      "focused",
+      "dimmed",
+      "small",
+      "dependency",
+    );
 
     if (isFile) nodeObj.element.classList.add("focused");
     else if (isDep) nodeObj.element.classList.add("dependency");
@@ -170,7 +234,8 @@ export function focusOnFile(fileData: FileNode): void {
 
   // Update connection styles
   state.connections.forEach(({ line, childId, parentId }) => {
-    const bothInPath = relevantNodeIds.has(childId) && parentId && relevantNodeIds.has(parentId);
+    const bothInPath =
+      relevantNodeIds.has(childId) && parentId && relevantNodeIds.has(parentId);
     const childIsDep = dependencyNodeIds.has(childId);
     const parentIsDep = parentId && dependencyNodeIds.has(parentId);
     const connectsToDep =
@@ -203,21 +268,23 @@ export function focusOnFile(fileData: FileNode): void {
  */
 export function jumpToFile(filePath: string): void {
   console.log("🎯 Jump to:", filePath);
-  
+
   if (!state.hierarchyData) return;
-  
+
   const node = findFileNodeByPath(state.hierarchyData, filePath);
   if (node) {
     focusOnFile(node);
-    
+
     // Center view on node
-    const nodeObj = state.allNodes.find((n) => getNodeId(n.data) === getNodeId(node));
+    const nodeObj = state.allNodes.find(
+      (n) => getNodeId(n.data) === getNodeId(node),
+    );
     if (nodeObj) {
       const canvas = getElement<HTMLDivElement>("canvas");
       const rect = canvas.getBoundingClientRect();
       state.setTranslate(
         rect.width / 2 - (nodeObj.x - 5000) * state.scale,
-        rect.height / 2 - (nodeObj.y - 5000) * state.scale
+        rect.height / 2 - (nodeObj.y - 5000) * state.scale,
       );
       updateTransform();
     }
