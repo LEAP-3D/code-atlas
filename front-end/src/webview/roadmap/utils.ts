@@ -5,7 +5,9 @@ import { HierarchyNode, FileNode } from "./types";
 /**
  * Get node ID for tracking
  */
-export function getNodeId(node: HierarchyNode | FileNode | null): string | null {
+export function getNodeId(
+  node: HierarchyNode | FileNode | null,
+): string | null {
   if (!node) return null;
   return node.type === "folder"
     ? `folder-${(node as HierarchyNode).path || node.name}`
@@ -39,8 +41,14 @@ export function countFiles(folder: HierarchyNode): number {
 /**
  * Get DOM element by ID (typed)
  */
-export function getElement<T extends HTMLElement>(id: string): T {
-  return document.getElementById(id) as T;
+export function getElement<T extends Element>(id: string): T {
+  const el = document.getElementById(id);
+
+  if (!el) {
+    throw new Error(`Element with id "${id}" not found`);
+  }
+
+  return el as unknown as T;
 }
 
 /**
@@ -53,6 +61,8 @@ export function isFileNode(node: HierarchyNode | FileNode): node is FileNode {
 /**
  * Check if node is a folder node
  */
-export function isFolderNode(node: HierarchyNode | FileNode): node is HierarchyNode {
+export function isFolderNode(
+  node: HierarchyNode | FileNode,
+): node is HierarchyNode {
   return node.type === "folder";
 }

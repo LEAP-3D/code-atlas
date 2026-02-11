@@ -1,77 +1,112 @@
-// Tree layout calculation
+// Tree layout calculation - VERTICAL (top-to-bottom like file explorer)
 
 import { HierarchyNode, FileNode, NodePosition } from "./types";
 
-const SPACING = { h: 180, v: 250 };
+// Spacing configuration
+const SPACING = {
+  horizontal: 220,  // Хэвтээ зай (ах дүү хооронд)
+  vertical: 140,    // Босоо зай (эцэг хүүхэд хооронд)
+  nodeWidth: 180,   // Node-ийн өргөн
+  siblingGap: 40,   // Ах дүү хоорондын нэмэлт зай
+};
 
 /**
- * Calculate width needed for a node and its children
+ * Calculate width needed for a node's subtree (horizontal space)
  */
-function calcWidth(item: HierarchyNode | FileNode): number {
-  if (item.type === "file") return SPACING.h;
-  
+function calcSubtreeWidth(item: HierarchyNode | FileNode): number {
+  if (item.type === "file") {
+    return SPACING.nodeWidth;
+  }
+
   const folder = item as HierarchyNode;
-  const subItems = [
+  const children = [
     ...Object.values(folder.children || {}),
     ...(folder.files || []),
   ];
-  
-  if (subItems.length === 0) return SPACING.h;
-  
-  return Math.max(
-    subItems.reduce((sum, sub) => sum + calcWidth(sub), 0),
-    SPACING.h
+
+  if (children.length === 0) {
+    return SPACING.nodeWidth;
+  }
+
+  // Sum of all children widths + spacing between them
+  const totalChildrenWidth = children.reduce(
+    (sum, child) => sum + calcSubtreeWidth(child),
+    0
   );
+  const spacingWidth = (children.length - 1) * SPACING.siblingGap;
+
+  return Math.max(totalChildrenWidth + spacingWidth, SPACING.nodeWidth);
 }
 
 /**
- * Calculate tree layout positions
+ * Calculate tree layout positions - VERTICAL (top to bottom)
+ * 
+ * Visual structure:
+ * 
+ *           [Root]
+ *              │
+ *     ┌────────┼────────┐
+ *     │        │        │
+ * [Folder1] [Folder2] [File1]
+ *     │
+ *  ┌──┴──┐
+ *  │     │
+ * [F1]  [F2]
  */
 export function calculateTreeLayout(
   node: HierarchyNode,
   startX = 5000,
-  startY = 500,
+  startY = 200,
   level = 0
 ): NodePosition[] {
   const positions: NodePosition[] = [];
-  
+
   const folders = Object.values(node.children || {});
   const files = node.files || [];
-  const allItems: (HierarchyNode | FileNode)[] = [...folders, ...files];
+  const allChildren: (HierarchyNode | FileNode)[] = [...folders, ...files];
 
-  if (allItems.length === 0) return positions;
+  if (allChildren.length === 0) {
+    return positions;
+  }
 
-  // Calculate widths for all items
-  const widths = allItems.map(calcWidth);
-  const totalWidth = widths.reduce((a, b) => a + b, 0);
+  // Calculate width for each child subtree
+  const childWidths = allChildren.map(calcSubtreeWidth);
+  const totalWidth = childWidths.reduce((a, b) => a + b, 0) 
+    + (allChildren.length - 1) * SPACING.siblingGap;
+
+  // Starting X position (centered under parent)
   let currentX = startX - totalWidth / 2;
 
-  // Position each item
-  allItems.forEach((item, i) => {
-    const itemX = currentX + widths[i] / 2;
-    
+  // Position each child
+  allChildren.forEach((child, index) => {
+    const childWidth = childWidths[index];
+    const childX = currentX + childWidth / 2;
+    const childY = startY + SPACING.vertical;
+
+    // Add this child's position
     positions.push({
-      node: item,
-      x: itemX,
-      y: startY + SPACING.v,
+      node: child,
+      x: childX,
+      y: childY,
       level: level + 1,
       parentX: startX,
       parentY: startY,
     });
 
-    // Recursively layout folder children
-    if (item.type === "folder") {
+    // Recursively position this child's children
+    if (child.type === "folder") {
       positions.push(
         ...calculateTreeLayout(
-          item as HierarchyNode,
-          itemX,
-          startY + SPACING.v,
+          child as HierarchyNode,
+          childX,
+          childY,
           level + 1
         )
       );
     }
 
-    currentX += widths[i];
+    // Move X position for next sibling
+    currentX += childWidth + SPACING.siblingGap;
   });
 
   return positions;

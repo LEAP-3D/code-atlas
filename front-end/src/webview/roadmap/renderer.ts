@@ -56,7 +56,7 @@ export function createNode(
 }
 
 /**
- * Draw a curved connection line
+ * Draw a curved connection line (vertical - top to bottom)
  */
 export function drawConnection(
   x1: number,
@@ -69,7 +69,10 @@ export function drawConnection(
   const svg = getElement<SVGSVGElement>("connectionsSvg");
   const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
   
-  const midY = (y1 + y2) / 2;
+  // Vertical bezier curve (parent above, child below)
+  // Control points create a smooth S-curve
+  const midY = y1 + (y2 - y1) / 2;
+  
   path.setAttribute("d", `M ${x1} ${y1} C ${x1} ${midY}, ${x2} ${midY}, ${x2} ${y2}`);
   path.classList.add("connection-line");
   path.dataset.childId = childId;
@@ -98,10 +101,10 @@ export function renderGraph(): void {
   // Calculate layout
   const positions = calculateTreeLayout(hierarchy);
 
-  // Render root node
-  const rootEl = createNode(hierarchy, 5000, 500);
+  // Render root node (at top center)
+  const rootEl = createNode(hierarchy, 5000, 200);
   nodesContainer.appendChild(rootEl);
-  state.addNode({ element: rootEl, data: hierarchy, x: 5000, y: 500 });
+  state.addNode({ element: rootEl, data: hierarchy, x: 5000, y: 200 });
 
   // Draw connections first (so they're behind nodes)
   positions.forEach((pos: NodePosition) => {
