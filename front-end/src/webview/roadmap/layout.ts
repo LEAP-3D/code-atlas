@@ -44,19 +44,6 @@ function calcSubtreeWidth(item: HierarchyNode | FileNode): number {
   return Math.max(foldersWidth, filesWidth, SPACING.nodeWidth);
 }
 
-/**
- * Calculate tree layout positions - VERTICAL (top to bottom)
- *
- * Folders spread horizontally, files stack vertically
- *
- * Visual structure:
- *
- *      [Folder1]    [Folder2]
- *          |            |
- *       [File1]      [File3]
- *          |            |
- *       [File2]      [File4]
- */
 export function calculateTreeLayout(
   node: HierarchyNode,
   startX = 5000,

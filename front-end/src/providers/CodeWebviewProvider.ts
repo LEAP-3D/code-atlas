@@ -13,6 +13,9 @@ import {
 } from "../roadmap/roadmapModel";
 
 export class CodeWebviewProvider {
+  // Store the current roadmap panel to reuse it
+  private static currentRoadmapPanel: vscode.WebviewPanel | null = null;
+
   static show(
     context: vscode.ExtensionContext,
     data: {
@@ -68,12 +71,30 @@ export class CodeWebviewProvider {
    * Show roadmap view with new modular structure
    */
   static showRoadmap(context: vscode.ExtensionContext) {
+    // If panel already exists, just reveal it
+    if (this.currentRoadmapPanel) {
+      this.currentRoadmapPanel.reveal(vscode.ViewColumn.Beside);
+      return;
+    }
+
     const panel = vscode.window.createWebviewPanel(
       "roadmapView",
       "📊 Project Roadmap",
       vscode.ViewColumn.Beside,
-      { enableScripts: true, localResourceRoots: [context.extensionUri] },
+      {
+        enableScripts: true,
+        localResourceRoots: [context.extensionUri],
+        retainContextWhenHidden: true, // Keep webview state when hidden
+      },
     );
+
+    this.currentRoadmapPanel = panel;
+
+    // Clear reference when panel is disposed
+    panel.onDidDispose(() => {
+      console.log("🗑️ Roadmap panel disposed");
+      this.currentRoadmapPanel = null;
+    });
 
     panel.webview.html = this.getRoadmapHtml(panel.webview, context);
 

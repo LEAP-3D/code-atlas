@@ -2,29 +2,37 @@
 
 import * as state from "./state";
 import { renderGraph } from "./renderer";
-import { resetView, setupCanvasEvents, setupHintTimeout } from "./interactions";
-import { jumpToFile, closeFunctionPanel } from "./panel";
+import {
+  resetView,
+  setupCanvasEvents,
+  setupHintTimeout,
+  updateTransform,
+} from "./interactions";
+import { jumpToFile, closeFunctionPanel, focusOnFile } from "./panel";
 import { zoomIn, zoomOut } from "./interactions";
 import { getElement } from "./utils";
+import { findFileNodeByPath } from "./hierarchy";
 
 // Initialize VS Code API
 state.setVscode(window.acquireVsCodeApi());
 
 // Load roadmap data
-state.setRoadmapData(window.ROADMAP_DATA || {
-  files: [],
-  dependencies: [],
-  totalFiles: 0,
-  totalFunctions: 0,
-  totalConnections: 0,
-});
+state.setRoadmapData(
+  window.ROADMAP_DATA || {
+    files: [],
+    dependencies: [],
+    totalFiles: 0,
+    totalFunctions: 0,
+    totalConnections: 0,
+  },
+);
 
 console.log(
   "🗺️ Roadmap loaded:",
   state.roadmapData.files.length,
   "files,",
   state.roadmapData.dependencies.length,
-  "deps"
+  "deps",
 );
 
 // Expose actions to window for HTML onclick handlers
@@ -44,6 +52,16 @@ declare global {
 
 window.roadmapActions = {
   goToFunction: (filePath: string, line: number) => {
+    state.vscode.postMessage({
+      command: "saveState",
+      state: {
+        scale: state.scale,
+        translateX: state.translateX,
+        translateY: state.translateY,
+        focusedFilePath: state.focusedFile?.fullPath,
+      },
+    });
+
     state.vscode.postMessage({
       command: "goToFunction",
       filePath: filePath,
@@ -68,14 +86,25 @@ window.roadmapActions = {
 };
 
 // Initialize
+// Initialize
 function init(): void {
   if (state.roadmapData?.files?.length > 0) {
     console.log("✅ Init:", state.roadmapData.files.length, "files");
-    
+
     renderGraph();
     setupCanvasEvents();
-    
-    setTimeout(resetView, 100);
+
+    // Check if we should restore previous view state
+    const shouldRestore =
+      new URLSearchParams(window.location.search).get("restore") === "true";
+
+    if (shouldRestore) {
+      // Try to restore from previous state (will be sent via postMessage)
+      console.log("🔄 Waiting for state restoration...");
+    } else {
+      setTimeout(resetView, 100);
+    }
+
     setupHintTimeout();
   } else {
     console.error("❌ No files");
@@ -88,5 +117,31 @@ function init(): void {
   }
 }
 
+// Add message handler to restore state
+window.addEventListener("message", (event) => {
+  const message = event.data;
+
+  if (message.type === "restoreState" && message.state) {
+    console.log("🔄 Restoring view state:", message.state);
+
+    state.setScale(message.state.scale);
+    state.setTranslate(message.state.translateX, message.state.translateY);
+    updateTransform();
+
+    getElement<HTMLDivElement>("zoomLevel").textContent =
+      `${Math.round(message.state.scale * 100)}%`;
+
+    // Restore focused file if exists
+    if (message.state.focusedFilePath && state.hierarchyData) {
+      const fileNode = findFileNodeByPath(
+        state.hierarchyData,
+        message.state.focusedFilePath,
+      );
+      if (fileNode) {
+        focusOnFile(fileNode);
+      }
+    }
+  }
+});
 // Run on load
 init();

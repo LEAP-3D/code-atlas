@@ -125,26 +125,9 @@ export function showFunctionPanel(fileData: FileNode): void {
 
 /**
  * Close the function panel
- * UPDATED: Clear all highlighting without resetting position
  */
 export function closeFunctionPanel(): void {
   getElement<HTMLDivElement>("functionPanel").classList.remove("visible");
-
-  // Clear focused file state
-  state.setFocusedFile(null);
-
-  // Remove all node highlighting classes
-  state.allNodes.forEach((n) =>
-    n.element.classList.remove("focused", "dimmed", "small", "dependency"),
-  );
-
-  // Remove all connection highlighting
-  state.connections.forEach(({ line }) =>
-    line.classList.remove("highlight", "dependency-line"),
-  );
-
-  // Update breadcrumb to show we're back to full map view
-  updateBreadcrumb("Full Map");
 }
 
 /**
