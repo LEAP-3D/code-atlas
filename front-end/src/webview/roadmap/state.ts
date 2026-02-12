@@ -1,12 +1,25 @@
 // Global state management
 
-import { RoadmapData, HierarchyNode, RenderedNode, Connection, FileNode, VSCodeAPI } from "./types";
+import {
+  RoadmapData,
+  HierarchyNode,
+  RenderedNode,
+  Connection,
+  FileNode,
+  VSCodeAPI,
+} from "./types";
 
 // VS Code API
 export let vscode: VSCodeAPI;
 
 // Data
-export let roadmapData: RoadmapData = { files: [], dependencies: [], totalFiles: 0, totalFunctions: 0, totalConnections: 0 };
+export let roadmapData: RoadmapData = {
+  files: [],
+  dependencies: [],
+  totalFiles: 0,
+  totalFunctions: 0,
+  totalConnections: 0,
+};
 export let hierarchyData: HierarchyNode | null = null;
 
 // Rendered elements
@@ -21,6 +34,9 @@ export let translateY = 0;
 export let isDragging = false;
 export let startX = 0;
 export let startY = 0;
+
+// Expanded folders - эхлээд хоосон (files нуугдсан)
+export const expandedFolders = new Set<string>();
 
 // Constants
 export const MIN_SCALE = 0.1;
@@ -82,4 +98,18 @@ export function setDragStart(x: number, y: number): void {
 export function clearRenderState(): void {
   allNodes = [];
   connections = [];
+}
+
+// Toggle folder expanded state
+export function toggleFolderExpanded(folderId: string): void {
+  if (expandedFolders.has(folderId)) {
+    expandedFolders.delete(folderId);
+  } else {
+    expandedFolders.add(folderId);
+  }
+}
+
+// Check if folder is expanded (files visible)
+export function isFolderExpanded(folderId: string): boolean {
+  return expandedFolders.has(folderId);
 }

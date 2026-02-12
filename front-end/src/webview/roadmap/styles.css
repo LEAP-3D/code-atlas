@@ -738,3 +738,179 @@ svg.connections {
 .function-card:hover .function-goto {
   opacity: 1;
 }
+/* styles.css */
+
+.collapse-icon {
+  position: absolute;
+  top: -8px;
+  left: -8px;
+  font-size: 10px;
+  color: var(--text-secondary);
+}
+
+.node-circle.collapsed {
+  opacity: 0.8;
+  border-style: dashed;
+}
+
+.graph-node.folder {
+  cursor: pointer;
+}
+
+.graph-node.folder:hover .node-circle {
+  transform: scale(1.05);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+/* Expand indicator for folders */
+.expand-indicator {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  font-size: 10px;
+  color: rgba(255, 255, 255, 0.6);
+  pointer-events: none;
+}
+
+.node.folder:hover .expand-indicator {
+  color: #4ec9b0;
+}
+
+/* Dependency folder - холбоотой файл агуулсан folder */
+.node.dependency-folder .node-circle {
+  border: 3px solid #f59e0b !important;
+  box-shadow:
+    0 0 20px rgba(245, 158, 11, 0.5),
+    0 0 40px rgba(245, 158, 11, 0.2) !important;
+  animation: pulse-folder 2s ease-in-out infinite;
+}
+
+@keyframes pulse-folder {
+  0%,
+  100% {
+    box-shadow:
+      0 0 20px rgba(245, 158, 11, 0.5),
+      0 0 40px rgba(245, 158, 11, 0.2);
+  }
+  50% {
+    box-shadow:
+      0 0 30px rgba(245, 158, 11, 0.7),
+      0 0 60px rgba(245, 158, 11, 0.3);
+  }
+}
+
+/* Dependency folder line */
+.connection-line.dependency-folder-line {
+  stroke: #f59e0b !important;
+  stroke-width: 2.5;
+  opacity: 0.7;
+}
+
+/* Dependency file - улаан/ногоон */
+.node.dependency .node-circle {
+  border: 3px solid #10b981 !important;
+  box-shadow: 0 0 15px rgba(16, 185, 129, 0.5) !important;
+}
+
+/* Focused file - сонгосон файл */
+.node.focused .node-circle {
+  border: 3px solid #3b82f6 !important;
+  box-shadow: 0 0 25px rgba(59, 130, 246, 0.6) !important;
+  transform: scale(1.1);
+}
+
+/* Dimmed nodes */
+.node.dimmed {
+  opacity: 0.3;
+}
+
+.node.dimmed .node-circle {
+  filter: grayscale(50%);
+}
+/* ===== FOCUSED FILE - Сонгосон файл (цэнхэр) ===== */
+.node.focused .node-circle {
+  border: 3px solid #3b82f6 !important;
+  box-shadow: 0 0 25px rgba(59, 130, 246, 0.6) !important;
+  transform: scale(1.1);
+}
+
+/* ===== IMPORT FILES - Энэ файлаас import хийсэн (ногоон) ===== */
+.node.import-dep .node-circle {
+  border: 3px solid #10b981 !important;
+  box-shadow: 0 0 20px rgba(16, 185, 129, 0.5) !important;
+}
+
+/* ===== IMPORTED BY FILES - Энэ файлыг import хийсэн (purple) ===== */
+.node.imported-by-dep .node-circle {
+  border: 3px solid #a855f7 !important;
+  box-shadow: 0 0 20px rgba(168, 85, 247, 0.5) !important;
+}
+
+/* ===== IMPORT FOLDER - Import файл агуулсан folder (ногоон) ===== */
+.node.import-folder .node-circle {
+  border: 3px solid #10b981 !important;
+  box-shadow: 0 0 15px rgba(16, 185, 129, 0.4) !important;
+  animation: pulse-green 2s ease-in-out infinite;
+}
+
+@keyframes pulse-green {
+  0%,
+  100% {
+    box-shadow: 0 0 15px rgba(16, 185, 129, 0.4);
+  }
+  50% {
+    box-shadow: 0 0 25px rgba(16, 185, 129, 0.6);
+  }
+}
+
+/* ===== IMPORTED BY FOLDER - Imported by файл агуулсан folder (purple) ===== */
+.node.imported-by-folder .node-circle {
+  border: 3px solid #a855f7 !important;
+  box-shadow: 0 0 15px rgba(168, 85, 247, 0.4) !important;
+  animation: pulse-purple 2s ease-in-out infinite;
+}
+
+@keyframes pulse-purple {
+  0%,
+  100% {
+    box-shadow: 0 0 15px rgba(168, 85, 247, 0.4);
+  }
+  50% {
+    box-shadow: 0 0 25px rgba(168, 85, 247, 0.6);
+  }
+}
+
+/* ===== CONNECTION LINES ===== */
+.connection-line.import-line {
+  stroke: #10b981 !important;
+  stroke-width: 2.5;
+  opacity: 0.8;
+}
+
+.connection-line.imported-by-line {
+  stroke: #a855f7 !important;
+  stroke-width: 2.5;
+  opacity: 0.8;
+}
+
+.connection-line.import-folder-line {
+  stroke: #10b981 !important;
+  stroke-width: 2;
+  opacity: 0.5;
+  stroke-dasharray: 5, 5;
+}
+
+.connection-line.imported-by-folder-line {
+  stroke: #a855f7 !important;
+  stroke-width: 2;
+  opacity: 0.5;
+  stroke-dasharray: 5, 5;
+}
+
+/* ===== DIMMED - Бусад ===== */
+.node.dimmed {
+  opacity: 0.3;
+}
+
+.node.dimmed .node-circle {
+  filter: grayscale(50%);
+}
