@@ -5,6 +5,7 @@ import * as state from "./state";
 import { getNodeId, getFunctionIcon, getElement } from "./utils";
 import { findFileNodeByPath } from "./hierarchy";
 import { updateTransform } from "./interactions";
+import { renderGraph } from "./renderer";
 
 /**
  * Show function panel for a file
@@ -22,7 +23,6 @@ export function showFunctionPanel(fileData: FileNode): void {
     (d: RoadmapDependency) => d.importedFilePath === fileData.fullPath,
   );
 
-  // Error warning
   const errWarn =
     fileData.errorCount > 0
       ? `
@@ -44,7 +44,6 @@ export function showFunctionPanel(fileData: FileNode): void {
     ${errWarn}
   `;
 
-  // Dependencies section
   const depsSection = `
     <div class="dependencies-section">
       <div class="section-title">🔗 Dependencies</div>
@@ -96,7 +95,6 @@ export function showFunctionPanel(fileData: FileNode): void {
     </div>
   `;
 
-  // Functions section
   const funcSection = `
     <div class="functions-section">
       <div class="section-title">⚡ Functions (${fileData.functions?.length || 0})</div>
@@ -131,6 +129,14 @@ export function closeFunctionPanel(): void {
 }
 
 /**
+ * Update breadcrumb text
+ */
+export function updateBreadcrumb(text: string): void {
+  getElement<HTMLDivElement>("breadcrumb").innerHTML =
+    `<span class="breadcrumb-item" onclick="window.roadmapActions.resetView()">${text}</span>`;
+}
+
+/**
  * Focus on a specific file
  */
 export function focusOnFile(fileData: FileNode): void {
@@ -138,13 +144,25 @@ export function focusOnFile(fileData: FileNode): void {
   state.setFocusedFile(fileData);
 
   const relevantNodeIds = new Set<string>();
-  const dependencyNodeIds = new Set<string>();
+  const importNodeIds = new Set<string>();
+  const importedByNodeIds = new Set<string>();
+  const importFolderIds = new Set<string>();
+  const importedByFolderIds = new Set<string>();
+  let needsRerender = false;
 
-  // Add current file
   const currentId = getNodeId(fileData);
   if (currentId) relevantNodeIds.add(currentId);
 
-  // Add parent path
+  if (fileData.parent) {
+    const parentId = getNodeId(fileData.parent);
+    if (parentId) {
+      if (!state.isFolderExpanded(parentId)) {
+        state.expandedFolders.add(parentId);
+        needsRerender = true;
+      }
+    }
+  }
+
   let current: HierarchyNode | null = fileData.parent;
   while (current && current.name !== "Root") {
     const id = getNodeId(current);
@@ -152,7 +170,6 @@ export function focusOnFile(fileData: FileNode): void {
     current = current.parent;
   }
 
-  // Find dependencies
   const deps: RoadmapDependency[] = state.roadmapData.dependencies || [];
   const imports = deps.filter(
     (d: RoadmapDependency) => d.importerFilePath === fileData.fullPath,
@@ -168,7 +185,6 @@ export function focusOnFile(fileData: FileNode): void {
     importedBy.length,
   );
 
-  // Add dependency nodes
   imports.forEach((dep) => {
     if (state.hierarchyData) {
       const node = findFileNodeByPath(
@@ -177,7 +193,18 @@ export function focusOnFile(fileData: FileNode): void {
       );
       if (node) {
         const id = getNodeId(node);
-        if (id) dependencyNodeIds.add(id);
+        if (id) importNodeIds.add(id);
+
+        if (node.parent) {
+          const parentId = getNodeId(node.parent);
+          if (parentId) {
+            importFolderIds.add(parentId);
+            if (!state.isFolderExpanded(parentId)) {
+              state.expandedFolders.add(parentId);
+              needsRerender = true;
+            }
+          }
+        }
       }
     }
   });
@@ -190,53 +217,105 @@ export function focusOnFile(fileData: FileNode): void {
       );
       if (node) {
         const id = getNodeId(node);
-        if (id) dependencyNodeIds.add(id);
+        if (id) importedByNodeIds.add(id);
+
+        if (node.parent) {
+          const parentId = getNodeId(node.parent);
+          if (parentId) {
+            importedByFolderIds.add(parentId);
+            if (!state.isFolderExpanded(parentId)) {
+              state.expandedFolders.add(parentId);
+              needsRerender = true;
+            }
+          }
+        }
       }
     }
   });
 
-  // Update node styles
+  if (needsRerender) {
+    renderGraph();
+  }
+
   state.allNodes.forEach((nodeObj) => {
     const nodeId = getNodeId(nodeObj.data);
     const isFile = nodeId === getNodeId(fileData);
     const isInPath = nodeId && relevantNodeIds.has(nodeId) && !isFile;
-    const isDep = nodeId && dependencyNodeIds.has(nodeId);
+    const isImport = nodeId && importNodeIds.has(nodeId);
+    const isImportedBy = nodeId && importedByNodeIds.has(nodeId);
+    const isImportFolder = nodeId && importFolderIds.has(nodeId);
+    const isImportedByFolder = nodeId && importedByFolderIds.has(nodeId);
 
     nodeObj.element.classList.remove(
       "focused",
       "dimmed",
       "small",
       "dependency",
+      "dependency-folder",
+      "import-dep",
+      "imported-by-dep",
+      "import-folder",
+      "imported-by-folder",
     );
 
-    if (isFile) nodeObj.element.classList.add("focused");
-    else if (isDep) nodeObj.element.classList.add("dependency");
-    else if (isInPath) nodeObj.element.classList.add("small");
-    else nodeObj.element.classList.add("dimmed");
+    if (isFile) {
+      nodeObj.element.classList.add("focused");
+    } else if (isImport) {
+      nodeObj.element.classList.add("import-dep");
+    } else if (isImportedBy) {
+      nodeObj.element.classList.add("imported-by-dep");
+    } else if (isImportFolder) {
+      nodeObj.element.classList.add("import-folder");
+    } else if (isImportedByFolder) {
+      nodeObj.element.classList.add("imported-by-folder");
+    } else if (isInPath) {
+      nodeObj.element.classList.add("small");
+    } else {
+      nodeObj.element.classList.add("dimmed");
+    }
   });
 
-  // Update connection styles
   state.connections.forEach(({ line, childId, parentId }) => {
     const bothInPath =
       relevantNodeIds.has(childId) && parentId && relevantNodeIds.has(parentId);
-    const childIsDep = dependencyNodeIds.has(childId);
-    const parentIsDep = parentId && dependencyNodeIds.has(parentId);
-    const connectsToDep =
-      (childId === getNodeId(fileData) && parentIsDep) ||
-      (parentId === getNodeId(fileData) && childIsDep) ||
-      (childIsDep && parentId && relevantNodeIds.has(parentId)) ||
-      (parentIsDep && relevantNodeIds.has(childId));
 
-    line.classList.remove("highlight", "dependency-line");
+    const isImportLine =
+      importNodeIds.has(childId) || (parentId && importNodeIds.has(parentId));
+    const isImportedByLine =
+      importedByNodeIds.has(childId) ||
+      (parentId && importedByNodeIds.has(parentId));
+    const isImportFolderLine =
+      importFolderIds.has(childId) ||
+      (parentId && importFolderIds.has(parentId));
+    const isImportedByFolderLine =
+      importedByFolderIds.has(childId) ||
+      (parentId && importedByFolderIds.has(parentId));
 
-    if (bothInPath) line.classList.add("highlight");
-    else if (connectsToDep) line.classList.add("dependency-line");
+    line.classList.remove(
+      "highlight",
+      "dependency-line",
+      "dependency-folder-line",
+      "import-line",
+      "imported-by-line",
+      "import-folder-line",
+      "imported-by-folder-line",
+    );
+
+    if (bothInPath) {
+      line.classList.add("highlight");
+    } else if (isImportLine) {
+      line.classList.add("import-line");
+    } else if (isImportedByLine) {
+      line.classList.add("imported-by-line");
+    } else if (isImportFolderLine) {
+      line.classList.add("import-folder-line");
+    } else if (isImportedByFolderLine) {
+      line.classList.add("imported-by-folder-line");
+    }
   });
 
-  // Show panel
   showFunctionPanel(fileData);
 
-  // Update breadcrumb
   const pathParts: string[] = [];
   let pathNode: FileNode | HierarchyNode | null = fileData;
   while (pathNode) {
@@ -258,26 +337,19 @@ export function jumpToFile(filePath: string): void {
   if (node) {
     focusOnFile(node);
 
-    // Center view on node
-    const nodeObj = state.allNodes.find(
-      (n) => getNodeId(n.data) === getNodeId(node),
-    );
-    if (nodeObj) {
-      const canvas = getElement<HTMLDivElement>("canvas");
-      const rect = canvas.getBoundingClientRect();
-      state.setTranslate(
-        rect.width / 2 - (nodeObj.x - 5000) * state.scale,
-        rect.height / 2 - (nodeObj.y - 5000) * state.scale,
+    setTimeout(() => {
+      const nodeObj = state.allNodes.find(
+        (n) => getNodeId(n.data) === getNodeId(node),
       );
-      updateTransform();
-    }
+      if (nodeObj) {
+        const canvas = getElement<HTMLDivElement>("canvas");
+        const rect = canvas.getBoundingClientRect();
+        state.setTranslate(
+          rect.width / 2 - (nodeObj.x - 5000) * state.scale,
+          rect.height / 2 - (nodeObj.y - 5000) * state.scale,
+        );
+        updateTransform();
+      }
+    }, 50);
   }
-}
-
-/**
- * Update breadcrumb text
- */
-export function updateBreadcrumb(text: string): void {
-  getElement<HTMLDivElement>("breadcrumb").innerHTML =
-    `<span class="breadcrumb-item" onclick="window.roadmapActions.resetView()">${text}</span>`;
 }

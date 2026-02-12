@@ -26,6 +26,9 @@ export function createNode(
   node.style.top = `${y}px`;
   node.style.transform = "translate(-50%, -50%)";
 
+  const nodeId = getNodeId(data) || "";
+  node.dataset.id = nodeId;
+
   const icon = data.type === "folder" ? "📁" : "📄";
   const badge =
     data.type === "folder"
@@ -37,10 +40,17 @@ export function createNode(
       ? '<div class="error-badge-indicator">!</div>'
       : "";
 
+  // Folder expanded indicator
+  const isExpanded = data.type === "folder" && state.isFolderExpanded(nodeId);
+  const expandIcon = data.type === "folder" 
+    ? `<div class="expand-indicator">${isExpanded ? "▼" : "▶"}</div>` 
+    : "";
+
   node.innerHTML = `
     <div class="node-circle">
       ${errorInd}
       ${badge > 0 ? `<div class="node-badge">${badge}</div>` : ""}
+      ${expandIcon}
       <div class="node-icon">${icon}</div>
       <div class="node-name">${data.name}</div>
     </div>
@@ -54,12 +64,21 @@ export function createNode(
     };
   }
 
+  // Add click handler for folders - toggle expand
+  if (data.type === "folder") {
+    node.style.cursor = "pointer";
+    node.onclick = (e) => {
+      e.stopPropagation();
+      state.toggleFolderExpanded(nodeId);
+      renderGraph();
+    };
+  }
+
   return node;
 }
 
 /**
- * Draw VERTICAL tree connection (top-to-bottom)
- * Creates proper tree trunk with branches like: ├── └──
+ * Draw VERTICAL tree connection
  */
 export function drawConnection(
   x1: number,
@@ -72,18 +91,13 @@ export function drawConnection(
   const svg = getElement<SVGSVGElement>("connectionsSvg");
   const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
 
-  // Detect if child is indented right (file)
   const isFile = x2 > x1 + 100;
 
   if (isFile) {
-    // FILE CONNECTION: Create ├── style branch
-    // Vertical trunk from parent, horizontal branch at FILE height, then to file
     path.setAttribute("d", `M ${x1} ${y1} L ${x1} ${y2} L ${x2} ${y2}`);
   } else if (Math.abs(x1 - x2) < 5) {
-    // Straight vertical line (folder to folder)
     path.setAttribute("d", `M ${x1} ${y1} L ${x2} ${y2}`);
   } else {
-    // FOLDER CONNECTION: horizontal spread
     const midY = y1 + 50;
     path.setAttribute(
       "d",
