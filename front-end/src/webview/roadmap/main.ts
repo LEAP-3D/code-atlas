@@ -54,7 +54,31 @@ declare global {
       clearFileSelection: () => void;
       zoomIn: () => void;
       zoomOut: () => void;
+      refreshRoadmap: () => void;
     };
+  }
+}
+
+function applyRoadmapDataUpdate(newData: typeof state.roadmapData): void {
+  const previousScale = state.scale;
+  const previousTranslateX = state.translateX;
+  const previousTranslateY = state.translateY;
+  const focusedFilePath = state.focusedFile?.fullPath;
+
+  state.setRoadmapData(newData);
+  renderGraph();
+
+  state.setScale(previousScale);
+  state.setTranslate(previousTranslateX, previousTranslateY);
+  updateTransform();
+  getElement<HTMLDivElement>("zoomLevel").textContent =
+    `${Math.round(previousScale * 100)}%`;
+
+  if (focusedFilePath && state.hierarchyData) {
+    const fileNode = findFileNodeByPath(state.hierarchyData, focusedFilePath);
+    if (fileNode) {
+      focusOnFile(fileNode);
+    }
   }
 }
 
@@ -97,6 +121,12 @@ window.roadmapActions = {
   clearFileSelection: clearFileSelection,
   zoomIn: zoomIn,
   zoomOut: zoomOut,
+  refreshRoadmap: () => {
+    const btn = getElement<HTMLButtonElement>("refreshRoadmapBtn");
+    btn.disabled = true;
+    btn.textContent = "Refreshing...";
+    state.vscode.postMessage({ command: "refreshRoadmapData" });
+  },
 };
 
 // Initialize
@@ -155,6 +185,21 @@ window.addEventListener("message", (event) => {
         focusOnFile(fileNode);
       }
     }
+  }
+
+  if (message.type === "roadmapDataUpdated" && message.data) {
+    applyRoadmapDataUpdate(message.data);
+
+    const btn = getElement<HTMLButtonElement>("refreshRoadmapBtn");
+    btn.disabled = false;
+    btn.textContent = "Refresh Errors";
+  }
+
+  if (message.type === "roadmapDataRefreshFailed") {
+    const btn = getElement<HTMLButtonElement>("refreshRoadmapBtn");
+    btn.disabled = false;
+    btn.textContent = "Refresh Errors";
+    console.error("❌ Failed to refresh roadmap data:", message.error);
   }
 });
 // Run on load

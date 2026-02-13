@@ -102,6 +102,23 @@ export class CodeWebviewProvider {
     panel.webview.onDidReceiveMessage(
       async (message) => {
         console.log("📨 [Roadmap] Received message:", message);
+        if (message.command === "refreshRoadmapData") {
+          try {
+            const refreshedData = this.buildRoadmapData();
+            await panel.webview.postMessage({
+              type: "roadmapDataUpdated",
+              data: refreshedData,
+            });
+          } catch (error) {
+            const errorMsg =
+              error instanceof Error ? error.message : "Unknown error";
+            await panel.webview.postMessage({
+              type: "roadmapDataRefreshFailed",
+              error: errorMsg,
+            });
+          }
+          return;
+        }
         await this.handleWebviewMessage(message, context);
       },
       undefined,
