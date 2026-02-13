@@ -2,7 +2,7 @@
 
 import { HierarchyNode, FileNode, NodePosition } from "./types";
 import * as state from "./state";
-import { getNodeId, countFiles, getElement } from "./utils";
+import { getNodeId, getElement } from "./utils";
 import { buildHierarchy } from "./hierarchy";
 import { calculateTreeLayout } from "./layout";
 import { focusOnFile } from "./panel";
@@ -30,10 +30,6 @@ export function createNode(
   node.dataset.id = nodeId;
 
   const icon = data.type === "folder" ? "📁" : "📄";
-  const badge =
-    data.type === "folder"
-      ? countFiles(data as HierarchyNode)
-      : (data as FileNode).functions?.length || 0;
 
   const errorInd =
     data.type === "file" && (data as FileNode).errorCount > 0
@@ -49,7 +45,6 @@ export function createNode(
   node.innerHTML = `
     <div class="node-circle">
       ${errorInd}
-      ${badge > 0 ? `<div class="node-badge">${badge}</div>` : ""}
       ${expandIcon}
       <div class="node-icon">${icon}</div>
       <div class="node-name">${data.name}</div>

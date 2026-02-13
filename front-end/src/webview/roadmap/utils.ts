@@ -28,17 +28,6 @@ export function getFunctionIcon(name: string): string {
 }
 
 /**
- * Count files in folder recursively
- */
-export function countFiles(folder: HierarchyNode): number {
-  let count = folder.files?.length || 0;
-  Object.values(folder.children || {}).forEach((c) => {
-    count += countFiles(c);
-  });
-  return count;
-}
-
-/**
  * Get DOM element by ID (typed)
  */
 export function getElement<T extends Element>(id: string): T {
