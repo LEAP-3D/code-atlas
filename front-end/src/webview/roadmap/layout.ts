@@ -4,12 +4,12 @@ import { HierarchyNode, FileNode, NodePosition } from "./types";
 import * as state from "./state";
 import { getNodeId } from "./utils";
 
-// Spacing configuration - ИЛҮҮ ИХ ЗАЙ
+// Spacing configuration
 const SPACING = {
-  horizontal: 350, // Folder хоорондын хэвтээ зай (280 → 350)
-  vertical: 280, // Босоо зай (200 → 280)
-  nodeWidth: 280, // Node өргөн (240 → 280)
-  siblingGap: 100, // Sibling хоорондын зай (60 → 100)
+  horizontal: 260,
+  vertical: 230,
+  nodeWidth: 240,
+  siblingGap: 60,
   fileIndent: 250, // File-ийн баруун тийш indent (200 → 250)
   fileVerticalGap: 180, // File хоорондын босоо зай (220 → 180)
 };
@@ -23,15 +23,10 @@ function calcSubtreeWidth(item: HierarchyNode | FileNode): number {
   }
 
   const folder = item as HierarchyNode;
-  const folderId = getNodeId(folder);
-  const isExpanded = folderId ? state.isFolderExpanded(folderId) : false;
-
   const childFolders = Object.values(folder.children || {});
   const files = folder.files || [];
 
-  const visibleFiles = isExpanded ? files : [];
-
-  if (childFolders.length === 0 && visibleFiles.length === 0) {
+  if (childFolders.length === 0 && files.length === 0) {
     return SPACING.nodeWidth;
   }
 
@@ -43,9 +38,9 @@ function calcSubtreeWidth(item: HierarchyNode | FileNode): number {
       (childFolders.length - 1) * SPACING.siblingGap;
   }
 
-  // Files need extra width when expanded
+  // Always reserve file-column width so expand/collapse does not shift siblings.
   const filesWidth =
-    visibleFiles.length > 0 ? SPACING.nodeWidth + SPACING.fileIndent + 50 : 0;
+    files.length > 0 ? SPACING.nodeWidth + SPACING.fileIndent + 50 : 0;
 
   return Math.max(foldersWidth, filesWidth, SPACING.nodeWidth);
 }
@@ -77,9 +72,7 @@ export function calculateTreeLayout(
     const folderY =
       startY +
       SPACING.vertical +
-      (isExpanded && files.length > 0
-        ? files.length * SPACING.fileVerticalGap
-        : 0);
+      (files.length > 0 ? files.length * SPACING.fileVerticalGap : 0);
 
     folders.forEach((folder, index) => {
       const folderWidth = folderWidths[index];
