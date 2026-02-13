@@ -444,6 +444,70 @@ svg.connections {
   right: 20px;
 }
 
+.panel-toggle {
+  position: fixed;
+  top: 50%;
+  right: 10px;
+  transform: translate(50%, -50%);
+  width: 34px;
+  height: 72px;
+  border-radius: 999px;
+  border: 1.5px solid #3f3f46;
+  background: #000;
+  cursor: pointer;
+  z-index: 21;
+  display: none;
+  padding: 0;
+  outline: none;
+  transition:
+    right 0.4s cubic-bezier(0.4, 0, 0.2, 1),
+    background 0.2s,
+    border-color 0.2s,
+    opacity 0.16s ease;
+  opacity: 1;
+}
+
+.panel-toggle.active {
+  display: block;
+}
+
+.panel-toggle.opening {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.panel-toggle.panel-open {
+  right: 400px;
+}
+
+.panel-toggle::before {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 10px;
+  height: 10px;
+  border-top: 2px solid #9ca3af;
+  border-right: 2px solid #9ca3af;
+  transform: translate(-60%, -50%) rotate(45deg);
+  transition:
+    transform 0.25s ease,
+    border-color 0.2s;
+}
+
+.panel-toggle.panel-open::before {
+  transform: translate(-40%, -50%) rotate(-135deg);
+}
+
+.panel-toggle:hover {
+  background: #09090b;
+  border-color: #4ec9b0;
+}
+
+.panel-toggle:hover::before {
+  border-color: #4ec9b0;
+}
+
 .function-panel-header {
   margin-bottom: 20px;
 }

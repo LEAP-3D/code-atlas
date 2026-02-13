@@ -36,10 +36,11 @@
 
     <!-- Function Panel -->
     <div class="function-panel" id="functionPanel">
-      <button class="close-panel" onclick="window.roadmapActions.closeFunctionPanel()">×</button>
+      <button class="close-panel" onclick="window.roadmapActions.clearFileSelection()">×</button>
       <div class="function-panel-header" id="panelHeader"></div>
       <div class="function-list" id="functionList"></div>
     </div>
+    <button class="panel-toggle" id="panelToggle" onclick="window.roadmapActions.toggleFunctionPanel()" aria-label="Toggle sidebar"></button>
 
     <!-- Hint -->
     <div class="hint" id="hint">

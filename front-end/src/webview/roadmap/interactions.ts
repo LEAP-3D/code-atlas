@@ -115,6 +115,8 @@ export function resetView(): void {
     `${Math.round(state.scale * 100)}%`;
   updateBreadcrumb("Full Map");
   closeFunctionPanel();
+  const panelToggle = getElement<HTMLButtonElement>("panelToggle");
+  panelToggle.classList.remove("active", "panel-open");
 }
 
 /**
@@ -122,6 +124,9 @@ export function resetView(): void {
  */
 export function setupCanvasEvents(): void {
   const canvas = getElement<HTMLDivElement>("canvas");
+  let dragStartClientX = 0;
+  let dragStartClientY = 0;
+  let hasDragged = false;
 
   // Mouse down - start drag
   canvas.addEventListener("mousedown", (e) => {
@@ -130,6 +135,9 @@ export function setupCanvasEvents(): void {
       (e.target as HTMLElement).closest("#graphContainer")
     ) {
       state.setDragging(true);
+      dragStartClientX = e.clientX;
+      dragStartClientY = e.clientY;
+      hasDragged = false;
       state.setDragStart(
         e.clientX - state.translateX,
         e.clientY - state.translateY,
@@ -141,6 +149,12 @@ export function setupCanvasEvents(): void {
   // Mouse move - drag
   canvas.addEventListener("mousemove", (e) => {
     if (state.isDragging) {
+      if (
+        Math.abs(e.clientX - dragStartClientX) > 4 ||
+        Math.abs(e.clientY - dragStartClientY) > 4
+      ) {
+        hasDragged = true;
+      }
       state.setTranslate(e.clientX - state.startX, e.clientY - state.startY);
       updateTransform();
     }
@@ -156,6 +170,21 @@ export function setupCanvasEvents(): void {
   canvas.addEventListener("mouseleave", () => {
     state.setDragging(false);
     canvas.classList.remove("grabbing");
+  });
+
+  // Click on background closes sidebar only (selection/highlights stay)
+  canvas.addEventListener("click", (e) => {
+    if (hasDragged) {
+      hasDragged = false;
+      return;
+    }
+
+    const target = e.target as HTMLElement;
+    if (target.closest(".node")) {
+      return;
+    }
+
+    closeFunctionPanel();
   });
 
   // Wheel - zoom or pan
