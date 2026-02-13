@@ -7,21 +7,32 @@ import { RoadmapFile, HierarchyNode, FileNode } from "./types";
  */
 export function findBasePath(files: RoadmapFile[]): string {
   if (files.length === 0) return "";
-  
-  const paths = files.map((f) => f.path.replace(/\\/g, "/"));
-  const parts = paths[0].split("/").filter((p) => p);
-  const commonParts: string[] = [];
 
-  for (let i = 0; i < parts.length; i++) {
-    const testPath = "/" + parts.slice(0, i + 1).join("/");
-    if (paths.every((p) => p.startsWith(testPath + "/"))) {
-      commonParts.push(...parts.slice(0, i + 1));
-    } else {
-      break;
+  const paths = files.map((f) => f.path.replace(/\\/g, "/"));
+  const splitPaths = paths.map((p) => p.split("/").filter((part) => part));
+  const firstParts = splitPaths[0];
+
+  let commonLength = firstParts.length;
+  splitPaths.slice(1).forEach((parts) => {
+    let i = 0;
+    const max = Math.min(commonLength, parts.length);
+    while (i < max && parts[i] === firstParts[i]) {
+      i++;
     }
+    commonLength = i;
+  });
+
+  if (commonLength === 0) return "";
+
+  const commonParts = firstParts.slice(0, commonLength);
+  const firstIsAbsoluteUnix = paths[0].startsWith("/");
+  const firstLooksLikeWindowsDrive = /^[A-Za-z]:$/.test(commonParts[0] || "");
+
+  if (firstLooksLikeWindowsDrive) {
+    return commonParts.join("/");
   }
 
-  return "/" + commonParts.join("/");
+  return `${firstIsAbsoluteUnix ? "/" : ""}${commonParts.join("/")}`;
 }
 
 /**
