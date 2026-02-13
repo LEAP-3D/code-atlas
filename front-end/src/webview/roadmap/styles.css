@@ -342,11 +342,6 @@ svg.connections {
   box-shadow: 0 12px 40px rgba(239, 68, 68, 0.5);
 }
 
-.node.file.has-error .node-badge {
-  background: rgba(239, 68, 68, 0.3);
-  color: #ef4444;
-}
-
 .node.dependency .node-circle {
   width: 170px;
   height: 170px;
@@ -357,11 +352,6 @@ svg.connections {
 
 .node.dependency:hover .node-circle {
   box-shadow: 0 12px 40px rgba(16, 185, 129, 0.5);
-}
-
-.node.dependency .node-badge {
-  background: rgba(16, 185, 129, 0.3);
-  color: #10b981;
 }
 
 /* UPDATED: Icon бүрэн хассан */
@@ -398,26 +388,6 @@ svg.connections {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-/* UPDATED: Larger badge */
-.node-badge {
-  position: absolute;
-  top: 6px;
-  right: 6px;
-  background: rgba(78, 201, 176, 0.2);
-  color: #4ec9b0;
-  padding: 5px 10px;
-  border-radius: 12px;
-  font-size: 13px;
-  font-weight: 600;
-}
-
-.node.small .node-badge {
-  font-size: 9px;
-  padding: 2px 6px;
-  top: 3px;
-  right: 3px;
-}
-
 .error-badge-indicator {
   position: absolute;
   top: -10px;
