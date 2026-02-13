@@ -37,17 +37,24 @@ export function setZoom(newScale: number): void {
 }
 
 /**
- * Reset view to show all nodes
+ * Reset view to show all nodes - PROPERLY FIXED VERSION
+ *
+ * The graph container is 10000x10000px positioned with transform-origin at center.
+ * Nodes are positioned in absolute coordinates within this container.
+ * The CSS applies: translate(-50%, -50%) which centers the container.
+ *
+ * We need to calculate the offset to center all visible nodes in the viewport.
  */
 export function resetView(): void {
   state.setFocusedFile(null);
 
   if (state.allNodes.length > 0) {
-    // Calculate bounds
+    // Step 1: Find the bounding box of all nodes
     let minX = Infinity,
       maxX = -Infinity,
       minY = Infinity,
       maxY = -Infinity;
+
     state.allNodes.forEach((n) => {
       minX = Math.min(minX, n.x);
       maxX = Math.max(maxX, n.x);
@@ -55,42 +62,54 @@ export function resetView(): void {
       maxY = Math.max(maxY, n.y);
     });
 
-    const gw = maxX - minX + 200;
-    const gh = maxY - minY + 200;
-    const gcx = (minX + maxX) / 2;
-    const gcy = (minY + maxY) / 2;
+    // Step 2: Calculate graph center (in the 10000x10000 space)
+    const graphCenterX = (minX + maxX) / 2;
+    const graphCenterY = (minY + maxY) / 2;
+    const graphWidth = maxX - minX + 200;
+    const graphHeight = maxY - minY + 200;
 
+    // Step 3: Get viewport dimensions
     const canvas = getElement<HTMLDivElement>("canvas");
     const rect = canvas.getBoundingClientRect();
-    const ccx = rect.width / 2;
-    const ccy = rect.height / 2;
 
-    // Calculate optimal scale
+    // Step 4: Calculate optimal scale
     const newScale = Math.max(
       state.MIN_SCALE,
-      Math.min((rect.width * 0.9) / gw, (rect.height * 0.9) / gh, 1),
+      Math.min(
+        (rect.width * 0.9) / graphWidth,
+        (rect.height * 0.9) / graphHeight,
+        1,
+      ),
     );
 
+    // Step 5: Calculate translation
+    // The graph container has a base position of translate(-50%, -50%)
+    // which means its center (5000, 5000) is at the viewport center by default.
+    // We need to offset from that to move our actual graph center to viewport center.
+    //
+    // Offset needed = (container_center - graph_center) * scale
+    const CONTAINER_CENTER = 5000; // The 10000x10000 container's center
+
+    const translateX = (CONTAINER_CENTER - graphCenterX) * newScale;
+    const translateY = (CONTAINER_CENTER - graphCenterY) * newScale;
+
     state.setScale(newScale);
-    state.setTranslate(
-      ccx - (gcx - 5000) * newScale,
-      ccy - (gcy - 5000) * newScale,
-    );
+    state.setTranslate(translateX, translateY);
   } else {
     state.setScale(0.5);
     state.setTranslate(0, 0);
   }
 
-  // Reset node styles
+  // Reset visual styles
   state.allNodes.forEach((n) =>
     n.element.classList.remove("focused", "dimmed", "small", "dependency"),
   );
 
-  // Reset connection styles
   state.connections.forEach(({ line }) =>
     line.classList.remove("highlight", "dependency-line"),
   );
 
+  // Update UI
   updateTransform();
   getElement<HTMLDivElement>("zoomLevel").textContent =
     `${Math.round(state.scale * 100)}%`;
