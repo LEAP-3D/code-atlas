@@ -114,6 +114,11 @@ body {
   border-color: #4ec9b0;
 }
 
+.reset-btn:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
 /* Canvas */
 .canvas {
   flex: 1;
