@@ -728,6 +728,10 @@ svg.connections {
   cursor: pointer;
 }
 
+.function-card + .function-card {
+  margin-top: 10px;
+}
+
 .function-card:hover {
   background: rgba(78, 201, 176, 0.1);
   border-color: #4ec9b0;
