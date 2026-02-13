@@ -8,7 +8,13 @@ import {
   setupHintTimeout,
   updateTransform,
 } from "./interactions";
-import { jumpToFile, closeFunctionPanel, focusOnFile } from "./panel";
+import {
+  jumpToFile,
+  closeFunctionPanel,
+  focusOnFile,
+  toggleFunctionPanel,
+  clearFileSelection,
+} from "./panel";
 import { zoomIn, zoomOut } from "./interactions";
 import { getElement } from "./utils";
 import { findFileNodeByPath } from "./hierarchy";
@@ -44,6 +50,8 @@ declare global {
       debugExecutionFlow: (filePath: string) => void;
       resetView: () => void;
       closeFunctionPanel: () => void;
+      toggleFunctionPanel: () => void;
+      clearFileSelection: () => void;
       zoomIn: () => void;
       zoomOut: () => void;
     };
@@ -85,6 +93,8 @@ window.roadmapActions = {
     resetView();
   },
   closeFunctionPanel: closeFunctionPanel,
+  toggleFunctionPanel: toggleFunctionPanel,
+  clearFileSelection: clearFileSelection,
   zoomIn: zoomIn,
   zoomOut: zoomOut,
 };

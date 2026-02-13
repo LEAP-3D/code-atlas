@@ -7,6 +7,8 @@ import { findFileNodeByPath } from "./hierarchy";
 import { updateTransform } from "./interactions";
 import { renderGraph } from "./renderer";
 
+let panelToggleOpeningTimer: number | null = null;
+
 /**
  * Show function panel for a file
  */
@@ -119,13 +121,94 @@ export function showFunctionPanel(fileData: FileNode): void {
 
   list.innerHTML = depsSection + funcSection;
   panel.classList.add("visible");
+  const toggle = getElement<HTMLButtonElement>("panelToggle");
+  const wasActive = toggle.classList.contains("active");
+  toggle.classList.add("active", "panel-open");
+
+  // First reveal: delay chevron visibility so it aligns with panel slide-in.
+  if (!wasActive) {
+    toggle.classList.add("opening");
+    if (panelToggleOpeningTimer !== null) {
+      window.clearTimeout(panelToggleOpeningTimer);
+    }
+    panelToggleOpeningTimer = window.setTimeout(() => {
+      toggle.classList.remove("opening");
+      panelToggleOpeningTimer = null;
+    }, 260);
+  }
 }
 
 /**
- * Close the function panel
+ * Hide panel UI only (keep file focus/highlight state)
  */
 export function closeFunctionPanel(): void {
   getElement<HTMLDivElement>("functionPanel").classList.remove("visible");
+  const toggle = getElement<HTMLButtonElement>("panelToggle");
+  if (toggle.classList.contains("active")) {
+    toggle.classList.remove("panel-open");
+  }
+}
+
+/**
+ * Toggle panel visibility while keeping current selection/highlights
+ */
+export function toggleFunctionPanel(): void {
+  const panel = getElement<HTMLDivElement>("functionPanel");
+  const toggle = getElement<HTMLButtonElement>("panelToggle");
+
+  if (!toggle.classList.contains("active")) {
+    return;
+  }
+
+  const isOpen = panel.classList.contains("visible");
+  if (isOpen) {
+    closeFunctionPanel();
+  } else {
+    panel.classList.add("visible");
+    toggle.classList.add("panel-open");
+  }
+}
+
+/**
+ * Clear selected file context (panel + highlights + focused state)
+ */
+export function clearFileSelection(): void {
+  state.setFocusedFile(null);
+
+  state.allNodes.forEach((nodeObj) => {
+    nodeObj.element.classList.remove(
+      "focused",
+      "dimmed",
+      "small",
+      "dependency",
+      "dependency-folder",
+      "import-dep",
+      "imported-by-dep",
+      "import-folder",
+      "imported-by-folder",
+    );
+  });
+
+  state.connections.forEach(({ line }) => {
+    line.classList.remove(
+      "highlight",
+      "dependency-line",
+      "dependency-folder-line",
+      "import-line",
+      "imported-by-line",
+      "import-folder-line",
+      "imported-by-folder-line",
+    );
+  });
+
+  closeFunctionPanel();
+  const toggle = getElement<HTMLButtonElement>("panelToggle");
+  toggle.classList.remove("active", "panel-open", "opening");
+  if (panelToggleOpeningTimer !== null) {
+    window.clearTimeout(panelToggleOpeningTimer);
+    panelToggleOpeningTimer = null;
+  }
+  updateBreadcrumb("Full Map");
 }
 
 /**
