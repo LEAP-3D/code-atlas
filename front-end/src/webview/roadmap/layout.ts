@@ -11,7 +11,7 @@ const SPACING = {
   nodeWidth: 240,
   siblingGap: 60,
   fileIndent: 250, // File-ийн баруун тийш indent (200 → 250)
-  fileVerticalGap: 180, // File хоорондын босоо зай (220 → 180)
+  fileVerticalGap: 240, // File хоорондын босоо зай
 };
 
 /**
