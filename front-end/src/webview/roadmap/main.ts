@@ -79,7 +79,11 @@ window.roadmapActions = {
     });
   },
 
-  resetView: resetView,
+  resetView: () => {
+    state.clearExpandedFolders();
+    renderGraph();
+    resetView();
+  },
   closeFunctionPanel: closeFunctionPanel,
   zoomIn: zoomIn,
   zoomOut: zoomOut,

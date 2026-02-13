@@ -113,3 +113,8 @@ export function toggleFolderExpanded(folderId: string): void {
 export function isFolderExpanded(folderId: string): boolean {
   return expandedFolders.has(folderId);
 }
+
+// Collapse all folders (default initial view)
+export function clearExpandedFolders(): void {
+  expandedFolders.clear();
+}
