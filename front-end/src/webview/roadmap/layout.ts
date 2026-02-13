@@ -100,10 +100,10 @@ export function calculateTreeLayout(
     const firstFileY = startY + SPACING.vertical;
 
     if (files.length === 1) {
-      // Single file - баруун тийш indent
+      // Single file - keep directly below folder for straight connection
       positions.push({
         node: files[0],
-        x: startX + SPACING.fileIndent,
+        x: startX,
         y: firstFileY,
         level: level + 1,
         parentX: startX,
