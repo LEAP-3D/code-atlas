@@ -16,8 +16,9 @@ import {
   clearFileSelection,
 } from "./panel";
 import { zoomIn, zoomOut } from "./interactions";
-import { getElement } from "./utils";
+import { getElement, getNodeId } from "./utils";
 import { findFileNodeByPath } from "./hierarchy";
+import { HierarchyNode } from "./types";
 
 // Initialize VS Code API
 state.setVscode(window.acquireVsCodeApi());
@@ -41,6 +42,22 @@ console.log(
   "deps",
 );
 
+// ✅ ШИНЭ: Toast мессеж харуулах функц
+function showCopyToast(message: string): void {
+  const existing = document.querySelector(".copy-toast");
+  if (existing) existing.remove();
+
+  const toast = document.createElement("div");
+  toast.className = "copy-toast";
+  toast.textContent = message;
+  document.body.appendChild(toast);
+
+  setTimeout(() => {
+    toast.style.opacity = "0";
+    setTimeout(() => toast.remove(), 300);
+  }, 2000);
+}
+
 // Expose actions to window for HTML onclick handlers
 declare global {
   interface Window {
@@ -55,6 +72,9 @@ declare global {
       zoomIn: () => void;
       zoomOut: () => void;
       refreshRoadmap: () => void;
+      copyFile: (filePath: string) => void;
+      copyAll: (filePath: string) => void;
+      copyForAI: (filePath: string) => void;
     };
   }
 }
@@ -66,6 +86,10 @@ function applyRoadmapDataUpdate(newData: typeof state.roadmapData): void {
   const focusedFilePath = state.focusedFile?.fullPath;
 
   state.setRoadmapData(newData);
+
+  // Folder-ууд дахин нээх
+  autoExpandFoldersWithFiles();
+
   renderGraph();
 
   state.setScale(previousScale);
@@ -80,6 +104,39 @@ function applyRoadmapDataUpdate(newData: typeof state.roadmapData): void {
       focusOnFile(fileNode);
     }
   }
+}
+
+/**
+ * ✅ ШИНЭ ФУНКЦ: Файлтай folder-уудыг автоматаар нээх
+ */
+function autoExpandFoldersWithFiles(): void {
+  if (!state.hierarchyData) {
+    console.log("⚠️ Hierarchy data байхгүй байна");
+    return;
+  }
+
+  let expandedCount = 0;
+
+  function expandFolder(node: HierarchyNode): void {
+    const nodeId = getNodeId(node);
+
+    // Энэ folder-т файл байвал нээх
+    if (node.files && node.files.length > 0 && nodeId) {
+      state.expandedFolders.add(nodeId);
+      expandedCount++;
+      console.log(`📂 Нээгдсэн: ${node.name} (${node.files.length} файл)`);
+    }
+
+    // Дотоод folder-уудыг мөн шалгах
+    if (node.children) {
+      Object.values(node.children).forEach((child) => {
+        expandFolder(child);
+      });
+    }
+  }
+
+  expandFolder(state.hierarchyData);
+  console.log(`✅ Нийт ${expandedCount} folder автоматаар нээгдлээ`);
 }
 
 window.roadmapActions = {
@@ -111,16 +168,105 @@ window.roadmapActions = {
     });
   },
 
+  // ✅ ШИНЭ: Copy зөвхөн сонгосон файл
+  copyFile: (filePath: string) => {
+    state.vscode.postMessage({
+      command: "copyFile",
+      filePath: filePath,
+    });
+    showCopyToast(`📄 ${filePath.split(/[/\\]/).pop()} хуулагдлаа`);
+  },
+
+  // ✅ ШИНЭ: Copy бүх холбоотой файлууд
+  copyAll: (filePath: string) => {
+    if (!state.roadmapData || !state.hierarchyData) return;
+
+    const deps = state.roadmapData.dependencies || [];
+    const imports = deps.filter((d) => d.importerFilePath === filePath);
+    const importedBy = deps.filter((d) => d.importedFilePath === filePath);
+
+    const allFiles = new Set<string>();
+    allFiles.add(filePath);
+    imports.forEach((dep) => allFiles.add(dep.importedFilePath));
+    importedBy.forEach((dep) => allFiles.add(dep.importerFilePath));
+
+    state.vscode.postMessage({
+      command: "copyAllFiles",
+      files: Array.from(allFiles),
+    });
+
+    showCopyToast(`📋 ${allFiles.size} файл хуулагдлаа`);
+  },
+
+  // ✅ ШИНЭ: Copy for AI
+  copyForAI: (filePath: string) => {
+    if (!state.roadmapData || !state.hierarchyData) return;
+
+    const fileNode = findFileNodeByPath(state.hierarchyData, filePath);
+    if (!fileNode) return;
+
+    const deps = state.roadmapData.dependencies || [];
+    const imports = deps.filter((d) => d.importerFilePath === filePath);
+    const importedBy = deps.filter((d) => d.importedFilePath === filePath);
+
+    const fileName = fileNode.name;
+    const funcCount = fileNode.functions?.length || 0;
+
+    let context = `# 📄 ${fileName}\n\n`;
+
+    if (fileNode.errorCount > 0) {
+      context += `## ⚠️ ${fileNode.errorCount} алдаа илэрсэн\n\n`;
+      context += `Энэ файл дахь бүх алдааг засаж өгнө үү.\n\n`;
+    }
+
+    context += `## 📊 Мэдээлэл\n`;
+    context += `- **Функц**: ${funcCount}\n`;
+    context += `- **Import**: ${imports.length}\n`;
+    context += `- **Exported to**: ${importedBy.length}\n\n`;
+
+    if (imports.length > 0) {
+      context += `## 📥 Import хийсэн файлууд\n\n`;
+      imports.forEach((dep) => {
+        const depFile = dep.importedFilePath.split(/[/\\]/).pop();
+        context += `- **${depFile}**: ${dep.importedNames.join(", ")}\n`;
+      });
+      context += `\n`;
+    }
+
+    if (importedBy.length > 0) {
+      context += `## 📤 Import хийсэн файлууд\n\n`;
+      importedBy.forEach((dep) => {
+        const depFile = dep.importerFilePath.split(/[/\\]/).pop();
+        context += `- **${depFile}**: ${dep.importedNames.join(", ")}\n`;
+      });
+      context += `\n`;
+    }
+
+    context += `## 💻 Файлын агуулга\n\n\`\`\`javascript\n`;
+    context += `// ${fileName} агуулга энд орно\n\`\`\`\n`;
+
+    state.vscode.postMessage({
+      command: "copyAIContext",
+      errorFile: filePath,
+      context: context,
+    });
+
+    showCopyToast("🤖 AI context хуулагдлаа!");
+  },
+
   resetView: () => {
     state.clearExpandedFolders();
+    autoExpandFoldersWithFiles(); // Дахин нээх
     renderGraph();
     resetView();
   },
+
   closeFunctionPanel: closeFunctionPanel,
   toggleFunctionPanel: toggleFunctionPanel,
   clearFileSelection: clearFileSelection,
   zoomIn: zoomIn,
   zoomOut: zoomOut,
+
   refreshRoadmap: () => {
     const btn = getElement<HTMLButtonElement>("refreshRoadmapBtn");
     btn.disabled = true;
@@ -129,11 +275,15 @@ window.roadmapActions = {
   },
 };
 
-// Initialize
-// Initialize
+/**
+ * ✅ ЗАСВАРЛАСАН: Initialize - folder-ууд автоматаар нээгдэнэ
+ */
 function init(): void {
   if (state.roadmapData?.files?.length > 0) {
     console.log("✅ Init:", state.roadmapData.files.length, "files");
+
+    // ✅ ШИНЭ: Folder-уудыг эхлээд нээх
+    autoExpandFoldersWithFiles();
 
     renderGraph();
     setupCanvasEvents();
@@ -143,7 +293,6 @@ function init(): void {
       new URLSearchParams(window.location.search).get("restore") === "true";
 
     if (shouldRestore) {
-      // Try to restore from previous state (will be sent via postMessage)
       console.log("🔄 Waiting for state restoration...");
     } else {
       setTimeout(resetView, 100);
@@ -202,5 +351,6 @@ window.addEventListener("message", (event) => {
     console.error("❌ Failed to refresh roadmap data:", message.error);
   }
 });
+
 // Run on load
 init();
