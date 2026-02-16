@@ -22,6 +22,7 @@ import { HierarchyNode } from "./types";
 
 // Initialize VS Code API
 state.setVscode(window.acquireVsCodeApi());
+console.log("hello");
 
 // Load roadmap data
 state.setRoadmapData(
