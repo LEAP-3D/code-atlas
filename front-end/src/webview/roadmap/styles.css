@@ -957,3 +957,158 @@ svg.connections {
 .node.dimmed .node-circle {
   filter: grayscale(50%);
 }
+/* Add these styles after the error-debug-btn styles */
+
+/* Copy Buttons Container */
+.copy-buttons-container {
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.copy-file-btn,
+.copy-all-btn {
+  flex: 1;
+  background: #2a2a2a;
+  color: white;
+  border: 1px solid #3a3a3a;
+  padding: 8px 12px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+}
+
+.copy-file-btn:hover {
+  background: #3a3a3a;
+  border-color: #4ec9b0;
+  transform: translateY(-1px);
+}
+
+.copy-all-btn {
+  background: #1a2a3a;
+  border-color: #3b82f6;
+}
+
+.copy-all-btn:hover {
+  background: #2a3a4a;
+  border-color: #60a5fa;
+  transform: translateY(-1px);
+}
+
+.copy-file-btn:active,
+.copy-all-btn:active {
+  transform: translateY(0) scale(0.98);
+}
+
+/* Toast notification for copy feedback */
+.copy-toast {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  background: rgba(78, 201, 176, 0.95);
+  color: white;
+  padding: 12px 20px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+  z-index: 1000;
+  animation: slideIn 0.3s ease;
+  transition: opacity 0.3s;
+}
+
+@keyframes slideIn {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+/* Add these styles after the error-debug-btn styles */
+
+/* Copy Buttons Container - at the top of panel */
+.copy-buttons-container {
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+  margin-bottom: 12px;
+}
+
+.copy-file-btn,
+.copy-all-btn {
+  flex: 1;
+  background: #2a2a2a;
+  color: white;
+  border: 1px solid #3a3a3a;
+  padding: 8px 12px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+}
+
+.copy-file-btn:hover {
+  background: #3a3a3a;
+  border-color: #4ec9b0;
+  transform: translateY(-1px);
+}
+
+.copy-all-btn {
+  background: #1a2a3a;
+  border-color: #3b82f6;
+}
+
+.copy-all-btn:hover {
+  background: #2a3a4a;
+  border-color: #60a5fa;
+  transform: translateY(-1px);
+}
+
+.copy-file-btn:active,
+.copy-all-btn:active {
+  transform: translateY(0) scale(0.98);
+}
+
+/* Toast notification for copy feedback */
+.copy-toast {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  background: rgba(78, 201, 176, 0.95);
+  color: white;
+  padding: 12px 20px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+  z-index: 1000;
+  animation: slideIn 0.3s ease;
+  transition: opacity 0.3s;
+}
+
+@keyframes slideIn {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}

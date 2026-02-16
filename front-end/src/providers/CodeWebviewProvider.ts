@@ -473,7 +473,7 @@ export class CodeWebviewProvider {
   }
 
   /**
-   * Build roadmap data
+   * ✅ ЗАСВАРЛАСАН: Build roadmap data - БҮГД ФАЙЛЫГ ХАРУУЛНА
    */
   private static buildRoadmapData(): RoadmapData {
     console.log("🔨 [buildRoadmapData] Building roadmap...");
@@ -493,7 +493,7 @@ export class CodeWebviewProvider {
       };
     }
 
-    // Get errors by file
+    // Алдааг файлаар нь авах
     const errorsByFile = new Map<string, number>();
     const allDiagnostics = vscode.languages.getDiagnostics();
     for (const [uri, diagnostics] of allDiagnostics) {
@@ -505,7 +505,7 @@ export class CodeWebviewProvider {
       }
     }
 
-    // Build roadmap files
+    // Roadmap файлууд бүтээх
     const roadmapFiles: RoadmapFile[] = [];
 
     for (const file of files) {
@@ -514,9 +514,11 @@ export class CodeWebviewProvider {
         (fn) => fn.filePath === file.path,
       );
 
-      if (fileFunctions.length === 0) {
-        continue;
-      }
+      // ✅ ЗАСВАР: Энэ шалгалтыг УСТГАСАН - функцгүй файлуудыг ч орхино
+      // ❌ ХУУЧИН КОД:
+      // if (fileFunctions.length === 0) {
+      //   continue;
+      // }
 
       const functions: RoadmapFunction[] = fileFunctions.map((fn) => {
         const calls = allEdges
@@ -538,7 +540,7 @@ export class CodeWebviewProvider {
       roadmapFiles.push({
         name: fileName,
         path: file.path,
-        functions,
+        functions, // Одоо хоосон array байж болно
         color: errorCount > 0 ? "#ef4444" : "#3b82f6",
         errorCount,
       });
@@ -552,6 +554,8 @@ export class CodeWebviewProvider {
         importPath: dep.importPath,
       }),
     );
+
+    console.log(`✅ Нийт ${roadmapFiles.length} файл roadmap-д нэмэгдлээ`);
 
     return {
       files: roadmapFiles,

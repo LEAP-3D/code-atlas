@@ -16,11 +16,13 @@ import {
   clearFileSelection,
 } from "./panel";
 import { zoomIn, zoomOut } from "./interactions";
-import { getElement } from "./utils";
+import { getElement, getNodeId } from "./utils";
 import { findFileNodeByPath } from "./hierarchy";
+import { HierarchyNode } from "./types";
 
 // Initialize VS Code API
 state.setVscode(window.acquireVsCodeApi());
+console.log("hello");
 
 // Load roadmap data
 state.setRoadmapData(
@@ -41,6 +43,22 @@ console.log(
   "deps",
 );
 
+// ✅ Toast notification function
+function showCopyToast(message: string): void {
+  const existing = document.querySelector(".copy-toast");
+  if (existing) existing.remove();
+
+  const toast = document.createElement("div");
+  toast.className = "copy-toast";
+  toast.textContent = message;
+  document.body.appendChild(toast);
+
+  setTimeout(() => {
+    toast.style.opacity = "0";
+    setTimeout(() => toast.remove(), 300);
+  }, 2000);
+}
+
 // Expose actions to window for HTML onclick handlers
 declare global {
   interface Window {
@@ -55,6 +73,8 @@ declare global {
       zoomIn: () => void;
       zoomOut: () => void;
       refreshRoadmap: () => void;
+      copyFile: (filePath: string) => void;
+      copyAll: (filePath: string) => void;
     };
   }
 }
@@ -66,6 +86,10 @@ function applyRoadmapDataUpdate(newData: typeof state.roadmapData): void {
   const focusedFilePath = state.focusedFile?.fullPath;
 
   state.setRoadmapData(newData);
+
+  // Auto-expand folders with files
+  autoExpandFoldersWithFiles();
+
   renderGraph();
 
   state.setScale(previousScale);
@@ -80,6 +104,39 @@ function applyRoadmapDataUpdate(newData: typeof state.roadmapData): void {
       focusOnFile(fileNode);
     }
   }
+}
+
+/**
+ * Auto-expand folders that contain files
+ */
+function autoExpandFoldersWithFiles(): void {
+  if (!state.hierarchyData) {
+    console.log("⚠️ No hierarchy data");
+    return;
+  }
+
+  let expandedCount = 0;
+
+  function expandFolder(node: HierarchyNode): void {
+    const nodeId = getNodeId(node);
+
+    // Expand folder if it has files
+    if (node.files && node.files.length > 0 && nodeId) {
+      state.expandedFolders.add(nodeId);
+      expandedCount++;
+      console.log(`📂 Expanded: ${node.name} (${node.files.length} files)`);
+    }
+
+    // Check child folders
+    if (node.children) {
+      Object.values(node.children).forEach((child) => {
+        expandFolder(child);
+      });
+    }
+  }
+
+  expandFolder(state.hierarchyData);
+  console.log(`✅ Auto-expanded ${expandedCount} folders`);
 }
 
 window.roadmapActions = {
@@ -111,16 +168,52 @@ window.roadmapActions = {
     });
   },
 
+  // ✅ Copy only the selected file
+  copyFile: (filePath: string) => {
+    console.log("📄 Copying file:", filePath);
+    state.vscode.postMessage({
+      command: "copyFile",
+      filePath: filePath,
+    });
+    const fileName = filePath.split(/[/\\]/).pop() || filePath;
+    showCopyToast(`📄 ${fileName} copied to clipboard`);
+  },
+
+  // ✅ Copy all related files (imports + imported by)
+  copyAll: (filePath: string) => {
+    if (!state.roadmapData || !state.hierarchyData) return;
+
+    const deps = state.roadmapData.dependencies || [];
+    const imports = deps.filter((d) => d.importerFilePath === filePath);
+    const importedBy = deps.filter((d) => d.importedFilePath === filePath);
+
+    const allFiles = new Set<string>();
+    allFiles.add(filePath);
+    imports.forEach((dep) => allFiles.add(dep.importedFilePath));
+    importedBy.forEach((dep) => allFiles.add(dep.importerFilePath));
+
+    console.log("📋 Copying all files:", Array.from(allFiles));
+    state.vscode.postMessage({
+      command: "copyAllFiles",
+      files: Array.from(allFiles),
+    });
+
+    showCopyToast(`📋 ${allFiles.size} files copied to clipboard`);
+  },
+
   resetView: () => {
     state.clearExpandedFolders();
+    autoExpandFoldersWithFiles();
     renderGraph();
     resetView();
   },
+
   closeFunctionPanel: closeFunctionPanel,
   toggleFunctionPanel: toggleFunctionPanel,
   clearFileSelection: clearFileSelection,
   zoomIn: zoomIn,
   zoomOut: zoomOut,
+
   refreshRoadmap: () => {
     const btn = getElement<HTMLButtonElement>("refreshRoadmapBtn");
     btn.disabled = true;
@@ -129,11 +222,15 @@ window.roadmapActions = {
   },
 };
 
-// Initialize
-// Initialize
+/**
+ * Initialize the roadmap
+ */
 function init(): void {
   if (state.roadmapData?.files?.length > 0) {
     console.log("✅ Init:", state.roadmapData.files.length, "files");
+
+    // Auto-expand folders with files
+    autoExpandFoldersWithFiles();
 
     renderGraph();
     setupCanvasEvents();
@@ -143,7 +240,6 @@ function init(): void {
       new URLSearchParams(window.location.search).get("restore") === "true";
 
     if (shouldRestore) {
-      // Try to restore from previous state (will be sent via postMessage)
       console.log("🔄 Waiting for state restoration...");
     } else {
       setTimeout(resetView, 100);
@@ -202,5 +298,6 @@ window.addEventListener("message", (event) => {
     console.error("❌ Failed to refresh roadmap data:", message.error);
   }
 });
+
 // Run on load
 init();

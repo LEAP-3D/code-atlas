@@ -25,6 +25,19 @@ export function showFunctionPanel(fileData: FileNode): void {
     (d: RoadmapDependency) => d.importedFilePath === fileData.fullPath,
   );
 
+  // ✅ Copy buttons - бүх файл дээр харагдана
+  const copyButtons = `
+    <div class="copy-buttons-container">
+      <button class="copy-file-btn" onclick="event.stopPropagation(); window.roadmapActions.copyFile('${fileData.fullPath.replace(/\\/g, "\\\\")}')">
+        📄 Copy This File
+      </button>
+      <button class="copy-all-btn" onclick="event.stopPropagation(); window.roadmapActions.copyAll('${fileData.fullPath.replace(/\\/g, "\\\\")}')">
+        📋 Copy All Related
+      </button>
+    </div>
+  `;
+
+  // ✅ Error warning - зөвхөн алдаатай үед харагдана
   const errWarn =
     fileData.errorCount > 0
       ? `
@@ -43,6 +56,7 @@ export function showFunctionPanel(fileData: FileNode): void {
   header.innerHTML = `
     <div class="function-panel-title">📄 ${fileData.name}</div>
     <div class="function-panel-subtitle">${fileData.functions?.length || 0} functions</div>
+    ${copyButtons}
     ${errWarn}
   `;
 
