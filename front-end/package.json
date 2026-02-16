@@ -3,7 +3,7 @@
   "displayName": "Code-Atlas",
   "description": "Visualize call graphs and code structure through diagram",
   "icon": "media/Group.png",
-  "version": "0.0.8",
+  "version": "0.0.9",
   "publisher": "saruul",
   "repository": {
     "type": "git",
