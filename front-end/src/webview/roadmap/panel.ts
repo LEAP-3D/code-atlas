@@ -366,7 +366,8 @@ export function focusOnFile(fileData: FileNode): void {
     } else if (isImportedByFolder) {
       nodeObj.element.classList.add("imported-by-folder");
     } else if (isInPath) {
-      nodeObj.element.classList.add("small");
+      // Keep ancestor folders readable/full-size when a file is focused.
+      // "small" made parent/grandparent folders visibly shrink on click.
     } else {
       nodeObj.element.classList.add("dimmed");
     }
