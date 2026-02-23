@@ -4,12 +4,68 @@ import * as state from "./state";
 import { getElement } from "./utils";
 import { closeFunctionPanel, updateBreadcrumb } from "./panel";
 
+function clamp01(value: number): number {
+  return Math.max(0, Math.min(1, value));
+}
+
+function smoothstep(edge0: number, edge1: number, x: number): number {
+  if (edge0 === edge1) {
+    return x < edge0 ? 0 : 1;
+  }
+
+  const t = clamp01((x - edge0) / (edge1 - edge0));
+  return t * t * (3 - 2 * t);
+}
+
+function bandOpacity(
+  pxSpacing: number,
+  minPx: number,
+  idealStartPx: number,
+  idealEndPx: number,
+  maxPx: number,
+): number {
+  const fadeIn = smoothstep(minPx, idealStartPx, pxSpacing);
+  const fadeOut = 1 - smoothstep(idealEndPx, maxPx, pxSpacing);
+  return clamp01(fadeIn * fadeOut);
+}
+
+function worldLineWidthForScreenPx(targetScreenPx: number): number {
+  return Math.max(1, targetScreenPx / Math.max(state.scale, 0.001));
+}
+
+function updateGridBackgroundLOD(): void {
+  const graph = getElement<HTMLDivElement>("graphContainer");
+
+  const fineSpacing = 50 * state.scale;
+  const mediumSpacing = 200 * state.scale;
+  const coarseSpacing = 800 * state.scale;
+
+  // Each grid only renders in its own visible screen-space spacing band.
+  // When spacing becomes too dense/sparse, it fades out and the next layer takes over.
+  const fineAlpha = 0.04 * bandOpacity(fineSpacing, 7, 14, 80, 140);
+  const mediumAlpha = 0.05 * bandOpacity(mediumSpacing, 10, 18, 110, 190);
+  const coarseAlpha = 0.06 * bandOpacity(coarseSpacing, 14, 26, 150, 260);
+  const lineWidth = worldLineWidthForScreenPx(1);
+
+  graph.style.setProperty("--grid-spacing-1", "50px");
+  graph.style.setProperty("--grid-spacing-2", "200px");
+  graph.style.setProperty("--grid-spacing-3", "800px");
+  graph.style.setProperty("--grid-line-width-1", `${lineWidth.toFixed(2)}px`);
+  graph.style.setProperty("--grid-line-width-2", `${lineWidth.toFixed(2)}px`);
+  graph.style.setProperty("--grid-line-width-3", `${lineWidth.toFixed(2)}px`);
+  graph.style.setProperty("--grid-line-alpha-1", fineAlpha.toFixed(4));
+  graph.style.setProperty("--grid-line-alpha-2", mediumAlpha.toFixed(4));
+  graph.style.setProperty("--grid-line-alpha-3", coarseAlpha.toFixed(4));
+}
+
 /**
  * Update graph transform (position and scale)
  */
 export function updateTransform(): void {
-  getElement<HTMLDivElement>("graphContainer").style.transform =
+  const graph = getElement<HTMLDivElement>("graphContainer");
+  graph.style.transform =
     `translate(calc(-50% + ${state.translateX}px), calc(-50% + ${state.translateY}px)) scale(${state.scale})`;
+  updateGridBackgroundLOD();
 }
 
 /**
