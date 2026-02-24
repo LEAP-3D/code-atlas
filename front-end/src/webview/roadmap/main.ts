@@ -62,6 +62,7 @@ function showCopyToast(message: string): void {
 // Expose actions to window for HTML onclick handlers
 declare global {
   interface Window {
+    ROADMAP_DATA?: typeof state.roadmapData;
     roadmapActions: {
       goToFunction: (filePath: string, line: number) => void;
       jumpToFile: (filePath: string) => void;
@@ -75,8 +76,60 @@ declare global {
       refreshRoadmap: () => void;
       copyFile: (filePath: string) => void;
       copyAll: (filePath: string) => void;
+      runEmptyStateAction?: () => void;
     };
   }
+}
+
+function ensureEmptyStateElement(): HTMLDivElement {
+  let el = document.getElementById("roadmapEmptyState") as HTMLDivElement | null;
+  if (el) return el;
+
+  el = document.createElement("div");
+  el.id = "roadmapEmptyState";
+  el.className = "roadmap-empty-state hidden";
+  document.body.appendChild(el);
+  return el;
+}
+
+function showEmptyState(
+  title: string,
+  message: string,
+  actionLabel?: string,
+  actionCommand?: string,
+): void {
+  const el = ensureEmptyStateElement();
+
+  const actionHtml =
+    actionLabel && actionCommand
+      ? `<button class="empty-state-btn" id="emptyStateActionBtn">${actionLabel}</button>`
+      : "";
+
+  el.innerHTML = `
+    <div class="empty-state-card">
+      <div class="empty-state-icon">🧭</div>
+      <h2>${title}</h2>
+      <p>${message}</p>
+      ${actionHtml}
+    </div>
+  `;
+  el.classList.remove("hidden");
+
+  if (actionLabel && actionCommand) {
+    const btn = document.getElementById(
+      "emptyStateActionBtn",
+    ) as HTMLButtonElement | null;
+    if (btn) {
+      btn.onclick = () => {
+        state.vscode.postMessage({ command: actionCommand });
+      };
+    }
+  }
+}
+
+function hideEmptyState(): void {
+  const el = document.getElementById("roadmapEmptyState");
+  if (el) el.classList.add("hidden");
 }
 
 function applyRoadmapDataUpdate(newData: typeof state.roadmapData): void {
@@ -89,6 +142,7 @@ function applyRoadmapDataUpdate(newData: typeof state.roadmapData): void {
 
   // Auto-expand folders with files
   autoExpandFoldersWithFiles();
+  hideEmptyState();
 
   renderGraph();
 
@@ -248,12 +302,7 @@ function init(): void {
     setupHintTimeout();
   } else {
     console.error("❌ No files");
-    getElement<HTMLDivElement>("nodesContainer").innerHTML = `
-      <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center;color:#666">
-        <div style="font-size:64px;margin-bottom:16px">📭</div>
-        <h3>No files found</h3>
-      </div>
-    `;
+    showEmptyState("No files found", "No roadmap data is loaded yet.");
   }
 }
 
@@ -289,6 +338,15 @@ window.addEventListener("message", (event) => {
     const btn = getElement<HTMLButtonElement>("refreshRoadmapBtn");
     btn.disabled = false;
     btn.textContent = "Refresh Errors";
+  }
+
+  if (message.type === "roadmapEmptyState") {
+    showEmptyState(
+      message.title || "Project roadmap",
+      message.message || "No roadmap data loaded.",
+      message.actionLabel,
+      message.actionCommand,
+    );
   }
 
   if (message.type === "roadmapDataRefreshFailed") {
