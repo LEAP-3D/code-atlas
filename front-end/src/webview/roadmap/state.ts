@@ -34,6 +34,9 @@ export let translateY = 0;
 export let isDragging = false;
 export let startX = 0;
 export let startY = 0;
+export let searchQuery = "";
+export const matchedNodeIds = new Set<string>();
+export const searchExpandedFolders = new Set<string>();
 
 // Expanded folders - эхлээд хоосон (files нуугдсан)
 export const expandedFolders = new Set<string>();
@@ -94,6 +97,31 @@ export function setDragStart(x: number, y: number): void {
   startY = y;
 }
 
+export function setSearchQuery(query: string): void {
+  searchQuery = query.trim().toLowerCase();
+}
+
+export function hasActiveSearch(): boolean {
+  return searchQuery.length > 0;
+}
+
+export function clearSearchMatches(): void {
+  matchedNodeIds.clear();
+  searchExpandedFolders.clear();
+}
+
+export function setSearchMatch(nodeId: string): void {
+  matchedNodeIds.add(nodeId);
+}
+
+export function setSearchExpandedFolder(folderId: string): void {
+  searchExpandedFolders.add(folderId);
+}
+
+export function isSearchMatch(nodeId: string): boolean {
+  return matchedNodeIds.has(nodeId);
+}
+
 // Clear state
 export function clearRenderState(): void {
   allNodes = [];
@@ -111,7 +139,7 @@ export function toggleFolderExpanded(folderId: string): void {
 
 // Check if folder is expanded (files visible)
 export function isFolderExpanded(folderId: string): boolean {
-  return expandedFolders.has(folderId);
+  return expandedFolders.has(folderId) || searchExpandedFolders.has(folderId);
 }
 
 // Collapse all folders (default initial view)

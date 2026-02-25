@@ -25,6 +25,7 @@ state.setVscode(window.acquireVsCodeApi());
 console.log("hello");
 let interactionsInitialized = false;
 let hintInitialized = false;
+let searchControlsInitialized = false;
 
 // Load roadmap data
 state.setRoadmapData(
@@ -76,6 +77,7 @@ declare global {
       zoomIn: () => void;
       zoomOut: () => void;
       refreshRoadmap: () => void;
+      clearSearch: () => void;
       copyFile: (filePath: string) => void;
       copyAll: (filePath: string) => void;
       runEmptyStateAction?: () => void;
@@ -134,6 +136,123 @@ function hideEmptyState(): void {
   if (el) el.classList.add("hidden");
 }
 
+function updateSearchMeta(): void {
+  const meta = document.getElementById("roadmapSearchMeta");
+  const clearBtn = document.getElementById("roadmapSearchClearBtn") as
+    | HTMLButtonElement
+    | null;
+
+  if (!meta || !clearBtn) return;
+
+  if (!state.hasActiveSearch()) {
+    meta.textContent = "";
+    clearBtn.style.visibility = "hidden";
+    return;
+  }
+
+  clearBtn.style.visibility = "visible";
+  meta.textContent = `${state.matchedNodeIds.size} match${state.matchedNodeIds.size === 1 ? "" : "es"}`;
+}
+
+function applySearchAndRender(): void {
+  renderGraph();
+  updateSearchMeta();
+}
+
+function centerSearchMatches(): void {
+  if (!state.hasActiveSearch() || state.allNodes.length === 0) {
+    return;
+  }
+
+  const matchedFileNodes = state.allNodes.filter(
+    (n) => n.data.type === "file" && state.isSearchMatch(n.element.dataset.id || ""),
+  );
+  const matchedNodes =
+    matchedFileNodes.length > 0
+      ? matchedFileNodes
+      : state.allNodes.filter((n) => state.isSearchMatch(n.element.dataset.id || ""));
+
+  if (matchedNodes.length === 0) {
+    return;
+  }
+
+  let minX = Infinity;
+  let maxX = -Infinity;
+  let minY = Infinity;
+  let maxY = -Infinity;
+
+  matchedNodes.forEach((n) => {
+    minX = Math.min(minX, n.x);
+    maxX = Math.max(maxX, n.x);
+    minY = Math.min(minY, n.y);
+    maxY = Math.max(maxY, n.y);
+  });
+
+  const canvas = getElement<HTMLDivElement>("canvas");
+  const rect = canvas.getBoundingClientRect();
+  const graphCenterX = (minX + maxX) / 2;
+  const graphCenterY = (minY + maxY) / 2;
+  const graphWidth = maxX - minX + 280;
+  const graphHeight = maxY - minY + 280;
+  const newScale = Math.max(
+    state.MIN_SCALE,
+    Math.min(
+      (rect.width * 0.9) / Math.max(graphWidth, 1),
+      (rect.height * 0.9) / Math.max(graphHeight, 1),
+      1.2,
+      state.MAX_SCALE,
+    ),
+  );
+  const CONTAINER_CENTER = 5000;
+
+  state.setScale(newScale);
+  state.setTranslate(
+    (CONTAINER_CENTER - graphCenterX) * newScale,
+    (CONTAINER_CENTER - graphCenterY) * newScale,
+  );
+  updateTransform();
+  getElement<HTMLDivElement>("zoomLevel").textContent =
+    `${Math.round(newScale * 100)}%`;
+}
+
+function setupSearchControls(): void {
+  if (searchControlsInitialized) return;
+
+  const input = document.getElementById("roadmapSearchInput") as
+    | HTMLInputElement
+    | null;
+
+  if (!input) return;
+
+  input.addEventListener("input", () => {
+    state.setSearchQuery(input.value);
+    applySearchAndRender();
+  });
+
+  input.addEventListener("keydown", (event) => {
+    if (event.key !== "Enter") {
+      return;
+    }
+
+    event.preventDefault();
+    centerSearchMatches();
+  });
+
+  clearSearchInput();
+  searchControlsInitialized = true;
+}
+
+function clearSearchInput(): void {
+  const input = document.getElementById("roadmapSearchInput") as
+    | HTMLInputElement
+    | null;
+  if (input) {
+    input.value = "";
+  }
+  state.setSearchQuery("");
+  updateSearchMeta();
+}
+
 function applyRoadmapDataUpdate(newData: typeof state.roadmapData): void {
   const wasEmpty = (state.roadmapData?.files?.length || 0) === 0;
   const previousScale = state.scale;
@@ -147,8 +266,9 @@ function applyRoadmapDataUpdate(newData: typeof state.roadmapData): void {
   autoExpandFoldersWithFiles();
   hideEmptyState();
   ensureInteractionsInitialized();
+  setupSearchControls();
 
-  renderGraph();
+  applySearchAndRender();
 
   if (wasEmpty) {
     setTimeout(resetView, 100);
@@ -278,7 +398,7 @@ window.roadmapActions = {
   resetView: () => {
     state.clearExpandedFolders();
     autoExpandFoldersWithFiles();
-    renderGraph();
+    applySearchAndRender();
     resetView();
   },
 
@@ -294,6 +414,11 @@ window.roadmapActions = {
     btn.textContent = "Refreshing...";
     state.vscode.postMessage({ command: "refreshRoadmapData" });
   },
+
+  clearSearch: () => {
+    clearSearchInput();
+    applySearchAndRender();
+  },
 };
 
 /**
@@ -301,13 +426,14 @@ window.roadmapActions = {
  */
 function init(): void {
   ensureInteractionsInitialized();
+  setupSearchControls();
   if (state.roadmapData?.files?.length > 0) {
     console.log("✅ Init:", state.roadmapData.files.length, "files");
 
     // Auto-expand folders with files
     autoExpandFoldersWithFiles();
 
-    renderGraph();
+    applySearchAndRender();
 
     // Check if we should restore previous view state
     const shouldRestore =
@@ -320,6 +446,7 @@ function init(): void {
     }
 
   } else {
+    updateSearchMeta();
     console.error("❌ No files");
     showEmptyState("No files found", "No roadmap data is loaded yet.");
   }
