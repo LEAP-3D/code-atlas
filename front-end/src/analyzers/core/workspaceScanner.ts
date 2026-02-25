@@ -5,7 +5,9 @@ export interface ScannedFile {
   path: string;
 }
 
-export async function scanWorkspaceFiles(): Promise<ScannedFile[]> {
+export async function scanWorkspaceFiles(
+  scopeUri?: vscode.Uri,
+): Promise<ScannedFile[]> {
   const files: ScannedFile[] = [];
 
   if (!vscode.workspace.workspaceFolders) {
@@ -16,10 +18,15 @@ export async function scanWorkspaceFiles(): Promise<ScannedFile[]> {
   console.log("🔍 [scanWorkspaceFiles] Starting workspace scan...");
   const workspaceRoot = vscode.workspace.workspaceFolders[0].uri.fsPath;
   console.log(`📁 [scanWorkspaceFiles] Workspace root: ${workspaceRoot}`);
+  if (scopeUri) {
+    console.log(`📍 [scanWorkspaceFiles] Scoped to: ${scopeUri.fsPath}`);
+  }
 
   const allUris = await vscode.workspace.findFiles(
-    "**/*.{js,jsx,ts,tsx}", // ✅ All JavaScript and TypeScript files
-    "**/node_modules/**" // ✅ Exclude node_modules
+    scopeUri
+      ? new vscode.RelativePattern(scopeUri, "**/*.{js,jsx,ts,tsx}")
+      : "**/*.{js,jsx,ts,tsx}", // ✅ All JavaScript and TypeScript files
+    "**/node_modules/**", // ✅ Exclude node_modules
   );
 
   console.log(

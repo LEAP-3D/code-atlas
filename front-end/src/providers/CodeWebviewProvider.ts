@@ -126,6 +126,53 @@ export class CodeWebviewProvider {
     );
   }
 
+  static async updateRoadmapPanelData(data: RoadmapData) {
+    if (!this.currentRoadmapPanel) {
+      return;
+    }
+
+    await this.currentRoadmapPanel.webview.postMessage({
+      type: "roadmapDataUpdated",
+      data,
+    });
+  }
+
+  static async refreshRoadmapPanelFromIndexes() {
+    if (!this.currentRoadmapPanel) {
+      return;
+    }
+
+    const refreshedData = this.buildRoadmapData();
+    await this.updateRoadmapPanelData(refreshedData);
+  }
+
+  static async showRoadmapMonorepoPrompt(
+    context: vscode.ExtensionContext,
+    workspaceName: string,
+  ) {
+    this.showRoadmap(context);
+
+    await this.updateRoadmapPanelData({
+      files: [],
+      dependencies: [],
+      totalFiles: 0,
+      totalFunctions: 0,
+      totalConnections: 0,
+    });
+
+    if (!this.currentRoadmapPanel) {
+      return;
+    }
+
+    await this.currentRoadmapPanel.webview.postMessage({
+      type: "roadmapEmptyState",
+      title: "Monorepo detected",
+      message: `This workspace (${workspaceName}) is a monorepo. Choose the project you want to see the roadmap of.`,
+      actionLabel: "Choose Project",
+      actionCommand: "pickMonorepoRoadmapProject",
+    });
+  }
+
   /**
    * Handle webview messages (shared between roadmap and error graph)
    */
@@ -169,6 +216,10 @@ export class CodeWebviewProvider {
 
       case "showAllErrors":
         await vscode.commands.executeCommand("workbench.action.problems.focus");
+        break;
+
+      case "pickMonorepoRoadmapProject":
+        await vscode.commands.executeCommand("experiment.pickMonorepoRoadmapProject");
         break;
     }
   }
