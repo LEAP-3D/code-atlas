@@ -7,6 +7,83 @@ import { buildHierarchy } from "./hierarchy";
 import { calculateTreeLayout } from "./layout";
 import { focusOnFile } from "./panel";
 
+function escapeHtml(text: string): string {
+  return text
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+}
+
+function escapeRegex(text: string): string {
+  return text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function renderHighlightedName(name: string): string {
+  if (!state.hasActiveSearch()) {
+    return escapeHtml(name);
+  }
+
+  const query = state.searchQuery;
+  if (!query) {
+    return escapeHtml(name);
+  }
+
+  const parts = name.split(new RegExp(`(${escapeRegex(query)})`, "ig"));
+  return parts
+    .map((part) =>
+      part.toLowerCase() === query
+        ? `<span class="search-hit">${escapeHtml(part)}</span>`
+        : escapeHtml(part),
+    )
+    .join("");
+}
+
+function markSearchMatches(hierarchy: HierarchyNode): void {
+  state.clearSearchMatches();
+
+  if (!state.hasActiveSearch()) {
+    return;
+  }
+
+  const query = state.searchQuery;
+
+  function visitFolder(node: HierarchyNode): boolean {
+    const nodeId = getNodeId(node);
+    const selfMatch = node.name.toLowerCase().includes(query);
+    let subtreeHasMatch = selfMatch;
+
+    if (selfMatch && nodeId) {
+      state.setSearchMatch(nodeId);
+    }
+
+    for (const file of node.files || []) {
+      const fileId = getNodeId(file);
+      const fileMatch = file.name.toLowerCase().includes(query);
+
+      if (fileMatch) {
+        subtreeHasMatch = true;
+        if (fileId) {
+          state.setSearchMatch(fileId);
+        }
+      }
+    }
+
+    for (const child of Object.values(node.children || {})) {
+      if (visitFolder(child)) {
+        subtreeHasMatch = true;
+      }
+    }
+
+    if (subtreeHasMatch && nodeId) {
+      state.setSearchExpandedFolder(nodeId);
+    }
+
+    return subtreeHasMatch;
+  }
+
+  visitFolder(hierarchy);
+}
+
 /**
  * Create a DOM node element
  */
@@ -47,9 +124,13 @@ export function createNode(
       ${errorInd}
       ${expandIcon}
       <div class="node-icon">${icon}</div>
-      <div class="node-name">${data.name}</div>
+      <div class="node-name">${renderHighlightedName(data.name)}</div>
     </div>
   `;
+
+  if (state.hasActiveSearch()) {
+    node.classList.add(state.isSearchMatch(nodeId) ? "search-match" : "search-dimmed");
+  }
 
   // Add click handler for files
   if (data.type === "file") {
@@ -123,6 +204,7 @@ export function renderGraph(): void {
   // Build hierarchy
   const hierarchy = buildHierarchy(state.roadmapData.files);
   state.setHierarchyData(hierarchy);
+  markSearchMatches(hierarchy);
 
   // Calculate layout
   const positions = calculateTreeLayout(hierarchy);

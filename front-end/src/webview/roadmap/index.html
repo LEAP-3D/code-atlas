@@ -21,6 +21,23 @@
           </div>
         </div>
         <div class="controls">
+          <div class="search-controls">
+            <input
+              type="text"
+              id="roadmapSearchInput"
+              class="search-input"
+              placeholder="Search file/folder..."
+            />
+            <button
+              class="search-clear-btn"
+              id="roadmapSearchClearBtn"
+              title="Clear search"
+              onclick="window.roadmapActions.clearSearch()"
+            >
+              ×
+            </button>
+            <div class="search-meta" id="roadmapSearchMeta"></div>
+          </div>
           <div class="zoom-controls">
             <button class="zoom-btn" onclick="window.roadmapActions.zoomOut()">
               −
