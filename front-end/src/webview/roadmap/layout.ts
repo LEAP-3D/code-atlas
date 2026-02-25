@@ -6,12 +6,12 @@ import { getNodeId } from "./utils";
 
 // Spacing configuration
 const SPACING = {
-  horizontal: 260,
-  vertical: 230,
+  horizontal: 430,
+  vertical: 290,
   nodeWidth: 240,
-  siblingGap: 60,
-  fileIndent: 250, // File-ийн баруун тийш indent (200 → 250)
-  fileVerticalGap: 240, // File хоорондын босоо зай
+  siblingGap: 150,
+  fileVerticalGap: 300, // File хоорондын босоо зай
+  folderAfterFilesGap: 360, // Parent file block-ийн дараах folder row gap
 };
 
 /**
@@ -23,8 +23,12 @@ function calcSubtreeWidth(item: HierarchyNode | FileNode): number {
   }
 
   const folder = item as HierarchyNode;
-  const childFolders = Object.values(folder.children || {});
-  const files = folder.files || [];
+  const childFolders = Object.values(folder.children || {}).sort((a, b) =>
+    a.name.localeCompare(b.name),
+  );
+  const files = [...(folder.files || [])].sort((a, b) =>
+    a.name.localeCompare(b.name),
+  );
 
   if (childFolders.length === 0 && files.length === 0) {
     return SPACING.nodeWidth;
@@ -38,9 +42,9 @@ function calcSubtreeWidth(item: HierarchyNode | FileNode): number {
       (childFolders.length - 1) * SPACING.siblingGap;
   }
 
-  // Always reserve file-column width so expand/collapse does not shift siblings.
-  const filesWidth =
-    files.length > 0 ? SPACING.nodeWidth + SPACING.fileIndent + 50 : 0;
+  // Files are rendered centered under the parent folder, so they don't need
+  // extra horizontal column width.
+  const filesWidth = files.length > 0 ? SPACING.nodeWidth : 0;
 
   return Math.max(foldersWidth, filesWidth, SPACING.nodeWidth);
 }
@@ -53,13 +57,25 @@ export function calculateTreeLayout(
 ): NodePosition[] {
   const positions: NodePosition[] = [];
 
-  const folders = Object.values(node.children || {});
-  const files = node.files || [];
+  const folders = Object.values(node.children || {}).sort((a, b) =>
+    a.name.localeCompare(b.name),
+  );
+  const files = [...(node.files || [])].sort((a, b) =>
+    a.name.localeCompare(b.name),
+  );
 
   const folderId = getNodeId(node);
   const isExpanded = folderId ? state.isFolderExpanded(folderId) : false;
 
-  // Handle folders - spread HORIZONTALLY
+  const firstFileY = startY + SPACING.vertical;
+  const lastFileY =
+    firstFileY + Math.max(0, files.length - 1) * SPACING.fileVerticalGap;
+  const foldersStartY =
+    isExpanded && files.length > 0
+      ? lastFileY + SPACING.folderAfterFilesGap
+      : startY + SPACING.vertical;
+
+  // Handle folders - spread HORIZONTALLY on a dedicated row below file block
   if (folders.length > 0) {
     const folderWidths = folders.map((f) => calcSubtreeWidth(f));
     const totalWidth =
@@ -68,12 +84,6 @@ export function calculateTreeLayout(
 
     let currentX = startX - totalWidth / 2;
 
-    // Folder-ийн Y байрлал - files байвал илүү доош
-    const folderY =
-      startY +
-      SPACING.vertical +
-      (files.length > 0 ? files.length * SPACING.fileVerticalGap : 0);
-
     folders.forEach((folder, index) => {
       const folderWidth = folderWidths[index];
       const folderX = currentX + folderWidth / 2;
@@ -81,51 +91,34 @@ export function calculateTreeLayout(
       positions.push({
         node: folder,
         x: folderX,
-        y: folderY,
+        y: foldersStartY,
         level: level + 1,
         parentX: startX,
         parentY: startY,
       });
 
       positions.push(
-        ...calculateTreeLayout(folder, folderX, folderY, level + 1),
+        ...calculateTreeLayout(folder, folderX, foldersStartY, level + 1),
       );
 
       currentX += folderWidth + SPACING.siblingGap;
     });
   }
 
-  // Handle files - ЗӨВХӨН EXPANDED ҮЕДЭЭ харагдана
+  // Handle files - centered directly under parent folder
   if (isExpanded && files.length > 0) {
-    const firstFileY = startY + SPACING.vertical;
+    files.forEach((file, index) => {
+      const fileY = firstFileY + index * SPACING.fileVerticalGap;
 
-    if (files.length === 1) {
-      // Single file - keep directly below folder for straight connection
       positions.push({
-        node: files[0],
+        node: file,
         x: startX,
-        y: firstFileY,
+        y: fileY,
         level: level + 1,
         parentX: startX,
         parentY: startY,
       });
-    } else {
-      // Multiple files - баруун тийш indent, босоо байрлал
-      const fileX = startX + SPACING.fileIndent;
-
-      files.forEach((file, index) => {
-        const fileY = firstFileY + index * SPACING.fileVerticalGap;
-
-        positions.push({
-          node: file,
-          x: fileX,
-          y: fileY,
-          level: level + 1,
-          parentX: startX,
-          parentY: startY,
-        });
-      });
-    }
+    });
   }
 
   return positions;
