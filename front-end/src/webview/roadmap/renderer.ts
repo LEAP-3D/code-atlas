@@ -167,10 +167,11 @@ export function drawConnection(
   const svg = getElement<SVGSVGElement>("connectionsSvg");
   const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
 
-  const isFile = x2 > x1 + 100;
+  const isFile = childId.startsWith("file-");
 
   if (isFile) {
-    path.setAttribute("d", `M ${x1} ${y1} L ${x1} ${y2} L ${x2} ${y2}`);
+    const midY = y1 + Math.min(80, Math.max(42, (y2 - y1) * 0.35));
+    path.setAttribute("d", `M ${x1} ${y1} L ${x1} ${midY} L ${x2} ${midY} L ${x2} ${y2}`);
   } else if (Math.abs(x1 - x2) < 5) {
     path.setAttribute("d", `M ${x1} ${y1} L ${x2} ${y2}`);
   } else {
