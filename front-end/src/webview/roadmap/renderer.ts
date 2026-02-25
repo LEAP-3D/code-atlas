@@ -7,6 +7,10 @@ import { buildHierarchy } from "./hierarchy";
 import { calculateTreeLayout } from "./layout";
 import { focusOnFile } from "./panel";
 
+const HOVER_SEPARATION_X_THRESHOLD = 220;
+const HOVER_SEPARATION_Y_THRESHOLD = 420;
+const HOVER_SEPARATION_MAX_SHIFT = 85;
+
 function escapeHtml(text: string): string {
   return text
     .replace(/&/g, "&amp;")
@@ -101,7 +105,8 @@ export function createNode(
 
   node.style.left = `${x}px`;
   node.style.top = `${y}px`;
-  node.style.transform = "translate(-50%, -50%)";
+  node.style.transform =
+    "translate(-50%, -50%) translate(var(--hover-shift-x, 0px), var(--hover-shift-y, 0px))";
 
   const nodeId = getNodeId(data) || "";
   node.dataset.id = nodeId;
@@ -132,6 +137,14 @@ export function createNode(
     node.classList.add(state.isSearchMatch(nodeId) ? "search-match" : "search-dimmed");
   }
 
+  node.addEventListener("mouseenter", () => {
+    applyHoverNodeSeparation(node);
+  });
+
+  node.addEventListener("mouseleave", () => {
+    clearHoverNodeSeparation();
+  });
+
   // Add click handler for files
   if (data.type === "file") {
     node.onclick = (e) => {
@@ -151,6 +164,54 @@ export function createNode(
   }
 
   return node;
+}
+
+function clearHoverNodeSeparation(): void {
+  state.allNodes.forEach(({ element }) => {
+    element.style.removeProperty("--hover-shift-x");
+    element.style.removeProperty("--hover-shift-y");
+    element.classList.remove("hover-neighbor", "hover-active-node");
+  });
+}
+
+function applyHoverNodeSeparation(activeElement: HTMLElement): void {
+  clearHoverNodeSeparation();
+
+  const active = state.allNodes.find((n) => n.element === activeElement);
+  if (!active) {
+    return;
+  }
+
+  active.element.classList.add("hover-active-node");
+
+  state.allNodes.forEach((candidate) => {
+    if (candidate.element === activeElement) {
+      return;
+    }
+
+    const dx = Math.abs(candidate.x - active.x);
+    const dy = candidate.y - active.y;
+    const absDy = Math.abs(dy);
+
+    if (dx > HOVER_SEPARATION_X_THRESHOLD || absDy > HOVER_SEPARATION_Y_THRESHOLD) {
+      return;
+    }
+
+    const proximity = 1 - absDy / HOVER_SEPARATION_Y_THRESHOLD;
+    const shift = Math.round(
+      Math.max(0, Math.min(HOVER_SEPARATION_MAX_SHIFT, proximity * HOVER_SEPARATION_MAX_SHIFT)),
+    );
+
+    if (shift <= 0) {
+      return;
+    }
+
+    candidate.element.style.setProperty(
+      "--hover-shift-y",
+      `${dy < 0 ? -shift : shift}px`,
+    );
+    candidate.element.classList.add("hover-neighbor");
+  });
 }
 
 /**
@@ -200,6 +261,7 @@ export function renderGraph(): void {
   // Clear existing
   nodesContainer.innerHTML = "";
   svg.innerHTML = "";
+  clearHoverNodeSeparation();
   state.clearRenderState();
 
   // Build hierarchy
