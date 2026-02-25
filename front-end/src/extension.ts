@@ -27,8 +27,14 @@ const MONOREPO_MARKERS = [
   "turbo.json",
   "lerna.json",
 ] as const;
-const MONOREPO_PROJECT_CONTAINERS = ["apps", "packages", "services"] as const;
-const PROJECT_MANIFESTS = ["package.json"] as const;
+const MONOREPO_PROJECT_CONTAINERS = [
+  "apps",
+  "packages",
+  "services",
+  "libs",
+  "examples",
+] as const;
+const PROJECT_MANIFESTS = ["package.json", "project.json"] as const;
 const IGNORED_DIR_NAMES = new Set([
   "node_modules",
   ".git",
@@ -45,7 +51,12 @@ type MonorepoProjectCandidate = {
   description: string;
   uri: vscode.Uri;
   hasActiveFile: boolean;
+  hasRecentSelection: boolean;
 };
+
+function getRecentMonorepoProjectKey(workspaceFolder: vscode.WorkspaceFolder) {
+  return `roadmap.recentMonorepoProject:${workspaceFolder.uri.fsPath}`;
+}
 
 async function fileExistsAtRoot(workspaceUri: vscode.Uri, fileName: string) {
   try {
@@ -104,8 +115,18 @@ async function readDirectorySafe(uri: vscode.Uri) {
   }
 }
 
+async function hasSupportedSourceFiles(projectUri: vscode.Uri) {
+  const found = await vscode.workspace.findFiles(
+    new vscode.RelativePattern(projectUri, "**/*.{js,jsx,ts,tsx}"),
+    "**/{node_modules,.git,.next,.turbo,dist,build,out,coverage}/**",
+    1,
+  );
+  return found.length > 0;
+}
+
 async function discoverMonorepoProjectsShallow(
   workspaceFolder: vscode.WorkspaceFolder,
+  recentProjectPath?: string,
 ): Promise<MonorepoProjectCandidate[]> {
   const activeFilePath = vscode.window.activeTextEditor?.document.uri.fsPath;
   const candidates = new Map<string, MonorepoProjectCandidate>();
@@ -113,16 +134,20 @@ async function discoverMonorepoProjectsShallow(
   const maybeAddCandidate = async (projectUri: vscode.Uri, label: string) => {
     if (!(await directoryExists(projectUri))) return;
     if (!(await hasAnyManifest(projectUri))) return;
+    if (!(await hasSupportedSourceFiles(projectUri))) return;
 
     const hasActiveFile = activeFilePath
       ? activeFilePath.startsWith(projectUri.fsPath)
       : false;
+    const hasRecentSelection =
+      recentProjectPath != null && recentProjectPath === projectUri.fsPath;
 
     candidates.set(projectUri.fsPath, {
       label,
       description: projectUri.fsPath,
       uri: projectUri,
       hasActiveFile,
+      hasRecentSelection,
     });
   };
 
@@ -134,11 +159,29 @@ async function discoverMonorepoProjectsShallow(
     for (const [name, type] of entries) {
       if (type !== vscode.FileType.Directory) continue;
       if (name.startsWith(".") || IGNORED_DIR_NAMES.has(name)) continue;
+      const firstLevelUri = vscode.Uri.joinPath(containerUri, name);
+      const firstLevelLabel = `${container}/${name}`;
 
-      await maybeAddCandidate(
-        vscode.Uri.joinPath(containerUri, name),
-        `${container}/${name}`,
-      );
+      const beforeCount = candidates.size;
+      await maybeAddCandidate(firstLevelUri, firstLevelLabel);
+
+      // Nx/examples repos often nest projects one more level deep (e.g. examples/react/app)
+      if (candidates.size > beforeCount) {
+        continue;
+      }
+
+      const nestedEntries = await readDirectorySafe(firstLevelUri);
+      for (const [nestedName, nestedType] of nestedEntries) {
+        if (nestedType !== vscode.FileType.Directory) continue;
+        if (nestedName.startsWith(".") || IGNORED_DIR_NAMES.has(nestedName)) {
+          continue;
+        }
+
+        await maybeAddCandidate(
+          vscode.Uri.joinPath(firstLevelUri, nestedName),
+          `${firstLevelLabel}/${nestedName}`,
+        );
+      }
     }
   }
 
@@ -154,18 +197,28 @@ async function discoverMonorepoProjectsShallow(
 
   return Array.from(candidates.values()).sort((a, b) => {
     if (a.hasActiveFile !== b.hasActiveFile) return a.hasActiveFile ? -1 : 1;
+    if (a.hasRecentSelection !== b.hasRecentSelection) {
+      return a.hasRecentSelection ? -1 : 1;
+    }
     return a.label.localeCompare(b.label);
   });
 }
 
 async function pickMonorepoProject(
   workspaceFolder: vscode.WorkspaceFolder,
+  context: vscode.ExtensionContext,
 ): Promise<vscode.Uri | undefined> {
-  const candidates = await discoverMonorepoProjectsShallow(workspaceFolder);
+  const recentProjectPath = context.workspaceState.get<string>(
+    getRecentMonorepoProjectKey(workspaceFolder),
+  );
+  const candidates = await discoverMonorepoProjectsShallow(
+    workspaceFolder,
+    recentProjectPath,
+  );
 
   if (candidates.length === 0) {
     vscode.window.showWarningMessage(
-      `Monorepo detected in "${workspaceFolder.name}", but no projects were found under apps/, packages/, or services/.`,
+      `Monorepo detected in "${workspaceFolder.name}", but no project folders with package.json or project.json were found in common locations.`,
     );
     return undefined;
   }
@@ -174,10 +227,14 @@ async function pickMonorepoProject(
     candidates.map((candidate) => ({
       label: candidate.hasActiveFile
         ? `$(star-full) ${candidate.label}`
+        : candidate.hasRecentSelection
+          ? `$(history) ${candidate.label}`
         : candidate.label,
       description: candidate.hasActiveFile
         ? "Contains current file"
-        : undefined,
+        : candidate.hasRecentSelection
+          ? "Recently opened"
+          : undefined,
       detail: candidate.description,
       candidate,
     })),
@@ -189,7 +246,15 @@ async function pickMonorepoProject(
     },
   );
 
-  return selection?.candidate.uri;
+  const selectedUri = selection?.candidate.uri;
+  if (selectedUri) {
+    await context.workspaceState.update(
+      getRecentMonorepoProjectKey(workspaceFolder),
+      selectedUri.fsPath,
+    );
+  }
+
+  return selectedUri;
 }
 
 function clearAnalysisIndexes() {
@@ -255,7 +320,7 @@ async function runMonorepoProjectPickerFlow(context: vscode.ExtensionContext) {
     return;
   }
 
-  const selectedProjectUri = await pickMonorepoProject(monorepoFolder);
+  const selectedProjectUri = await pickMonorepoProject(monorepoFolder, context);
   if (!selectedProjectUri) {
     return;
   }

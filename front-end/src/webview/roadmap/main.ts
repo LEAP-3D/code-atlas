@@ -23,6 +23,8 @@ import { HierarchyNode } from "./types";
 // Initialize VS Code API
 state.setVscode(window.acquireVsCodeApi());
 console.log("hello");
+let interactionsInitialized = false;
+let hintInitialized = false;
 
 // Load roadmap data
 state.setRoadmapData(
@@ -133,6 +135,7 @@ function hideEmptyState(): void {
 }
 
 function applyRoadmapDataUpdate(newData: typeof state.roadmapData): void {
+  const wasEmpty = (state.roadmapData?.files?.length || 0) === 0;
   const previousScale = state.scale;
   const previousTranslateX = state.translateX;
   const previousTranslateY = state.translateY;
@@ -143,20 +146,37 @@ function applyRoadmapDataUpdate(newData: typeof state.roadmapData): void {
   // Auto-expand folders with files
   autoExpandFoldersWithFiles();
   hideEmptyState();
+  ensureInteractionsInitialized();
 
   renderGraph();
 
-  state.setScale(previousScale);
-  state.setTranslate(previousTranslateX, previousTranslateY);
-  updateTransform();
-  getElement<HTMLDivElement>("zoomLevel").textContent =
-    `${Math.round(previousScale * 100)}%`;
+  if (wasEmpty) {
+    setTimeout(resetView, 100);
+  } else {
+    state.setScale(previousScale);
+    state.setTranslate(previousTranslateX, previousTranslateY);
+    updateTransform();
+    getElement<HTMLDivElement>("zoomLevel").textContent =
+      `${Math.round(previousScale * 100)}%`;
+  }
 
   if (focusedFilePath && state.hierarchyData) {
     const fileNode = findFileNodeByPath(state.hierarchyData, focusedFilePath);
     if (fileNode) {
       focusOnFile(fileNode);
     }
+  }
+}
+
+function ensureInteractionsInitialized(): void {
+  if (!interactionsInitialized) {
+    setupCanvasEvents();
+    interactionsInitialized = true;
+  }
+
+  if (!hintInitialized) {
+    setupHintTimeout();
+    hintInitialized = true;
   }
 }
 
@@ -280,6 +300,7 @@ window.roadmapActions = {
  * Initialize the roadmap
  */
 function init(): void {
+  ensureInteractionsInitialized();
   if (state.roadmapData?.files?.length > 0) {
     console.log("✅ Init:", state.roadmapData.files.length, "files");
 
@@ -287,7 +308,6 @@ function init(): void {
     autoExpandFoldersWithFiles();
 
     renderGraph();
-    setupCanvasEvents();
 
     // Check if we should restore previous view state
     const shouldRestore =
@@ -299,7 +319,6 @@ function init(): void {
       setTimeout(resetView, 100);
     }
 
-    setupHintTimeout();
   } else {
     console.error("❌ No files");
     showEmptyState("No files found", "No roadmap data is loaded yet.");
