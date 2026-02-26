@@ -37,8 +37,8 @@
           "name": "Selected Code"
         },
         {
-          "id": "userWebview",
-          "name": "User",
+          "id": "aiProviderView",
+          "name": "AI Assistant",
           "type": "webview"
         }
       ]
@@ -51,12 +51,21 @@
       {
         "command": "experiment.showRoadmap",
         "title": "Show Project Roadmap"
+      },
+      {
+        "command": "experiment.askAI",
+        "title": "Ask AI About Current Code"
       }
     ],
     "keybindings": [
       {
         "command": "experiment.showSelectedCode",
         "key": "ctrl+alt+c",
+        "when": "editorTextFocus"
+      },
+      {
+        "command": "experiment.askAI",
+        "key": "ctrl+alt+a",
         "when": "editorTextFocus"
       }
     ]

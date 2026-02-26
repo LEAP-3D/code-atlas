@@ -87,6 +87,42 @@
       ></button>
 
       <!-- Hint -->
+      <div class="map-legend" id="mapLegend" aria-label="Connection legend">
+        <button
+          class="map-legend-close"
+          type="button"
+          aria-label="Close legend"
+          onclick="document.getElementById('mapLegend')?.classList.add('is-hidden'); document.getElementById('mapLegendToggle')?.classList.remove('is-hidden')"
+        >
+          ×
+        </button>
+        <div class="map-legend-title">Lines</div>
+        <div class="map-legend-item">
+          <span class="map-legend-line default"></span>
+          <span>Default tree connection</span>
+        </div>
+        <div class="map-legend-item">
+          <span class="map-legend-line direct"></span>
+          <span>Direct path to selected file/folder</span>
+        </div>
+        <div class="map-legend-item">
+          <span class="map-legend-line import"></span>
+          <span>Imports (selected file uses these files)</span>
+        </div>
+        <div class="map-legend-item">
+          <span class="map-legend-line imported-by"></span>
+          <span>Imported by (these files use the selected file)</span>
+        </div>
+      </div>
+      <button
+        class="map-legend-toggle is-hidden"
+        id="mapLegendToggle"
+        type="button"
+        aria-label="Show legend"
+        onclick="document.getElementById('mapLegend')?.classList.remove('is-hidden'); document.getElementById('mapLegendToggle')?.classList.add('is-hidden')"
+      >
+        Show line legend
+      </button>
       <div class="hint" id="hint">
         🖱️ Drag • Cmd+Scroll zoom • Click files • 🔴 Red = Errors • 🟢 Green =
         Dependencies

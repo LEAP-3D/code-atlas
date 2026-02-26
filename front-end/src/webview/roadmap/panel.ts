@@ -133,7 +133,7 @@ export function showFunctionPanel(fileData: FileNode): void {
     </div>
   `;
 
-  list.innerHTML = depsSection + funcSection;
+  list.innerHTML = funcSection + depsSection;
   panel.classList.add("visible");
   const toggle = getElement<HTMLButtonElement>("panelToggle");
   const wasActive = toggle.classList.contains("active");
