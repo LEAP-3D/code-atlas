@@ -1,4 +1,3 @@
-import { authService } from "./authService";
 import { RoadmapData } from "../roadmap/roadmapModel";
 import * as https from "https";
 import * as http from "http";
@@ -42,15 +41,10 @@ class ApiClient {
   ): Promise<T> {
     return new Promise((resolve, reject) => {
       const url = new URL(`${API_BASE_URL}${path}`);
-      const token = authService.getToken();
 
       const headers: Record<string, string> = {
         "Content-Type": "application/json",
       };
-
-      if (token) {
-        headers["Authorization"] = `Bearer ${token}`;
-      }
 
       if (options.body) {
         headers["Content-Length"] = Buffer.byteLength(options.body).toString();

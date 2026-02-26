@@ -10,6 +10,7 @@ import { focusOnFile } from "./panel";
 const HOVER_SEPARATION_X_THRESHOLD = 220;
 const HOVER_SEPARATION_Y_THRESHOLD = 420;
 const HOVER_SEPARATION_MAX_SHIFT = 85;
+const subtreeErrorCache = new Map<string, boolean>();
 
 function escapeHtml(text: string): string {
   return text
@@ -40,6 +41,30 @@ function renderHighlightedName(name: string): string {
         : escapeHtml(part),
     )
     .join("");
+}
+
+function hasErrorsInSubtree(node: HierarchyNode | FileNode): boolean {
+  if (node.type === "file") {
+    return (node as FileNode).errorCount > 0;
+  }
+
+  const nodeId = getNodeId(node);
+  if (nodeId && subtreeErrorCache.has(nodeId)) {
+    return subtreeErrorCache.get(nodeId)!;
+  }
+
+  const folder = node as HierarchyNode;
+  const hasDirectFileError = (folder.files || []).some((file) => file.errorCount > 0);
+  const hasChildError = Object.values(folder.children || {}).some((child) =>
+    hasErrorsInSubtree(child),
+  );
+  const result = hasDirectFileError || hasChildError;
+
+  if (nodeId) {
+    subtreeErrorCache.set(nodeId, result);
+  }
+
+  return result;
 }
 
 function markSearchMatches(hierarchy: HierarchyNode): void {
@@ -102,6 +127,9 @@ export function createNode(
   if (data.type === "file" && (data as FileNode).errorCount > 0) {
     node.classList.add("has-error");
   }
+  if (data.type === "folder" && hasErrorsInSubtree(data)) {
+    node.classList.add("has-error-descendant");
+  }
 
   node.style.left = `${x}px`;
   node.style.top = `${y}px`;
@@ -113,11 +141,6 @@ export function createNode(
 
   const icon = data.type === "folder" ? "📁" : "📄";
 
-  const errorInd =
-    data.type === "file" && (data as FileNode).errorCount > 0
-      ? '<div class="error-badge-indicator">!</div>'
-      : "";
-
   // Folder expanded indicator
   const isExpanded = data.type === "folder" && state.isFolderExpanded(nodeId);
   const expandIcon = data.type === "folder" 
@@ -126,7 +149,6 @@ export function createNode(
 
   node.innerHTML = `
     <div class="node-circle">
-      ${errorInd}
       ${expandIcon}
       <div class="node-icon">${icon}</div>
       <div class="node-name">${renderHighlightedName(data.name)}</div>
@@ -263,6 +285,7 @@ export function renderGraph(): void {
   svg.innerHTML = "";
   clearHoverNodeSeparation();
   state.clearRenderState();
+  subtreeErrorCache.clear();
 
   // Build hierarchy
   const hierarchy = buildHierarchy(state.roadmapData.files);

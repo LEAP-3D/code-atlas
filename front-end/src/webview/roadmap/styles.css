@@ -248,67 +248,6 @@ body {
   transform-origin: center center;
 }
 
-/* UPDATED: Move grid to graph-container so it zooms with content */
-.graph-container::before {
-  content: "";
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background-image:
-    linear-gradient(
-      rgba(255, 255, 255, var(--grid-line-alpha-1, 0.04))
-        var(--grid-line-width-1, 1px),
-      transparent var(--grid-line-width-1, 1px)
-    ),
-    linear-gradient(
-      90deg,
-      rgba(255, 255, 255, var(--grid-line-alpha-1, 0.04))
-        var(--grid-line-width-1, 1px),
-      transparent var(--grid-line-width-1, 1px)
-    ),
-    linear-gradient(
-      rgba(255, 255, 255, var(--grid-line-alpha-2, 0.03))
-        var(--grid-line-width-2, 1px),
-      transparent var(--grid-line-width-2, 1px)
-    ),
-    linear-gradient(
-      90deg,
-      rgba(255, 255, 255, var(--grid-line-alpha-2, 0.03))
-        var(--grid-line-width-2, 1px),
-      transparent var(--grid-line-width-2, 1px)
-    ),
-    linear-gradient(
-      rgba(255, 255, 255, var(--grid-line-alpha-3, 0.02))
-        var(--grid-line-width-3, 1px),
-      transparent var(--grid-line-width-3, 1px)
-    ),
-    linear-gradient(
-      90deg,
-      rgba(255, 255, 255, var(--grid-line-alpha-3, 0.02))
-        var(--grid-line-width-3, 1px),
-      transparent var(--grid-line-width-3, 1px)
-    );
-  background-size:
-    var(--grid-spacing-1, 50px) var(--grid-spacing-1, 50px),
-    var(--grid-spacing-1, 50px) var(--grid-spacing-1, 50px),
-    var(--grid-spacing-2, 200px) var(--grid-spacing-2, 200px),
-    var(--grid-spacing-2, 200px) var(--grid-spacing-2, 200px),
-    var(--grid-spacing-3, 800px) var(--grid-spacing-3, 800px),
-    var(--grid-spacing-3, 800px) var(--grid-spacing-3, 800px);
-  background-position:
-    0 0,
-    0 0,
-    0 0,
-    0 0,
-    0 0,
-    0 0;
-  background-repeat: repeat;
-  pointer-events: none;
-  z-index: 0;
-}
-
 /* Connections */
 svg.connections {
   position: absolute;
@@ -340,6 +279,14 @@ svg.connections {
   stroke-width: 4;
   stroke-dasharray: 8, 4;
   opacity: 1;
+}
+
+/* Color-coded relationship lines (direct/import/imported-by) */
+.connection-line.highlight {
+  stroke: #4ec9b0 !important;
+  stroke-width: 5.5 !important;
+  opacity: 1 !important;
+  filter: drop-shadow(0 0 6px rgba(78, 201, 176, 0.65));
 }
 
 /* Nodes */
@@ -525,6 +472,13 @@ svg.connections {
   height: 245px;
 }
 
+.node.file.focused .node-circle::before {
+  width: 52px;
+  height: 42px;
+  background: linear-gradient(135deg, #60a5fa 0%, #2563eb 100%) !important;
+  box-shadow: inset 0 0 0 1px rgba(191, 219, 254, 0.45);
+}
+
 .node.file.small .node-circle {
   width: 120px;
   height: 145px;
@@ -537,12 +491,45 @@ svg.connections {
 
 .node.file.has-error .node-circle {
   border-color: #ef4444;
-  background: linear-gradient(135deg, #2a1a1a 0%, #3a2020 100%);
   box-shadow: 0 8px 32px rgba(239, 68, 68, 0.3);
+}
+
+.node.file.has-error .node-circle::before {
+  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
 }
 
 .node.file.has-error:hover .node-circle {
   box-shadow: 0 18px 56px rgba(239, 68, 68, 0.6);
+}
+
+.node.file.has-error.focused .node-circle {
+  border: 3px solid #ef4444 !important;
+  box-shadow: 0 0 25px rgba(239, 68, 68, 0.6) !important;
+}
+
+.node.file.has-error.focused .node-circle::before {
+  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%) !important;
+}
+
+.node.folder.has-error-descendant .node-circle {
+  border-color: #ef4444;
+  box-shadow: 0 8px 32px rgba(239, 68, 68, 0.28);
+}
+
+.node.folder.has-error-descendant .node-circle::before {
+  background: #ef4444;
+}
+
+.node.folder.has-error-descendant:hover .node-circle {
+  box-shadow: 0 18px 56px rgba(239, 68, 68, 0.48);
+}
+
+.node.import-dep .node-circle::before {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%) !important;
+}
+
+.node.imported-by-dep .node-circle::before {
+  background: linear-gradient(135deg, #a855f7 0%, #9333ea 100%) !important;
 }
 
 .node.small:hover .node-name {
@@ -661,6 +648,116 @@ svg.connections {
   pointer-events: none;
   z-index: 10;
   transition: opacity 0.3s;
+}
+
+.map-legend {
+  position: fixed;
+  left: 20px;
+  bottom: 20px;
+  background: rgba(16, 16, 16, 0.92);
+  border: 1px solid #303030;
+  border-radius: 10px;
+  padding: 10px 12px;
+  color: #c9d1d9;
+  font-size: 11px;
+  z-index: 10;
+  min-width: 220px;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.35);
+}
+
+.map-legend.is-hidden {
+  display: none;
+}
+
+.map-legend-toggle {
+  position: fixed;
+  left: 20px;
+  bottom: 20px;
+  z-index: 10;
+  border: 1px solid #303030;
+  background: rgba(16, 16, 16, 0.92);
+  color: #cbd5e1;
+  border-radius: 10px;
+  padding: 8px 12px;
+  font-size: 11px;
+  cursor: pointer;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.35);
+}
+
+.map-legend-toggle:hover {
+  border-color: #4b5563;
+  color: #fff;
+}
+
+.map-legend-toggle.is-hidden {
+  display: none;
+}
+
+.map-legend-close {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 22px;
+  height: 22px;
+  border: 0;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.06);
+  color: #cbd5e1;
+  cursor: pointer;
+  font-size: 16px;
+  line-height: 1;
+  padding: 0;
+}
+
+.map-legend-close:hover {
+  background: rgba(255, 255, 255, 0.12);
+  color: #fff;
+}
+
+.map-legend-title {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #9ca3af;
+  margin-bottom: 8px;
+  padding-right: 24px;
+}
+
+.map-legend-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 6px;
+  white-space: nowrap;
+}
+
+.map-legend-line {
+  width: 26px;
+  height: 0;
+  border-top: 3px solid #8b95a7;
+  border-radius: 999px;
+  flex: 0 0 auto;
+  opacity: 1;
+}
+
+.map-legend-line.direct {
+  border-top-color: #4ec9b0;
+}
+
+.map-legend-line.import {
+  border-top-color: #3b82f6;
+}
+
+.map-legend-line.imported-by {
+  border-top-color: #a855f7;
+}
+
+.map-legend-note {
+  margin-top: 8px;
+  color: #9ca3af;
+  line-height: 1.35;
+  white-space: normal;
+  max-width: 280px;
 }
 
 /* Function Panel */
@@ -1092,7 +1189,9 @@ svg.connections {
 /* Focused file - сонгосон файл */
 .node.focused .node-circle {
   border: 3px solid #3b82f6 !important;
-  box-shadow: 0 0 25px rgba(59, 130, 246, 0.6) !important;
+  box-shadow:
+    0 0 0 1px rgba(147, 197, 253, 0.45),
+    0 0 28px rgba(59, 130, 246, 0.78) !important;
   transform: scale(1.1);
 }
 
@@ -1107,36 +1206,46 @@ svg.connections {
 /* ===== FOCUSED FILE - Сонгосон файл (цэнхэр) ===== */
 .node.focused .node-circle {
   border: 3px solid #3b82f6 !important;
-  box-shadow: 0 0 25px rgba(59, 130, 246, 0.6) !important;
+  box-shadow:
+    0 0 0 1px rgba(147, 197, 253, 0.45),
+    0 0 28px rgba(59, 130, 246, 0.78) !important;
   transform: scale(1.1);
 }
 
-/* ===== IMPORT FILES - Энэ файлаас import хийсэн (ногоон) ===== */
+/* ===== IMPORT FILES - Энэ файлаас import хийсэн (цэнхэр) ===== */
 .node.import-dep .node-circle {
-  border: 3px solid #10b981 !important;
-  box-shadow: 0 0 20px rgba(16, 185, 129, 0.5) !important;
+  border: 3px solid #3b82f6 !important;
+  box-shadow:
+    0 0 0 1px rgba(147, 197, 253, 0.35),
+    0 0 24px rgba(59, 130, 246, 0.68) !important;
+}
+
+.node.import-dep .node-circle::before {
+  background: linear-gradient(135deg, #60a5fa 0%, #2563eb 100%) !important;
 }
 
 /* ===== IMPORTED BY FILES - Энэ файлыг import хийсэн (purple) ===== */
 .node.imported-by-dep .node-circle {
   border: 3px solid #a855f7 !important;
-  box-shadow: 0 0 20px rgba(168, 85, 247, 0.5) !important;
+  box-shadow:
+    0 0 0 1px rgba(216, 180, 254, 0.35),
+    0 0 24px rgba(168, 85, 247, 0.7) !important;
 }
 
-/* ===== IMPORT FOLDER - Import файл агуулсан folder (ногоон) ===== */
+/* ===== IMPORT FOLDER - Import файл агуулсан folder (цэнхэр) ===== */
 .node.import-folder .node-circle {
-  border: 3px solid #10b981 !important;
-  box-shadow: 0 0 15px rgba(16, 185, 129, 0.4) !important;
+  border: 3px solid #3b82f6 !important;
+  box-shadow: 0 0 15px rgba(59, 130, 246, 0.4) !important;
   animation: pulse-green 2s ease-in-out infinite;
 }
 
 @keyframes pulse-green {
   0%,
   100% {
-    box-shadow: 0 0 15px rgba(16, 185, 129, 0.4);
+    box-shadow: 0 0 15px rgba(59, 130, 246, 0.4);
   }
   50% {
-    box-shadow: 0 0 25px rgba(16, 185, 129, 0.6);
+    box-shadow: 0 0 25px rgba(59, 130, 246, 0.6);
   }
 }
 
@@ -1159,29 +1268,33 @@ svg.connections {
 
 /* ===== CONNECTION LINES ===== */
 .connection-line.import-line {
-  stroke: #10b981 !important;
-  stroke-width: 2.5;
-  opacity: 0.8;
+  stroke: #3b82f6 !important;
+  stroke-width: 4.5;
+  opacity: 1;
+  filter: drop-shadow(0 0 6px rgba(59, 130, 246, 0.55));
 }
 
 .connection-line.imported-by-line {
   stroke: #a855f7 !important;
-  stroke-width: 2.5;
-  opacity: 0.8;
+  stroke-width: 4.5;
+  opacity: 1;
+  filter: drop-shadow(0 0 6px rgba(168, 85, 247, 0.55));
 }
 
 .connection-line.import-folder-line {
-  stroke: #10b981 !important;
-  stroke-width: 2;
-  opacity: 0.5;
-  stroke-dasharray: 5, 5;
+  stroke: #3b82f6 !important;
+  stroke-width: 4.5;
+  opacity: 1;
+  filter: drop-shadow(0 0 6px rgba(59, 130, 246, 0.55));
+  stroke-dasharray: none;
 }
 
 .connection-line.imported-by-folder-line {
   stroke: #a855f7 !important;
-  stroke-width: 2;
-  opacity: 0.5;
-  stroke-dasharray: 5, 5;
+  stroke-width: 4.5;
+  opacity: 1;
+  filter: drop-shadow(0 0 6px rgba(168, 85, 247, 0.55));
+  stroke-dasharray: none;
 }
 
 /* ===== DIMMED - Бусад ===== */
