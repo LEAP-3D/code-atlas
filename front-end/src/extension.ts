@@ -85,7 +85,19 @@ async function isMonorepoFast(workspaceFolder: vscode.WorkspaceFolder) {
     }
   }
 
-  return packageJsonHasWorkspaces(workspaceFolder.uri);
+  if (await packageJsonHasWorkspaces(workspaceFolder.uri)) {
+    return true;
+  }
+
+  // Fallback heuristics for repos that don't expose a root marker file
+  for (const container of MONOREPO_PROJECT_CONTAINERS) {
+    const containerUri = vscode.Uri.joinPath(workspaceFolder.uri, container);
+    if (await directoryExists(containerUri)) {
+      return true;
+    }
+  }
+
+  return false;
 }
 
 async function directoryExists(uri: vscode.Uri) {
