@@ -154,21 +154,7 @@ function showCopyToast(message: string): void {
   }, 2000);
 }
 
-function formatTimestamp(timestamp: number): string {
-  return new Date(timestamp).toLocaleTimeString([], {
-    hour: "2-digit",
-    minute: "2-digit",
-    second: "2-digit",
-  });
-}
-
-function updateLastUpdated(timestamp: number): void {
-  const metaEl = document.getElementById("roadmapLastUpdated");
-  if (!metaEl) return;
-  metaEl.textContent = `Updated ${formatTimestamp(timestamp)}`;
-}
-
-function finishRefreshUi(ok: boolean, timestamp?: number): void {
+function finishRefreshUi(): void {
   const btn = getElement<HTMLButtonElement>("refreshRoadmapBtn");
   btn.disabled = false;
   btn.textContent = "Refresh Errors";
@@ -179,10 +165,6 @@ function finishRefreshUi(ok: boolean, timestamp?: number): void {
   refreshCooldownTimer = window.setTimeout(() => {
     refreshCooldownTimer = null;
   }, 800);
-
-  if (ok && timestamp) {
-    updateLastUpdated(timestamp);
-  }
 }
 
 declare global {
@@ -640,7 +622,6 @@ function init(): void {
     showEmptyState("No files found", "No roadmap data is loaded yet.");
   }
 
-  updateLastUpdated(Date.now());
   postRoadmapCommand({ command: "roadmapWebviewReady" });
 }
 
@@ -672,18 +653,18 @@ window.addEventListener("message", (event: MessageEvent<unknown>) => {
 
   if (message.type === "roadmapDataUpdated") {
     if (!isRoadmapData(message.data)) {
-      finishRefreshUi(false);
+      finishRefreshUi();
       return;
     }
 
     applyRoadmapDataUpdate(message.data);
     setupSearchControls();
-    finishRefreshUi(true, message.updatedAt || Date.now());
+    finishRefreshUi();
     return;
   }
 
   if (message.type === "roadmapDataRefreshFailed") {
-    finishRefreshUi(false, message.updatedAt || Date.now());
+    finishRefreshUi();
     return;
   }
 
@@ -709,4 +690,3 @@ window.addEventListener("message", (event: MessageEvent<unknown>) => {
 });
 
 init();
-
