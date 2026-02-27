@@ -488,12 +488,12 @@ function init(): void {
       new URLSearchParams(window.location.search).get("restore") === "true";
 
     if (shouldRestore) {
-      console.log("🔄 Waiting for state restoration...");
+      console.log("Waiting for state restoration...");
     } else {
       setTimeout(resetView, 100);
     }
   } else {
-    console.error("❌ No files");
+    console.error("No files");
     showEmptyState("No files found", "No roadmap data is loaded yet.");
   }
 
@@ -504,7 +504,7 @@ window.addEventListener("message", (event) => {
   const message = event.data;
 
   if (message.type === "restoreState" && message.state) {
-    console.log("🔄 Restoring view state:", message.state);
+    console.log("Restoring view state:", message.state);
 
     state.setScale(message.state.scale);
     state.setTranslate(message.state.translateX, message.state.translateY);
@@ -551,3 +551,4 @@ window.addEventListener("message", (event) => {
 });
 
 init();
+
