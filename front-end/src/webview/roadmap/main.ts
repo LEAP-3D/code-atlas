@@ -103,38 +103,56 @@ function renderIssues(
   }
 
   const sortedLines = Array.from(issuesByLine.keys()).sort((a, b) => a - b);
-  let html = '<div class="error-lines-list">';
+  container.replaceChildren();
+  const list = document.createElement("div");
+  list.className = "error-lines-list";
 
   for (const lineNum of sortedLines) {
     const lineIssues = issuesByLine.get(lineNum) || [];
     const first = lineIssues[0];
     const preview =
       first.message.length > 90
-        ? `${escapeHtml(first.message.substring(0, 90))}...`
-        : escapeHtml(first.message);
-    const tooltip = escapeHtml(lineIssues.map((item) => item.message).join("\n"));
-    const badges = lineIssues
-      .map(
-        (item) =>
-          `<span class="diag-chip diag-${item.severity}">${severityLabel(item)}</span>`,
-      )
-      .join("");
+        ? `${first.message.substring(0, 90)}...`
+        : first.message;
+    const tooltip = lineIssues.map((item) => item.message).join("\n");
 
-    html += `
-      <div class="error-line-item"
-           onclick="event.stopPropagation(); window.roadmapActions.goToFunction('${filePath.replace(/\\/g, "\\\\")}', ${lineNum})"
-           title="${tooltip}">
-        <div class="error-line-row">
-          <div class="error-line-number">Line ${lineNum}</div>
-          <div class="error-line-chips">${badges}</div>
-        </div>
-        <div class="error-line-message">${preview}</div>
-      </div>
-    `;
+    const itemEl = document.createElement("div");
+    itemEl.className = "error-line-item";
+    itemEl.title = tooltip;
+    itemEl.addEventListener("click", (event) => {
+      event.stopPropagation();
+      window.roadmapActions.goToFunction(filePath, lineNum);
+    });
+
+    const rowEl = document.createElement("div");
+    rowEl.className = "error-line-row";
+
+    const lineNumberEl = document.createElement("div");
+    lineNumberEl.className = "error-line-number";
+    lineNumberEl.textContent = `Line ${lineNum}`;
+
+    const chipsEl = document.createElement("div");
+    chipsEl.className = "error-line-chips";
+
+    for (const issue of lineIssues) {
+      const chipEl = document.createElement("span");
+      chipEl.classList.add("diag-chip", `diag-${issue.severity}`);
+      chipEl.textContent = severityLabel(issue);
+      chipsEl.appendChild(chipEl);
+    }
+
+    const messageEl = document.createElement("div");
+    messageEl.className = "error-line-message";
+    messageEl.textContent = preview;
+
+    rowEl.appendChild(lineNumberEl);
+    rowEl.appendChild(chipsEl);
+    itemEl.appendChild(rowEl);
+    itemEl.appendChild(messageEl);
+    list.appendChild(itemEl);
   }
 
-  html += "</div>";
-  container.innerHTML = html;
+  container.appendChild(list);
 }
 
 function showCopyToast(message: string): void {
