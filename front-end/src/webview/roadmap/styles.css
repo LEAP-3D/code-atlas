@@ -1770,8 +1770,15 @@ svg.connections {
 
 /* Copy Dropdown - Smooth & Modern */
 .copy-dropdown-container {
+  --copy-dropdown-space: 0px;
   position: relative;
   margin: 12px 0;
+  margin-bottom: calc(12px + var(--copy-dropdown-space));
+  transition: margin-bottom 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.copy-dropdown-container.dropdown-open {
+  z-index: 2;
 }
 
 .copy-main-btn {
