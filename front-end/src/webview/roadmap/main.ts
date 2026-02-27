@@ -22,6 +22,8 @@ import { HierarchyNode } from "./types";
 
 // Initialize VS Code API
 state.setVscode(window.acquireVsCodeApi());
+let interactionsInitialized = false;
+let hintInitialized = false;
 
 // Load roadmap data
 state.setRoadmapData(
@@ -61,6 +63,7 @@ function showCopyToast(message: string): void {
 // Expose actions to window for HTML onclick handlers
 declare global {
   interface Window {
+    ROADMAP_DATA?: typeof state.roadmapData;
     roadmapActions: {
       goToFunction: (filePath: string, line: number) => void;
       jumpToFile: (filePath: string) => void;
@@ -76,11 +79,134 @@ declare global {
       copyAll: (filePath: string) => void;
       copyForAI: (filePath: string) => void;
       toggleSection: (sectionId: string) => void;
+      toggleCopyDropdown: () => void;
+      closeCopyDropdown: () => void;
+      clearSearch: () => void;
     };
   }
 }
 
+function ensureEmptyStateElement(): HTMLDivElement {
+  let el = document.getElementById(
+    "roadmapEmptyState",
+  ) as HTMLDivElement | null;
+  if (el) return el;
+
+  el = document.createElement("div");
+  el.id = "roadmapEmptyState";
+  el.className = "roadmap-empty-state hidden";
+  document.body.appendChild(el);
+  return el;
+}
+
+function showEmptyState(
+  title: string,
+  message: string,
+  actionLabel?: string,
+  actionCommand?: string,
+): void {
+  const el = ensureEmptyStateElement();
+
+  const actionHtml =
+    actionLabel && actionCommand
+      ? `<button class="empty-state-btn" id="emptyStateActionBtn">${actionLabel}</button>`
+      : "";
+
+  el.innerHTML = `
+    <div class="empty-state-card">
+      <div class="empty-state-icon">🧭</div>
+      <h2>${title}</h2>
+      <p>${message}</p>
+      ${actionHtml}
+    </div>
+  `;
+  el.classList.remove("hidden");
+
+  if (actionLabel && actionCommand) {
+    const btn = document.getElementById(
+      "emptyStateActionBtn",
+    ) as HTMLButtonElement | null;
+    if (btn) {
+      btn.onclick = () => {
+        state.vscode.postMessage({ command: actionCommand });
+      };
+    }
+  }
+}
+
+function hideEmptyState(): void {
+  const el = document.getElementById("roadmapEmptyState");
+  if (el) el.classList.add("hidden");
+}
+
+function ensureInteractionsInitialized(): void {
+  if (!interactionsInitialized) {
+    setupCanvasEvents();
+    interactionsInitialized = true;
+  }
+
+  if (!hintInitialized) {
+    setupHintTimeout();
+    hintInitialized = true;
+  }
+}
+
+function updateSearchMeta(): void {
+  const meta = document.getElementById("roadmapSearchMeta");
+  const clearBtn = document.getElementById(
+    "roadmapSearchClearBtn",
+  ) as HTMLButtonElement | null;
+
+  if (!meta) {
+    return;
+  }
+
+  if (!state.hasActiveSearch()) {
+    meta.textContent = "";
+    if (clearBtn) clearBtn.style.visibility = "hidden";
+    return;
+  }
+
+  const matchCount = state.matchedNodeIds.size;
+  meta.textContent = `${matchCount} match${matchCount === 1 ? "" : "es"}`;
+  if (clearBtn) clearBtn.style.visibility = "visible";
+}
+
+function applySearch(query: string): void {
+  state.setSearchQuery(query);
+  renderGraph();
+  updateSearchMeta();
+}
+
+function setupSearchControls(): void {
+  const searchInput = document.getElementById(
+    "roadmapSearchInput",
+  ) as HTMLInputElement | null;
+  if (!searchInput || searchInput.dataset.bound === "true") {
+    updateSearchMeta();
+    return;
+  }
+
+  searchInput.dataset.bound = "true";
+  searchInput.value = state.searchQuery;
+
+  searchInput.addEventListener("input", () => {
+    applySearch(searchInput.value);
+  });
+
+  searchInput.addEventListener("keydown", (event) => {
+    if (event.key === "Escape") {
+      searchInput.value = "";
+      applySearch("");
+      searchInput.blur();
+    }
+  });
+
+  updateSearchMeta();
+}
+
 function applyRoadmapDataUpdate(newData: typeof state.roadmapData): void {
+  const wasEmpty = (state.roadmapData?.files?.length || 0) === 0;
   const previousScale = state.scale;
   const previousTranslateX = state.translateX;
   const previousTranslateY = state.translateY;
@@ -88,16 +214,22 @@ function applyRoadmapDataUpdate(newData: typeof state.roadmapData): void {
 
   state.setRoadmapData(newData);
 
-  // Auto-expand folders with files
   autoExpandFoldersWithFiles();
+  hideEmptyState();
+  ensureInteractionsInitialized();
 
   renderGraph();
+  updateSearchMeta();
 
-  state.setScale(previousScale);
-  state.setTranslate(previousTranslateX, previousTranslateY);
-  updateTransform();
-  getElement<HTMLDivElement>("zoomLevel").textContent =
-    `${Math.round(previousScale * 100)}%`;
+  if (wasEmpty) {
+    setTimeout(resetView, 100);
+  } else {
+    state.setScale(previousScale);
+    state.setTranslate(previousTranslateX, previousTranslateY);
+    updateTransform();
+    getElement<HTMLDivElement>("zoomLevel").textContent =
+      `${Math.round(previousScale * 100)}%`;
+  }
 
   if (focusedFilePath && state.hierarchyData) {
     const fileNode = findFileNodeByPath(state.hierarchyData, focusedFilePath);
@@ -107,9 +239,6 @@ function applyRoadmapDataUpdate(newData: typeof state.roadmapData): void {
   }
 }
 
-/**
- * Auto-expand folders that contain files
- */
 function autoExpandFoldersWithFiles(): void {
   if (!state.hierarchyData) {
     console.log("⚠️ No hierarchy data");
@@ -121,14 +250,12 @@ function autoExpandFoldersWithFiles(): void {
   function expandFolder(node: HierarchyNode): void {
     const nodeId = getNodeId(node);
 
-    // Expand folder if it has files
     if (node.files && node.files.length > 0 && nodeId) {
       state.expandedFolders.add(nodeId);
       expandedCount++;
       console.log(`📂 Expanded: ${node.name} (${node.files.length} files)`);
     }
 
-    // Check child folders
     if (node.children) {
       Object.values(node.children).forEach((child) => {
         expandFolder(child);
@@ -169,7 +296,6 @@ window.roadmapActions = {
     });
   },
 
-  // ✅ Copy only the selected file
   copyFile: (filePath: string) => {
     console.log("📄 Copying file:", filePath);
     state.vscode.postMessage({
@@ -177,10 +303,9 @@ window.roadmapActions = {
       filePath: filePath,
     });
     const fileName = filePath.split(/[/\\]/).pop() || filePath;
-    showCopyToast(`📄 ${fileName} copied to clipboard`);
+    showCopyToast(`📄 ${fileName} copied`);
   },
 
-  // ✅ Copy all related files (imports + imported by)
   copyAll: (filePath: string) => {
     if (!state.roadmapData || !state.hierarchyData) return;
 
@@ -199,10 +324,9 @@ window.roadmapActions = {
       files: Array.from(allFiles),
     });
 
-    showCopyToast(`📋 ${allFiles.size} files copied to clipboard`);
+    showCopyToast(`📋 ${allFiles.size} files copied`);
   },
 
-  // ✅ Copy for AI - error context бүхий
   copyForAI: (filePath: string) => {
     if (!state.roadmapData || !state.hierarchyData) return;
 
@@ -212,6 +336,12 @@ window.roadmapActions = {
     const deps = state.roadmapData.dependencies || [];
     const imports = deps.filter((d) => d.importerFilePath === filePath);
     const importedBy = deps.filter((d) => d.importedFilePath === filePath);
+
+    // Collect all related files
+    const allFiles = new Set<string>();
+    allFiles.add(filePath);
+    imports.forEach((dep) => allFiles.add(dep.importedFilePath));
+    importedBy.forEach((dep) => allFiles.add(dep.importerFilePath));
 
     const fileName = fileNode.name;
     const funcCount = fileNode.functions?.length || 0;
@@ -261,16 +391,17 @@ window.roadmapActions = {
     context += `// ${fileName} content will be inserted here by the extension\n`;
     context += `\`\`\`\n`;
 
+    // Send AI context with ALL related files
     state.vscode.postMessage({
       command: "copyAIContext",
       errorFile: filePath,
       context: context,
+      files: Array.from(allFiles), // Include all files for AI
     });
 
-    showCopyToast("🤖 AI context copied!");
+    showCopyToast(`🤖 AI context with ${allFiles.size} files copied!`);
   },
 
-  // ✅ Toggle section collapse/expand
   toggleSection: (sectionId: string) => {
     const content = document.getElementById(`${sectionId}-content`);
     const toggle = document.getElementById(`${sectionId}-toggle`);
@@ -285,6 +416,20 @@ window.roadmapActions = {
     } else {
       content.classList.add("collapsed");
       toggle.textContent = "▶";
+    }
+  },
+
+  toggleCopyDropdown: () => {
+    const dropdown = document.getElementById("copyDropdownMenu");
+    if (dropdown) {
+      dropdown.classList.toggle("show");
+    }
+  },
+
+  closeCopyDropdown: () => {
+    const dropdown = document.getElementById("copyDropdownMenu");
+    if (dropdown) {
+      dropdown.classList.remove("show");
     }
   },
 
@@ -307,22 +452,38 @@ window.roadmapActions = {
     btn.textContent = "Refreshing...";
     state.vscode.postMessage({ command: "refreshRoadmapData" });
   },
+
+  clearSearch: () => {
+    const searchInput = document.getElementById(
+      "roadmapSearchInput",
+    ) as HTMLInputElement | null;
+    if (searchInput) {
+      searchInput.value = "";
+    }
+    applySearch("");
+  },
 };
 
-/**
- * Initialize the roadmap
- */
+// Close dropdown when clicking outside
+document.addEventListener("click", (e) => {
+  const dropdown = document.getElementById("copyDropdownMenu");
+  const container = document.querySelector(".copy-dropdown-container");
+
+  if (dropdown && container && !container.contains(e.target as Node)) {
+    dropdown.classList.remove("show");
+  }
+});
+
 function init(): void {
+  ensureInteractionsInitialized();
+  setupSearchControls();
   if (state.roadmapData?.files?.length > 0) {
     console.log("✅ Init:", state.roadmapData.files.length, "files");
 
-    // Auto-expand folders with files
     autoExpandFoldersWithFiles();
 
     renderGraph();
-    setupCanvasEvents();
 
-    // Check if we should restore previous view state
     const shouldRestore =
       new URLSearchParams(window.location.search).get("restore") === "true";
 
@@ -331,20 +492,14 @@ function init(): void {
     } else {
       setTimeout(resetView, 100);
     }
-
-    setupHintTimeout();
   } else {
     console.error("❌ No files");
-    getElement<HTMLDivElement>("nodesContainer").innerHTML = `
-      <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center;color:#666">
-        <div style="font-size:64px;margin-bottom:16px">📭</div>
-        <h3>No files found</h3>
-      </div>
-    `;
+    showEmptyState("No files found", "No roadmap data is loaded yet.");
   }
+
+  state.vscode.postMessage({ command: "roadmapWebviewReady" });
 }
 
-// Add message handler to restore state
 window.addEventListener("message", (event) => {
   const message = event.data;
 
@@ -358,7 +513,6 @@ window.addEventListener("message", (event) => {
     getElement<HTMLDivElement>("zoomLevel").textContent =
       `${Math.round(message.state.scale * 100)}%`;
 
-    // Restore focused file if exists
     if (message.state.focusedFilePath && state.hierarchyData) {
       const fileNode = findFileNodeByPath(
         state.hierarchyData,
@@ -372,6 +526,7 @@ window.addEventListener("message", (event) => {
 
   if (message.type === "roadmapDataUpdated" && message.data) {
     applyRoadmapDataUpdate(message.data);
+    setupSearchControls();
 
     const btn = getElement<HTMLButtonElement>("refreshRoadmapBtn");
     btn.disabled = false;
@@ -384,7 +539,15 @@ window.addEventListener("message", (event) => {
     btn.textContent = "Refresh Errors";
     console.error("❌ Failed to refresh roadmap data:", message.error);
   }
+
+  if (message.type === "roadmapEmptyState") {
+    showEmptyState(
+      message.title || "Project roadmap",
+      message.message || "No roadmap data loaded.",
+      message.actionLabel,
+      message.actionCommand,
+    );
+  }
 });
 
-// Run on load
 init();

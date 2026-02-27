@@ -25,18 +25,28 @@ export function showFunctionPanel(fileData: FileNode): void {
     (d: RoadmapDependency) => d.importedFilePath === fileData.fullPath,
   );
 
-  // ✅ Copy buttons - бүх файл дээр харагдана
+  // ✅ Copy dropdown button
   const copyButtons = `
-    <div class="copy-buttons-container">
-      <button class="copy-file-btn" onclick="event.stopPropagation(); window.roadmapActions.copyFile('${fileData.fullPath.replace(/\\/g, "\\\\")}')">
-        📄 Copy File
+    <div class="copy-dropdown-container">
+      <button class="copy-main-btn" onclick="event.stopPropagation(); window.roadmapActions.toggleCopyDropdown()">
+        <span class="copy-main-icon">📋</span>
+        <span class="copy-main-text">Copy</span>
+        <span class="copy-main-arrow">▼</span>
       </button>
-      <button class="copy-all-btn" onclick="event.stopPropagation(); window.roadmapActions.copyAll('${fileData.fullPath.replace(/\\/g, "\\\\")}')">
-        📋 Copy All
-      </button>
-      <button class="copy-ai-btn" onclick="event.stopPropagation(); window.roadmapActions.copyForAI('${fileData.fullPath.replace(/\\/g, "\\\\")}')">
-        🤖 Copy for AI
-      </button>
+      <div class="copy-dropdown-menu" id="copyDropdownMenu">
+        <div class="copy-dropdown-item" onclick="event.stopPropagation(); window.roadmapActions.copyFile('${fileData.fullPath.replace(/\\/g, "\\\\")}'); window.roadmapActions.closeCopyDropdown();">
+          <span class="copy-dropdown-icon">📄</span>
+          <span class="copy-dropdown-text">This file only</span>
+        </div>
+        <div class="copy-dropdown-item" onclick="event.stopPropagation(); window.roadmapActions.copyAll('${fileData.fullPath.replace(/\\/g, "\\\\")}'); window.roadmapActions.closeCopyDropdown();">
+          <span class="copy-dropdown-icon">📦</span>
+          <span class="copy-dropdown-text">With imports/exports</span>
+        </div>
+        <div class="copy-dropdown-item copy-ai-item" onclick="event.stopPropagation(); window.roadmapActions.copyForAI('${fileData.fullPath.replace(/\\/g, "\\\\")}'); window.roadmapActions.closeCopyDropdown();">
+          <span class="copy-dropdown-icon">🤖</span>
+          <span class="copy-dropdown-text">For AI (all files)</span>
+        </div>
+      </div>
     </div>
   `;
 

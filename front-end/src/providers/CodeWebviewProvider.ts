@@ -13,7 +13,6 @@ import {
 } from "../roadmap/roadmapModel";
 
 export class CodeWebviewProvider {
-  // Store the current roadmap panel to reuse it
   private static currentRoadmapPanel: vscode.WebviewPanel | null = null;
 
   static show(
@@ -36,9 +35,6 @@ export class CodeWebviewProvider {
     panel.webview.html = this.getHtml(panel.webview, context, data);
   }
 
-  /**
-   * Show error dependency graph
-   */
   static showErrorDependencyGraph(
     context: vscode.ExtensionContext,
     errorFilePath: string,
@@ -56,7 +52,6 @@ export class CodeWebviewProvider {
       errorFilePath,
     );
 
-    // Handle messages from webview
     panel.webview.onDidReceiveMessage(
       async (message) => {
         console.log("📨 [ErrorGraph] Received message:", message);
@@ -67,11 +62,7 @@ export class CodeWebviewProvider {
     );
   }
 
-  /**
-   * Show roadmap view with new modular structure
-   */
   static showRoadmap(context: vscode.ExtensionContext) {
-    // If panel already exists, just reveal it
     if (this.currentRoadmapPanel) {
       this.currentRoadmapPanel.reveal(vscode.ViewColumn.Beside);
       return;
@@ -84,13 +75,12 @@ export class CodeWebviewProvider {
       {
         enableScripts: true,
         localResourceRoots: [context.extensionUri],
-        retainContextWhenHidden: true, // Keep webview state when hidden
+        retainContextWhenHidden: true,
       },
     );
 
     this.currentRoadmapPanel = panel;
 
-    // Clear reference when panel is disposed
     panel.onDidDispose(() => {
       console.log("🗑️ Roadmap panel disposed");
       this.currentRoadmapPanel = null;
@@ -98,7 +88,6 @@ export class CodeWebviewProvider {
 
     panel.webview.html = this.getRoadmapHtml(panel.webview, context);
 
-    // Handle messages from webview
     panel.webview.onDidReceiveMessage(
       async (message) => {
         console.log("📨 [Roadmap] Received message:", message);
@@ -173,9 +162,6 @@ export class CodeWebviewProvider {
     });
   }
 
-  /**
-   * Handle webview messages (shared between roadmap and error graph)
-   */
   private static async handleWebviewMessage(
     message: {
       command: string;
@@ -211,7 +197,11 @@ export class CodeWebviewProvider {
         break;
 
       case "copyAIContext":
-        await this.copyAIContext(message.errorFile!, message.context || "");
+        await this.copyAIContext(
+          message.errorFile!,
+          message.context || "",
+          message.files,
+        );
         break;
 
       case "showAllErrors":
@@ -219,14 +209,13 @@ export class CodeWebviewProvider {
         break;
 
       case "pickMonorepoRoadmapProject":
-        await vscode.commands.executeCommand("experiment.pickMonorepoRoadmapProject");
+        await vscode.commands.executeCommand(
+          "experiment.pickMonorepoRoadmapProject",
+        );
         break;
     }
   }
 
-  /**
-   * Open file at specific line
-   */
   private static async openFileAtLine(
     filePath: string,
     line?: number,
@@ -271,9 +260,6 @@ export class CodeWebviewProvider {
     }
   }
 
-  /**
-   * Copy file content to clipboard
-   */
   private static async copyFileToClipboard(filePath: string) {
     try {
       if (!fs.existsSync(filePath)) {
@@ -290,9 +276,6 @@ export class CodeWebviewProvider {
     }
   }
 
-  /**
-   * Copy multiple files to clipboard
-   */
   private static async copyAllFilesToClipboard(files: string[]) {
     try {
       let combinedContent = "";
@@ -333,10 +316,11 @@ export class CodeWebviewProvider {
     }
   }
 
-  /**
-   * Copy AI context to clipboard
-   */
-  private static async copyAIContext(errorFile: string, aiContext: string) {
+  private static async copyAIContext(
+    errorFile: string,
+    aiContext: string,
+    files?: string[],
+  ) {
     try {
       if (!fs.existsSync(errorFile)) {
         throw new Error(`Error file not found: ${errorFile}`);
@@ -345,14 +329,35 @@ export class CodeWebviewProvider {
       const errorFileContent = fs.readFileSync(errorFile, "utf-8");
       const fileName = path.basename(errorFile);
 
-      const fullContext = aiContext.replace(
+      let fullContext = aiContext.replace(
         `// ${fileName} content will be inserted here by the extension`,
         errorFileContent,
       );
 
+      if (files && files.length > 1) {
+        fullContext += `\n\n---\n\n## Related Files\n\n`;
+
+        for (const filePath of files) {
+          if (filePath === errorFile) continue;
+
+          if (!fs.existsSync(filePath)) continue;
+
+          const relatedFileName = path.basename(filePath);
+          const relatedContent = fs.readFileSync(filePath, "utf-8");
+
+          fullContext += `### ${relatedFileName}\n\n`;
+          fullContext += `\`\`\`javascript\n`;
+          fullContext += relatedContent;
+          fullContext += `\n\`\`\`\n\n`;
+        }
+      }
+
       await vscode.env.clipboard.writeText(fullContext);
+
+      const fileCount =
+        files && files.length > 1 ? `${files.length} files` : "context";
       vscode.window.showInformationMessage(
-        `🤖 AI context copied! Ready to paste into ChatGPT/Claude`,
+        `🤖 AI ${fileCount} copied! Ready for ChatGPT/Claude`,
       );
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : "Unknown error";
@@ -360,14 +365,10 @@ export class CodeWebviewProvider {
     }
   }
 
-  /**
-   * Get roadmap HTML with modular structure
-   */
   private static getRoadmapHtml(
     webview: vscode.Webview,
     context: vscode.ExtensionContext,
   ): string {
-    // Get URIs for CSS and JS
     const stylesPath = vscode.Uri.joinPath(
       context.extensionUri,
       "src",
@@ -385,7 +386,6 @@ export class CodeWebviewProvider {
     );
     const scriptUri = webview.asWebviewUri(scriptPath);
 
-    // Read HTML template
     const htmlPath = path.join(
       context.extensionPath,
       "src",
@@ -402,7 +402,6 @@ export class CodeWebviewProvider {
     let html = fs.readFileSync(htmlPath, "utf8");
 
     try {
-      // Build roadmap data
       const roadmapData = this.buildRoadmapData();
 
       console.log("📊 [getRoadmapHtml] Injecting roadmap data");
@@ -410,10 +409,8 @@ export class CodeWebviewProvider {
       console.log(`   Functions: ${roadmapData.totalFunctions}`);
       console.log(`   Dependencies: ${roadmapData.dependencies.length}`);
 
-      // Create data script
       const dataScript = `<script>window.ROADMAP_DATA = ${JSON.stringify(roadmapData, null, 2)};</script>`;
 
-      // Replace placeholders
       html = html.replace("{{STYLES_URI}}", stylesUri.toString());
       html = html.replace("{{SCRIPT_URI}}", scriptUri.toString());
       html = html.replace("{{DATA_SCRIPT}}", dataScript);
@@ -426,9 +423,6 @@ export class CodeWebviewProvider {
     }
   }
 
-  /**
-   * Get error graph HTML
-   */
   private static getErrorGraphHtml(
     _webview: vscode.Webview,
     context: vscode.ExtensionContext,
@@ -467,9 +461,6 @@ export class CodeWebviewProvider {
     }
   }
 
-  /**
-   * Build error graph data
-   */
   private static buildErrorGraphData(errorFilePath: string) {
     const uri = vscode.Uri.file(errorFilePath);
     const diagnostics = vscode.languages.getDiagnostics(uri);
@@ -523,9 +514,6 @@ export class CodeWebviewProvider {
     };
   }
 
-  /**
-   * ✅ ЗАСВАРЛАСАН: Build roadmap data - БҮГД ФАЙЛЫГ ХАРУУЛНА
-   */
   private static buildRoadmapData(): RoadmapData {
     console.log("🔨 [buildRoadmapData] Building roadmap...");
 
@@ -544,7 +532,6 @@ export class CodeWebviewProvider {
       };
     }
 
-    // Алдааг файлаар нь авах
     const errorsByFile = new Map<string, number>();
     const allDiagnostics = vscode.languages.getDiagnostics();
     for (const [uri, diagnostics] of allDiagnostics) {
@@ -556,7 +543,6 @@ export class CodeWebviewProvider {
       }
     }
 
-    // Roadmap файлууд бүтээх
     const roadmapFiles: RoadmapFile[] = [];
 
     for (const file of files) {
@@ -564,12 +550,6 @@ export class CodeWebviewProvider {
       const fileFunctions = allFunctions.filter(
         (fn) => fn.filePath === file.path,
       );
-
-      // ✅ ЗАСВАР: Энэ шалгалтыг УСТГАСАН - функцгүй файлуудыг ч орхино
-      // ❌ ХУУЧИН КОД:
-      // if (fileFunctions.length === 0) {
-      //   continue;
-      // }
 
       const functions: RoadmapFunction[] = fileFunctions.map((fn) => {
         const calls = allEdges
@@ -591,7 +571,7 @@ export class CodeWebviewProvider {
       roadmapFiles.push({
         name: fileName,
         path: file.path,
-        functions, // Одоо хоосон array байж болно
+        functions,
         color: errorCount > 0 ? "#ef4444" : "#3b82f6",
         errorCount,
       });
@@ -620,9 +600,6 @@ export class CodeWebviewProvider {
     };
   }
 
-  /**
-   * Get function emoji based on name
-   */
   private static getFunctionEmoji(name: string): string {
     const lower = name.toLowerCase();
     if (
@@ -662,9 +639,6 @@ export class CodeWebviewProvider {
     return "⚡";
   }
 
-  /**
-   * Get error HTML (fallback)
-   */
   private static getErrorHtml(errorMessage: string): string {
     return `<!DOCTYPE html>
 <html>
@@ -694,9 +668,6 @@ export class CodeWebviewProvider {
 </html>`;
   }
 
-  /**
-   * Get debug HTML (old method - kept for backward compatibility)
-   */
   private static getHtml(
     _webview: vscode.Webview,
     context: vscode.ExtensionContext,
@@ -731,9 +702,6 @@ export class CodeWebviewProvider {
     return html;
   }
 
-  /**
-   * Escape HTML special characters
-   */
   private static escape(text: string): string {
     return text
       .replace(/&/g, "&amp;")
