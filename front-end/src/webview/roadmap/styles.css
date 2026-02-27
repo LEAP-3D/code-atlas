@@ -170,62 +170,6 @@ body {
   cursor: default;
 }
 
-.roadmap-empty-state {
-  position: fixed;
-  inset: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 24px;
-  background: rgba(10, 10, 10, 0.45);
-  z-index: 20;
-}
-
-.roadmap-empty-state.hidden {
-  display: none;
-}
-
-.empty-state-card {
-  width: min(560px, 100%);
-  background: rgba(26, 26, 26, 0.94);
-  border: 1px solid #343434;
-  border-radius: 16px;
-  padding: 28px;
-  text-align: center;
-  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.35);
-}
-
-.empty-state-icon {
-  font-size: 44px;
-  margin-bottom: 10px;
-}
-
-.empty-state-card h2 {
-  font-size: 18px;
-  margin-bottom: 10px;
-  color: #f5f5f5;
-}
-
-.empty-state-card p {
-  color: #b6b6b6;
-  line-height: 1.5;
-  margin-bottom: 16px;
-}
-
-.empty-state-btn {
-  background: #1f7667;
-  border: 1px solid #2f9d8a;
-  color: #f7fffd;
-  padding: 10px 16px;
-  border-radius: 10px;
-  cursor: pointer;
-  font-size: 13px;
-}
-
-.empty-state-btn:hover {
-  background: #259181;
-}
-
 /* Canvas */
 .canvas {
   flex: 1;
@@ -271,13 +215,6 @@ svg.connections {
 .connection-line.highlight {
   stroke: #4ec9b0;
   stroke-width: 4.5;
-  opacity: 1;
-}
-
-.connection-line.dependency-line {
-  stroke: #10b981;
-  stroke-width: 4;
-  stroke-dasharray: 8, 4;
   opacity: 1;
 }
 
@@ -327,10 +264,6 @@ svg.connections {
 
 .node.focused {
   z-index: 5;
-}
-
-.node.dimmed {
-  opacity: 0.2;
 }
 
 .node.search-dimmed {
@@ -556,19 +489,7 @@ svg.connections {
   box-shadow: 0 12px 44px rgba(250, 204, 21, 0.35);
 }
 
-.node.dependency .node-circle {
-  width: 170px;
-  height: 170px;
-  border-color: #10b981;
-  background: linear-gradient(135deg, #1a2e1a 0%, #2a3a2a 100%);
-  box-shadow: 0 8px 32px rgba(16, 185, 129, 0.3);
-}
-
-.node.dependency:hover .node-circle {
-  box-shadow: 0 12px 40px rgba(16, 185, 129, 0.5);
-}
-
-/* UPDATED: Icon бүрэн хассан */
+/* UPDATED: Hide node icon */
 .node-icon {
   display: none;
 }
@@ -750,14 +671,6 @@ svg.connections {
 
 .map-legend-line.imported-by {
   border-top-color: #a855f7;
-}
-
-.map-legend-note {
-  margin-top: 8px;
-  color: #9ca3af;
-  line-height: 1.35;
-  white-space: normal;
-  max-width: 280px;
 }
 
 /* Function Panel */
@@ -952,16 +865,6 @@ svg.connections {
   margin-top: 24px;
 }
 
-.section-title {
-  font-size: 14px;
-  font-weight: 600;
-  color: #fff;
-  margin-bottom: 12px;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
 .dep-subsection {
   margin-bottom: 16px;
 }
@@ -1038,14 +941,6 @@ svg.connections {
   opacity: 1;
 }
 
-.no-deps {
-  color: #666;
-  font-size: 12px;
-  padding: 12px;
-  text-align: center;
-  font-style: italic;
-}
-
 /* Function Cards */
 .function-list {
   display: flex;
@@ -1113,29 +1008,6 @@ svg.connections {
 .function-card:hover .function-goto {
   opacity: 1;
 }
-/* styles.css */
-
-.collapse-icon {
-  position: absolute;
-  top: -8px;
-  left: -8px;
-  font-size: 10px;
-  color: var(--text-secondary);
-}
-
-.node-circle.collapsed {
-  opacity: 0.8;
-  border-style: dashed;
-}
-
-.graph-node.folder {
-  cursor: pointer;
-}
-
-.graph-node.folder:hover .node-circle {
-  transform: scale(1.05);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-}
 /* Expand indicator for folders */
 .expand-indicator {
   position: absolute;
@@ -1150,43 +1022,7 @@ svg.connections {
   color: #4ec9b0;
 }
 
-/* Dependency folder - холбоотой файл агуулсан folder */
-.node.dependency-folder .node-circle {
-  border: 3px solid #f59e0b !important;
-  box-shadow:
-    0 0 20px rgba(245, 158, 11, 0.5),
-    0 0 40px rgba(245, 158, 11, 0.2) !important;
-  animation: pulse-folder 2s ease-in-out infinite;
-}
-
-@keyframes pulse-folder {
-  0%,
-  100% {
-    box-shadow:
-      0 0 20px rgba(245, 158, 11, 0.5),
-      0 0 40px rgba(245, 158, 11, 0.2);
-  }
-  50% {
-    box-shadow:
-      0 0 30px rgba(245, 158, 11, 0.7),
-      0 0 60px rgba(245, 158, 11, 0.3);
-  }
-}
-
-/* Dependency folder line */
-.connection-line.dependency-folder-line {
-  stroke: #f59e0b !important;
-  stroke-width: 2.5;
-  opacity: 0.7;
-}
-
-/* Dependency file - улаан/ногоон */
-.node.dependency .node-circle {
-  border: 3px solid #10b981 !important;
-  box-shadow: 0 0 15px rgba(16, 185, 129, 0.5) !important;
-}
-
-/* Focused file - сонгосон файл */
+/* ===== FOCUSED FILE ===== */
 .node.focused .node-circle {
   border: 3px solid #3b82f6 !important;
   box-shadow:
@@ -1195,24 +1031,7 @@ svg.connections {
   transform: scale(1.1);
 }
 
-/* Dimmed nodes */
-.node.dimmed {
-  opacity: 0.3;
-}
-
-.node.dimmed .node-circle {
-  filter: grayscale(50%);
-}
-/* ===== FOCUSED FILE - Сонгосон файл (цэнхэр) ===== */
-.node.focused .node-circle {
-  border: 3px solid #3b82f6 !important;
-  box-shadow:
-    0 0 0 1px rgba(147, 197, 253, 0.45),
-    0 0 28px rgba(59, 130, 246, 0.78) !important;
-  transform: scale(1.1);
-}
-
-/* ===== IMPORT FILES - Энэ файлаас import хийсэн (цэнхэр) ===== */
+/* ===== IMPORT FILES ===== */
 .node.import-dep .node-circle {
   border: 3px solid #3b82f6 !important;
   box-shadow:
@@ -1224,7 +1043,7 @@ svg.connections {
   background: linear-gradient(135deg, #60a5fa 0%, #2563eb 100%) !important;
 }
 
-/* ===== IMPORTED BY FILES - Энэ файлыг import хийсэн (purple) ===== */
+/* ===== IMPORTED BY FILES ===== */
 .node.imported-by-dep .node-circle {
   border: 3px solid #a855f7 !important;
   box-shadow:
@@ -1232,7 +1051,7 @@ svg.connections {
     0 0 24px rgba(168, 85, 247, 0.7) !important;
 }
 
-/* ===== IMPORT FOLDER - Import файл агуулсан folder (цэнхэр) ===== */
+/* ===== IMPORT FOLDER ===== */
 .node.import-folder .node-circle {
   border: 3px solid #3b82f6 !important;
   box-shadow: 0 0 15px rgba(59, 130, 246, 0.4) !important;
@@ -1249,7 +1068,7 @@ svg.connections {
   }
 }
 
-/* ===== IMPORTED BY FOLDER - Imported by файл агуулсан folder (purple) ===== */
+/* ===== IMPORTED BY FOLDER ===== */
 .node.imported-by-folder .node-circle {
   border: 3px solid #a855f7 !important;
   box-shadow: 0 0 15px rgba(168, 85, 247, 0.4) !important;
@@ -1297,472 +1116,13 @@ svg.connections {
   stroke-dasharray: none;
 }
 
-/* ===== DIMMED - Бусад ===== */
+/* ===== DIMMED ===== */
 .node.dimmed {
   opacity: 0.3;
 }
 
 .node.dimmed .node-circle {
   filter: grayscale(50%);
-}
-/* Add these styles after the error-debug-btn styles */
-
-/* Copy Buttons Container */
-.copy-buttons-container {
-  display: flex;
-  gap: 8px;
-  margin-top: 12px;
-}
-
-.copy-file-btn,
-.copy-all-btn {
-  flex: 1;
-  background: #2a2a2a;
-  color: white;
-  border: 1px solid #3a3a3a;
-  padding: 8px 12px;
-  border-radius: 6px;
-  font-size: 11px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s;
-  white-space: nowrap;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 4px;
-}
-
-.copy-file-btn:hover {
-  background: #3a3a3a;
-  border-color: #4ec9b0;
-  transform: translateY(-1px);
-}
-
-.copy-all-btn {
-  background: #1a2a3a;
-  border-color: #3b82f6;
-}
-
-.copy-all-btn:hover {
-  background: #2a3a4a;
-  border-color: #60a5fa;
-  transform: translateY(-1px);
-}
-
-.copy-file-btn:active,
-.copy-all-btn:active {
-  transform: translateY(0) scale(0.98);
-}
-
-/* Toast notification for copy feedback */
-.copy-toast {
-  position: fixed;
-  bottom: 24px;
-  right: 24px;
-  background: rgba(78, 201, 176, 0.95);
-  color: white;
-  padding: 12px 20px;
-  border-radius: 8px;
-  font-size: 13px;
-  font-weight: 600;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
-  z-index: 1000;
-  animation: slideIn 0.3s ease;
-  transition: opacity 0.3s;
-}
-
-@keyframes slideIn {
-  from {
-    transform: translateX(100%);
-    opacity: 0;
-  }
-  to {
-    transform: translateX(0);
-    opacity: 1;
-  }
-}
-/* Add these styles after the error-debug-btn styles */
-
-/* Copy Buttons Container - at the top of panel */
-.copy-buttons-container {
-  display: flex;
-  gap: 8px;
-  margin-top: 12px;
-  margin-bottom: 12px;
-}
-
-.copy-file-btn,
-.copy-all-btn {
-  flex: 1;
-  background: #2a2a2a;
-  color: white;
-  border: 1px solid #3a3a3a;
-  padding: 8px 12px;
-  border-radius: 6px;
-  font-size: 11px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s;
-  white-space: nowrap;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 4px;
-}
-
-.copy-file-btn:hover {
-  background: #3a3a3a;
-  border-color: #4ec9b0;
-  transform: translateY(-1px);
-}
-
-.copy-all-btn {
-  background: #1a2a3a;
-  border-color: #3b82f6;
-}
-
-.copy-all-btn:hover {
-  background: #2a3a4a;
-  border-color: #60a5fa;
-  transform: translateY(-1px);
-}
-
-.copy-file-btn:active,
-.copy-all-btn:active {
-  transform: translateY(0) scale(0.98);
-}
-
-/* Toast notification for copy feedback */
-.copy-toast {
-  position: fixed;
-  bottom: 24px;
-  right: 24px;
-  background: rgba(78, 201, 176, 0.95);
-  color: white;
-  padding: 12px 20px;
-  border-radius: 8px;
-  font-size: 13px;
-  font-weight: 600;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
-  z-index: 1000;
-  animation: slideIn 0.3s ease;
-  transition: opacity 0.3s;
-}
-
-@keyframes slideIn {
-  from {
-    transform: translateX(100%);
-    opacity: 0;
-  }
-  to {
-    transform: translateX(0);
-    opacity: 1;
-  }
-}
-/* Add these styles after the error-debug-btn styles */
-
-/* Copy Buttons Container - 3 buttons in grid */
-.copy-buttons-container {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 6px;
-  margin-top: 12px;
-  margin-bottom: 12px;
-}
-
-.copy-file-btn,
-.copy-all-btn,
-.copy-ai-btn {
-  background: #2a2a2a;
-  color: white;
-  border: 1px solid #3a3a3a;
-  padding: 8px 10px;
-  border-radius: 6px;
-  font-size: 10px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s;
-  white-space: nowrap;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 4px;
-}
-
-.copy-file-btn:hover {
-  background: #3a3a3a;
-  border-color: #4ec9b0;
-  transform: translateY(-1px);
-}
-
-.copy-all-btn {
-  background: #1a2a3a;
-  border-color: #3b82f6;
-}
-
-.copy-all-btn:hover {
-  background: #2a3a4a;
-  border-color: #60a5fa;
-  transform: translateY(-1px);
-}
-
-.copy-ai-btn {
-  background: #3a2a1a;
-  border-color: #f59e0b;
-  grid-column: 1 / -1; /* Full width for AI button */
-}
-
-.copy-ai-btn:hover {
-  background: #4a3a2a;
-  border-color: #fbbf24;
-  transform: translateY(-1px);
-}
-
-.copy-file-btn:active,
-.copy-all-btn:active,
-.copy-ai-btn:active {
-  transform: translateY(0) scale(0.98);
-}
-
-/* Toast notification for copy feedback */
-.copy-toast {
-  position: fixed;
-  bottom: 24px;
-  right: 24px;
-  background: rgba(78, 201, 176, 0.95);
-  color: white;
-  padding: 12px 20px;
-  border-radius: 8px;
-  font-size: 13px;
-  font-weight: 600;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
-  z-index: 1000;
-  animation: slideIn 0.3s ease;
-  transition: opacity 0.3s;
-}
-
-@keyframes slideIn {
-  from {
-    transform: translateX(100%);
-    opacity: 0;
-  }
-  to {
-    transform: translateX(0);
-    opacity: 1;
-  }
-}
-
-/* Collapsible Sections - Smooth Design */
-.section-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 10px 12px;
-  background: rgba(0, 0, 0, 0.2);
-  border-radius: 8px;
-  margin-bottom: 12px;
-  cursor: pointer;
-  transition: all 0.2s;
-  user-select: none;
-}
-
-.section-header:hover {
-  background: rgba(78, 201, 176, 0.1);
-}
-
-.section-title {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 14px;
-  font-weight: 600;
-  color: #fff;
-}
-
-.section-icon {
-  font-size: 16px;
-}
-
-.section-count {
-  background: rgba(78, 201, 176, 0.2);
-  color: #4ec9b0;
-  padding: 2px 8px;
-  border-radius: 10px;
-  font-size: 11px;
-  font-weight: 600;
-}
-
-.section-toggle {
-  color: #888;
-  font-size: 12px;
-  transition: transform 0.2s;
-}
-
-.section-content {
-  max-height: 1000px;
-  overflow: hidden;
-  transition:
-    max-height 0.3s ease,
-    opacity 0.3s ease;
-  opacity: 1;
-}
-
-.section-content.collapsed {
-  max-height: 0;
-  opacity: 0;
-}
-/* Add these styles after the error-debug-btn styles */
-
-/* Copy Buttons Container - 3 buttons in grid */
-.copy-buttons-container {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 6px;
-  margin-top: 12px;
-  margin-bottom: 12px;
-}
-
-.copy-file-btn,
-.copy-all-btn,
-.copy-ai-btn {
-  background: #2a2a2a;
-  color: white;
-  border: 1px solid #3a3a3a;
-  padding: 8px 10px;
-  border-radius: 6px;
-  font-size: 10px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s;
-  white-space: nowrap;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 4px;
-}
-
-.copy-file-btn:hover {
-  background: #3a3a3a;
-  border-color: #4ec9b0;
-  transform: translateY(-1px);
-}
-
-.copy-all-btn {
-  background: #1a2a3a;
-  border-color: #3b82f6;
-}
-
-.copy-all-btn:hover {
-  background: #2a3a4a;
-  border-color: #60a5fa;
-  transform: translateY(-1px);
-}
-
-.copy-ai-btn {
-  background: #3a2a1a;
-  border-color: #f59e0b;
-  grid-column: 1 / -1; /* Full width for AI button */
-}
-
-.copy-ai-btn:hover {
-  background: #4a3a2a;
-  border-color: #fbbf24;
-  transform: translateY(-1px);
-}
-
-.copy-file-btn:active,
-.copy-all-btn:active,
-.copy-ai-btn:active {
-  transform: translateY(0) scale(0.98);
-}
-
-/* Toast notification for copy feedback */
-.copy-toast {
-  position: fixed;
-  bottom: 24px;
-  right: 24px;
-  background: rgba(78, 201, 176, 0.95);
-  color: white;
-  padding: 12px 20px;
-  border-radius: 8px;
-  font-size: 13px;
-  font-weight: 600;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
-  z-index: 1000;
-  animation: slideIn 0.3s ease;
-  transition: opacity 0.3s;
-}
-
-@keyframes slideIn {
-  from {
-    transform: translateX(100%);
-    opacity: 0;
-  }
-  to {
-    transform: translateX(0);
-    opacity: 1;
-  }
-}
-
-/* Collapsible Sections - Smooth Design */
-.section-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 10px 12px;
-  background: rgba(0, 0, 0, 0.2);
-  border-radius: 8px;
-  margin-bottom: 12px;
-  cursor: pointer;
-  transition: all 0.2s;
-  user-select: none;
-}
-
-.section-header:hover {
-  background: rgba(78, 201, 176, 0.1);
-}
-
-.section-title {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 14px;
-  font-weight: 600;
-  color: #fff;
-}
-
-.section-icon {
-  font-size: 16px;
-}
-
-.section-count {
-  background: rgba(78, 201, 176, 0.2);
-  color: #4ec9b0;
-  padding: 2px 8px;
-  border-radius: 10px;
-  font-size: 11px;
-  font-weight: 600;
-}
-
-.section-toggle {
-  color: #888;
-  font-size: 12px;
-  transition: transform 0.2s;
-}
-
-.section-content {
-  max-height: 1000px;
-  overflow: hidden;
-  transition:
-    max-height 0.3s ease,
-    opacity 0.3s ease;
-  opacity: 1;
-}
-
-.section-content.collapsed {
-  max-height: 0;
-  opacity: 0;
 }
 /* ========================================
    SIDEBAR PANEL STYLES - Clean & Modern
