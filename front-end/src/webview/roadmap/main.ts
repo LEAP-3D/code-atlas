@@ -64,6 +64,7 @@ function showCopyToast(message: string): void {
 declare global {
   interface Window {
     ROADMAP_DATA?: typeof state.roadmapData;
+    __errorDetailsContainer?: string;
     roadmapActions: {
       goToFunction: (filePath: string, line: number) => void;
       jumpToFile: (filePath: string) => void;
@@ -502,7 +503,7 @@ window.roadmapActions = {
     });
 
     // Store container ID for when we receive the response
-    (window as any).__errorDetailsContainer = containerId;
+    window.__errorDetailsContainer = containerId;
   },
 
   toggleCopyDropdown: () => {
@@ -636,7 +637,7 @@ window.addEventListener("message", (event) => {
   }
 
   if (message.type === "errorDetails" && message.errors) {
-    const containerId = (window as any).__errorDetailsContainer;
+    const containerId = window.__errorDetailsContainer;
     const container = document.getElementById(containerId);
     if (!container) return;
 
