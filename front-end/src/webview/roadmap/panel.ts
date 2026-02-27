@@ -8,6 +8,7 @@ import { updateTransform } from "./interactions";
 import { renderGraph } from "./renderer";
 
 let panelToggleOpeningTimer: number | null = null;
+const fileNavigationHistory: string[] = [];
 
 /**
  * Show function panel for a file
@@ -54,7 +55,15 @@ export function showFunctionPanel(fileData: FileNode): void {
         </div>
         <div class="copy-dropdown-item copy-ai-item" onclick="event.stopPropagation(); window.roadmapActions.copyForAI('${fileData.fullPath.replace(/\\/g, "\\\\")}'); window.roadmapActions.closeCopyDropdown();">
           <span class="copy-dropdown-icon">🤖</span>
-          <span class="copy-dropdown-text">For AI (relate)</span>
+          <span class="copy-dropdown-text">For AI (related files)</span>
+        </div>
+        <div class="copy-dropdown-item copy-ai-item copy-ai-smart-item" onclick="event.stopPropagation(); window.roadmapActions.copyForAISmart('${fileData.fullPath.replace(/\\/g, "\\\\")}', false); window.roadmapActions.closeCopyDropdown();">
+          <span class="copy-dropdown-icon">AI</span>
+          <span class="copy-dropdown-text">Copy Fix Context (TS-smart)</span>
+        </div>
+        <div class="copy-dropdown-item copy-ai-item copy-ai-smart-item" onclick="event.stopPropagation(); window.roadmapActions.copyForAISmart('${fileData.fullPath.replace(/\\/g, "\\\\")}', true); window.roadmapActions.closeCopyDropdown();">
+          <span class="copy-dropdown-icon">AI+</span>
+          <span class="copy-dropdown-text">Copy Fix Context + related</span>
         </div>
         `
             : ""
@@ -79,9 +88,19 @@ export function showFunctionPanel(fileData: FileNode): void {
       </div>`
       : "";
 
+  const backButton =
+    fileNavigationHistory.length > 0
+      ? `<button class="panel-back-btn" onclick="event.stopPropagation(); window.roadmapActions.goBackInPanel()">< Back</button>`
+      : "";
+
   header.innerHTML = `
-    <div class="function-panel-title">📄 ${fileData.name}</div>
-    <div class="function-panel-subtitle">${fileData.functions?.length || 0} functions</div>
+    <div class="file-header-row">
+      ${backButton}
+      <div class="file-header-minimal">
+        <div class="file-header-name">${fileData.name}</div>
+        <div class="file-header-meta">${fileData.functions?.length || 0} functions</div>
+      </div>
+    </div>
     ${copyButtons}
   `;
 
@@ -97,6 +116,15 @@ export function showFunctionPanel(fileData: FileNode): void {
           <span class="section-toggle" id="errors-toggle">▼</span>
         </div>
         <div class="section-content" id="errors-content">
+          <div class="error-mode-controls">
+            <label class="diag-simple-toggle">
+              <input type="checkbox" checked onchange="window.roadmapActions.setSimpleDiagnosticMode(this.checked)" />
+              <span class="diag-simple-copy">
+                <span class="diag-simple-title">First fix these</span>
+                <span class="diag-simple-hint">Show root causes first, then line-by-line errors</span>
+              </span>
+            </label>
+          </div>
           <div class="error-lines-container" id="errorLines-${fileData.fullPath.replace(/[^a-zA-Z0-9]/g, "_")}">
             <div class="error-lines-loading">Loading diagnostics...</div>
           </div>
@@ -158,7 +186,7 @@ export function showFunctionPanel(fileData: FileNode): void {
               <div class="dep-item" onclick="window.roadmapActions.jumpToFile('${d.importedFilePath.replace(/\\/g, "\\\\")}')">
                 <div class="dep-icon">📄</div>
                 <div class="dep-details">
-                  <div class="dep-file-name">${d.importedFilePath.split("/").pop()}</div>
+                  <div class="dep-file-name">${d.importedFilePath.split(/[/\\]/).pop()}</div>
                   <div class="dep-imported-names">${d.importedNames.join(", ")}</div>
                 </div>
                 <div class="dep-arrow">→</div>
@@ -180,7 +208,7 @@ export function showFunctionPanel(fileData: FileNode): void {
               <div class="dep-item" onclick="window.roadmapActions.jumpToFile('${d.importerFilePath.replace(/\\/g, "\\\\")}')">
                 <div class="dep-icon">📄</div>
                 <div class="dep-details">
-                  <div class="dep-file-name">${d.importerFilePath.split("/").pop()}</div>
+                  <div class="dep-file-name">${d.importerFilePath.split(/[/\\]/).pop()}</div>
                   <div class="dep-imported-names">${d.importedNames.join(", ")}</div>
                 </div>
                 <div class="dep-arrow">→</div>
@@ -256,6 +284,7 @@ export function toggleFunctionPanel(): void {
  */
 export function clearFileSelection(): void {
   state.setFocusedFile(null);
+  fileNavigationHistory.length = 0;
 
   state.allNodes.forEach((nodeObj) => {
     nodeObj.element.classList.remove(
@@ -500,6 +529,15 @@ export function jumpToFile(filePath: string): void {
 
   const node = findFileNodeByPath(state.hierarchyData, filePath);
   if (node) {
+    const currentPath = state.focusedFile?.fullPath;
+    if (
+      currentPath &&
+      currentPath !== filePath &&
+      fileNavigationHistory[fileNavigationHistory.length - 1] !== currentPath
+    ) {
+      fileNavigationHistory.push(currentPath);
+    }
+
     focusOnFile(node);
 
     setTimeout(() => {
@@ -518,3 +556,23 @@ export function jumpToFile(filePath: string): void {
     }, 50);
   }
 }
+
+export function goBackInPanel(): void {
+  if (!state.hierarchyData || fileNavigationHistory.length === 0) {
+    return;
+  }
+
+  const previousPath = fileNavigationHistory.pop();
+  if (!previousPath) {
+    return;
+  }
+
+  const node = findFileNodeByPath(state.hierarchyData, previousPath);
+  if (!node) {
+    return;
+  }
+
+  focusOnFile(node);
+}
+
+

@@ -7,6 +7,7 @@ export type RoadmapCommandName =
   | "copyFile"
   | "copyAllFiles"
   | "copyAIContext"
+  | "copySmartAIContext"
   | "getErrorDetails"
   | "refreshRoadmapData"
   | "showAllErrors"
@@ -20,6 +21,7 @@ export type RoadmapCommandMessage = {
   files?: string[];
   errorFile?: string;
   context?: string;
+  includeRelatedFiles?: boolean;
   requestId?: string;
   includeWarnings?: boolean;
   state?: {
@@ -87,6 +89,7 @@ export function isRoadmapCommandMessage(
     "copyFile",
     "copyAllFiles",
     "copyAIContext",
+    "copySmartAIContext",
     "getErrorDetails",
     "refreshRoadmapData",
     "showAllErrors",
@@ -109,6 +112,9 @@ export function isRoadmapCommandMessage(
   }
   if ("files" in value && value.files !== undefined) {
     if (!Array.isArray(value.files)) return false;
+  }
+  if ("includeRelatedFiles" in value && value.includeRelatedFiles !== undefined) {
+    if (typeof value.includeRelatedFiles !== "boolean") return false;
   }
 
   return true;

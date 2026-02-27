@@ -14,6 +14,7 @@ import {
   focusOnFile,
   toggleFunctionPanel,
   clearFileSelection,
+  goBackInPanel,
 } from "./panel";
 import { zoomIn, zoomOut } from "./interactions";
 import { getElement, getNodeId } from "./utils";
@@ -32,6 +33,10 @@ let hintInitialized = false;
 let refreshInProgress = false;
 let refreshCooldownTimer: number | null = null;
 const pendingErrorDetails = new Map<string, string>();
+const errorDetailsByFile = new Map<string, RoadmapDiagnosticItem[]>();
+const errorContainerByFile = new Map<string, string>();
+let errorPriorityMode = true;
+let rootCauseGrouping = true;
 
 // Load roadmap data
 state.setRoadmapData(
@@ -93,26 +98,120 @@ function severityLabel(issue: RoadmapDiagnosticItem): string {
   return `${icon}${source}${code}`;
 }
 
+function severityRank(severity: RoadmapDiagnosticItem["severity"]): number {
+  if (severity === "error") return 0;
+  if (severity === "warning") return 1;
+  if (severity === "info") return 2;
+  return 3;
+}
+
+function sortIssues(issues: RoadmapDiagnosticItem[]): RoadmapDiagnosticItem[] {
+  const copy = [...issues];
+  copy.sort((a, b) => {
+    if (errorPriorityMode) {
+      const bySeverity = severityRank(a.severity) - severityRank(b.severity);
+      if (bySeverity !== 0) return bySeverity;
+    }
+    if (a.line !== b.line) return a.line - b.line;
+    return a.message.localeCompare(b.message);
+  });
+  return copy;
+}
+
+function renderRootCauseGroups(
+  filePath: string,
+  issues: RoadmapDiagnosticItem[],
+): string {
+  if (!rootCauseGrouping) {
+    return "";
+  }
+
+  const grouped = new Map<
+    string,
+    { title: string; count: number; firstLine: number; severity: string }
+  >();
+
+  for (const item of issues) {
+    if (item.severity !== "error") continue;
+    const code = item.code ? escapeHtml(item.code) : "n/a";
+    const source = item.source ? escapeHtml(item.source) : "diagnostic";
+    const key = `${source}:${code}`;
+    const title = `${source}(${code})`;
+    const existing = grouped.get(key) || {
+      title,
+      count: 0,
+      firstLine: item.line,
+      severity: item.severity,
+    };
+    existing.count += 1;
+    existing.firstLine = Math.min(existing.firstLine, item.line);
+    grouped.set(key, existing);
+  }
+
+  const top = Array.from(grouped.values())
+    .sort((a, b) => {
+      if (b.count !== a.count) return b.count - a.count;
+      return a.firstLine - b.firstLine;
+    })
+    .slice(0, 4);
+
+  if (top.length === 0) {
+    return "";
+  }
+
+  const cards = top
+    .map(
+      (group, index) => `
+      <div class="root-cause-item" onclick="event.stopPropagation(); window.roadmapActions.goToFunction('${filePath.replace(/\\/g, "\\\\")}', ${group.firstLine})">
+        <div class="root-cause-rank">#${index + 1}</div>
+        <div class="root-cause-main">
+          <div class="root-cause-title">${group.title}</div>
+          <div class="root-cause-meta">${group.count} error(s) - first at line ${group.firstLine}</div>
+        </div>
+        <div class="root-cause-cta">Fix first</div>
+      </div>
+    `,
+    )
+    .join("");
+
+  return `
+    <div class="root-cause-wrap">
+      <div class="root-cause-header">First Fix These</div>
+      <div class="root-cause-sub">Fix root causes first, then remaining errors.</div>
+      ${cards}
+    </div>
+  `;
+}
+
 function renderIssues(
   container: HTMLElement,
   filePath: string,
   issues: RoadmapDiagnosticItem[],
 ): void {
-  if (issues.length === 0) {
+  const orderedIssues = sortIssues(issues);
+  if (orderedIssues.length === 0) {
+    const focusedErrorCount =
+      state.focusedFile && state.focusedFile.fullPath === filePath
+        ? state.focusedFile.errorCount
+        : 0;
+    const note =
+      focusedErrorCount > 0
+        ? "Tree shows errors, but VS Code diagnostics are not available for this file now. Open the file and refresh."
+        : "No diagnostics reported by VS Code for this file.";
     container.innerHTML =
-      '<div class="error-lines-empty">No diagnostics reported by VS Code for this file.</div>';
+      `<div class="error-lines-empty">${escapeHtml(note)}</div>`;
     return;
   }
 
   const issuesByLine = new Map<number, RoadmapDiagnosticItem[]>();
-  for (const issue of issues) {
+  for (const issue of orderedIssues) {
     const lineIssues = issuesByLine.get(issue.line) || [];
     lineIssues.push(issue);
     issuesByLine.set(issue.line, lineIssues);
   }
 
   const sortedLines = Array.from(issuesByLine.keys()).sort((a, b) => a - b);
-  let html = '<div class="error-lines-list">';
+  let html = `${renderRootCauseGroups(filePath, orderedIssues)}<div class="error-lines-list">`;
 
   for (const lineNum of sortedLines) {
     const lineIssues = issuesByLine.get(lineNum) || [];
@@ -175,6 +274,33 @@ function finishRefreshUi(): void {
   }, 800);
 }
 
+function updateDiagnosticsSummaryUi(): void {
+  const el = document.getElementById("roadmapErrorBaseline");
+  if (!el) return;
+  const summary = state.roadmapData.diagnosticsSummary;
+  const baseline = state.roadmapData.errorBaseline;
+  if (!summary) {
+    el.textContent = "";
+    return;
+  }
+
+  const deltaText = baseline
+    ? `${baseline.deltaFromBaseline > 0 ? "+" : ""}${baseline.deltaFromBaseline}`
+    : "0";
+  el.textContent = `Today: ${summary.error}E/${summary.warning}W/${summary.info}I/${summary.hint}H | delta ${deltaText}`;
+}
+
+function rerenderFocusedDiagnostics(): void {
+  const filePath = state.focusedFile?.fullPath;
+  if (!filePath) return;
+  const issues = errorDetailsByFile.get(filePath);
+  const containerId = errorContainerByFile.get(filePath);
+  if (!issues || !containerId) return;
+  const container = document.getElementById(containerId);
+  if (!container) return;
+  renderIssues(container, filePath, issues);
+}
+
 // Expose actions to window for HTML onclick handlers
 declare global {
   interface Window {
@@ -182,6 +308,7 @@ declare global {
     roadmapActions: {
       goToFunction: (filePath: string, line: number) => void;
       jumpToFile: (filePath: string) => void;
+      goBackInPanel: () => void;
       debugExecutionFlow: (filePath: string) => void;
       resetView: () => void;
       closeFunctionPanel: () => void;
@@ -194,8 +321,13 @@ declare global {
       copyAll: (filePath: string) => void;
       copyForAI: (filePath: string) => void;
       copyForAIErrorOnly: (filePath: string) => void;
+      copyForAISmart: (filePath: string, includeRelatedFiles: boolean) => void;
+      setSimpleDiagnosticMode: (enabled: boolean) => void;
+      setErrorViewMode: (mode: string) => void;
       toggleSection: (sectionId: string) => void;
       loadErrorDetails: (filePath: string) => void;
+      toggleErrorPriorityMode: (enabled: boolean) => void;
+      toggleRootCauseGrouping: (enabled: boolean) => void;
       toggleCopyDropdown: () => void;
       closeCopyDropdown: () => void;
       clearSearch: () => void;
@@ -330,6 +462,7 @@ function applyRoadmapDataUpdate(newData: typeof state.roadmapData): void {
   const focusedFilePath = state.focusedFile?.fullPath;
 
   state.setRoadmapData(newData);
+  updateDiagnosticsSummaryUi();
 
   autoExpandFoldersWithFiles();
   hideEmptyState();
@@ -404,6 +537,7 @@ window.roadmapActions = {
   },
 
   jumpToFile: jumpToFile,
+  goBackInPanel: goBackInPanel,
 
   debugExecutionFlow: (filePath: string) => {
     console.log("🐛 Debug execution flow for:", filePath);
@@ -587,6 +721,41 @@ window.roadmapActions = {
 
     showCopyToast(`🤖 AI context (error file only) copied!`);
   },
+  copyForAISmart: (filePath: string, includeRelatedFiles: boolean) => {
+    state.vscode.postMessage({
+      command: "copySmartAIContext",
+      filePath,
+      includeRelatedFiles,
+    });
+    showCopyToast(
+      `Smart fix context copied (${includeRelatedFiles ? "with related files" : "single file"})`,
+    );
+  },
+
+  setSimpleDiagnosticMode: (enabled: boolean) => {
+    if (enabled) {
+      errorPriorityMode = true;
+      rootCauseGrouping = true;
+    } else {
+      errorPriorityMode = false;
+      rootCauseGrouping = false;
+    }
+    rerenderFocusedDiagnostics();
+  },
+
+  setErrorViewMode: (mode: string) => {
+    if (mode === "priority-root") {
+      errorPriorityMode = true;
+      rootCauseGrouping = true;
+    } else if (mode === "priority-only") {
+      errorPriorityMode = true;
+      rootCauseGrouping = false;
+    } else {
+      errorPriorityMode = false;
+      rootCauseGrouping = false;
+    }
+    rerenderFocusedDiagnostics();
+  },
 
   toggleSection: (sectionId: string) => {
     const content = document.getElementById(`${sectionId}-content`);
@@ -605,11 +774,22 @@ window.roadmapActions = {
     }
   },
 
+  toggleErrorPriorityMode: (enabled: boolean) => {
+    errorPriorityMode = enabled;
+    rerenderFocusedDiagnostics();
+  },
+
+  toggleRootCauseGrouping: (enabled: boolean) => {
+    rootCauseGrouping = enabled;
+    rerenderFocusedDiagnostics();
+  },
+
   loadErrorDetails: (filePath: string) => {
     const containerId = `errorLines-${filePath.replace(/[^a-zA-Z0-9]/g, "_")}`;
     const container = document.getElementById(containerId);
     if (!container) return;
 
+    errorContainerByFile.set(filePath, containerId);
     const requestId = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
     pendingErrorDetails.set(requestId, containerId);
     container.innerHTML =
@@ -710,6 +890,7 @@ document.addEventListener("click", (e) => {
 function init(): void {
   ensureInteractionsInitialized();
   setupSearchControls();
+  updateDiagnosticsSummaryUi();
   if (state.roadmapData?.files?.length > 0) {
     console.log("✅ Init:", state.roadmapData.files.length, "files");
 
@@ -794,8 +975,12 @@ window.addEventListener("message", (event: MessageEvent<unknown>) => {
 
     const container = document.getElementById(containerId);
     if (!container) return;
+    errorDetailsByFile.set(message.filePath, message.issues);
+    errorContainerByFile.set(message.filePath, containerId);
     renderIssues(container, message.filePath, message.issues);
   }
 });
 
 init();
+
+
