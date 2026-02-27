@@ -11,6 +11,11 @@ import {
   RoadmapFunction,
   RoadmapDependency,
 } from "../roadmap/roadmapModel";
+import {
+  RoadmapCommandMessage,
+  RoadmapDiagnosticItem,
+  isRoadmapCommandMessage,
+} from "../webview/roadmap/messages";
 
 export class CodeWebviewProvider {
   private static currentRoadmapPanel: vscode.WebviewPanel | null = null;
@@ -53,8 +58,11 @@ export class CodeWebviewProvider {
     );
 
     panel.webview.onDidReceiveMessage(
-      async (message) => {
-        console.log("📨 [ErrorGraph] Received message:", message);
+      async (message: unknown) => {
+        if (!isRoadmapCommandMessage(message)) {
+          console.warn("[ErrorGraph] Ignored malformed message payload");
+          return;
+        }
         await this.handleWebviewMessage(message, context);
       },
       undefined,
@@ -89,14 +97,19 @@ export class CodeWebviewProvider {
     panel.webview.html = this.getRoadmapHtml(panel.webview, context);
 
     panel.webview.onDidReceiveMessage(
-      async (message) => {
-        console.log("📨 [Roadmap] Received message:", message);
+      async (message: unknown) => {
+        if (!isRoadmapCommandMessage(message)) {
+          console.warn("[Roadmap] Ignored malformed message payload");
+          return;
+        }
+
         if (message.command === "refreshRoadmapData") {
           try {
             const refreshedData = this.buildRoadmapData();
             await panel.webview.postMessage({
               type: "roadmapDataUpdated",
               data: refreshedData,
+              updatedAt: Date.now(),
             });
           } catch (error) {
             const errorMsg =
@@ -104,6 +117,7 @@ export class CodeWebviewProvider {
             await panel.webview.postMessage({
               type: "roadmapDataRefreshFailed",
               error: errorMsg,
+              updatedAt: Date.now(),
             });
           }
           return;
@@ -123,6 +137,7 @@ export class CodeWebviewProvider {
     await this.currentRoadmapPanel.webview.postMessage({
       type: "roadmapDataUpdated",
       data,
+      updatedAt: Date.now(),
     });
   }
 
@@ -163,15 +178,7 @@ export class CodeWebviewProvider {
   }
 
   private static async handleWebviewMessage(
-    message: {
-      command: string;
-      filePath?: string;
-      line?: number;
-      files?: string[];
-      errors?: unknown[];
-      errorFile?: string;
-      context?: string;
-    },
+    message: RoadmapCommandMessage,
     context: vscode.ExtensionContext,
   ) {
     switch (message.command) {
@@ -205,7 +212,11 @@ export class CodeWebviewProvider {
         break;
 
       case "getErrorDetails":
-        await this.sendErrorDetails(message.filePath!);
+        await this.sendErrorDetails(
+          message.filePath!,
+          message.requestId!,
+          Boolean(message.includeWarnings),
+        );
         break;
 
       case "showAllErrors":
@@ -369,27 +380,86 @@ export class CodeWebviewProvider {
     }
   }
 
-  private static async sendErrorDetails(filePath: string) {
-    if (!this.currentRoadmapPanel) return;
+  private static mapSeverity(
+    severity: vscode.DiagnosticSeverity,
+  ): RoadmapDiagnosticItem["severity"] {
+    if (severity === vscode.DiagnosticSeverity.Error) return "error";
+    if (severity === vscode.DiagnosticSeverity.Warning) return "warning";
+    if (severity === vscode.DiagnosticSeverity.Information) return "info";
+    return "hint";
+  }
+
+  private static normalizeFsPath(filePath: string): string {
+    const normalized = path.normalize(filePath);
+    return process.platform === "win32" ? normalized.toLowerCase() : normalized;
+  }
+
+  private static async sendErrorDetails(
+    filePath: string,
+    requestId: string,
+    includeWarnings: boolean,
+  ) {
+    if (!this.currentRoadmapPanel) {
+      return;
+    }
 
     try {
       const uri = vscode.Uri.file(filePath);
-      const diagnostics = vscode.languages.getDiagnostics(uri);
+      const directDiagnostics = vscode.languages.getDiagnostics(uri);
+      let diagnostics = directDiagnostics;
 
-      const errors = diagnostics
-        .filter((d) => d.severity === vscode.DiagnosticSeverity.Error)
+      if (diagnostics.length === 0) {
+        const targetPath = this.normalizeFsPath(uri.fsPath);
+        const fallbackDiagnostics: vscode.Diagnostic[] = [];
+        for (const [diagUri, diagItems] of vscode.languages.getDiagnostics()) {
+          if (this.normalizeFsPath(diagUri.fsPath) === targetPath) {
+            fallbackDiagnostics.push(...diagItems);
+          }
+        }
+        diagnostics = fallbackDiagnostics;
+      }
+
+      const allowed = includeWarnings
+        ? [
+            vscode.DiagnosticSeverity.Error,
+            vscode.DiagnosticSeverity.Warning,
+            vscode.DiagnosticSeverity.Information,
+            vscode.DiagnosticSeverity.Hint,
+          ]
+        : [vscode.DiagnosticSeverity.Error];
+
+      const issues: RoadmapDiagnosticItem[] = diagnostics
+        .filter((d) => allowed.includes(d.severity))
         .map((d) => ({
           line: d.range.start.line + 1,
           message: d.message,
+          severity: this.mapSeverity(d.severity),
+          code: (() => {
+            if (d.code === undefined) {
+              return undefined;
+            }
+            if (typeof d.code === "string" || typeof d.code === "number") {
+              return String(d.code);
+            }
+            return String(d.code.value);
+          })(),
+          source: d.source,
         }));
 
       await this.currentRoadmapPanel.webview.postMessage({
         type: "errorDetails",
-        filePath: filePath,
-        errors: errors,
+        filePath,
+        requestId,
+        issues,
       });
     } catch (error) {
-      console.error("Failed to send error details:", error);
+      console.error("Failed to send diagnostics:", error);
+      await this.currentRoadmapPanel.webview.postMessage({
+        type: "errorDetails",
+        filePath,
+        requestId,
+        issues: [],
+      });
     }
   }
 
