@@ -19,6 +19,8 @@ import {
 
 export class CodeWebviewProvider {
   private static currentRoadmapPanel: vscode.WebviewPanel | null = null;
+  private static extensionContext: vscode.ExtensionContext | null = null;
+  private static readonly BASELINE_KEY = "roadmap.errorBaseline";
 
   static show(
     context: vscode.ExtensionContext,
@@ -71,6 +73,7 @@ export class CodeWebviewProvider {
   }
 
   static showRoadmap(context: vscode.ExtensionContext) {
+    this.extensionContext = context;
     if (this.currentRoadmapPanel) {
       this.currentRoadmapPanel.reveal(vscode.ViewColumn.Beside);
       return;
@@ -154,6 +157,7 @@ export class CodeWebviewProvider {
     context: vscode.ExtensionContext,
     workspaceName: string,
   ) {
+    this.extensionContext = context;
     this.showRoadmap(context);
 
     await this.updateRoadmapPanelData({
@@ -208,6 +212,13 @@ export class CodeWebviewProvider {
           message.errorFile!,
           message.context || "",
           message.files,
+        );
+        break;
+
+      case "copySmartAIContext":
+        await this.copySmartAIContext(
+          message.filePath!,
+          Boolean(message.includeRelatedFiles),
         );
         break;
 
@@ -380,6 +391,243 @@ export class CodeWebviewProvider {
     }
   }
 
+  private static severityOrder(severity: vscode.DiagnosticSeverity): number {
+    if (severity === vscode.DiagnosticSeverity.Error) return 0;
+    if (severity === vscode.DiagnosticSeverity.Warning) return 1;
+    if (severity === vscode.DiagnosticSeverity.Information) return 2;
+    return 3;
+  }
+
+  private static severityShort(severity: vscode.DiagnosticSeverity): string {
+    if (severity === vscode.DiagnosticSeverity.Error) return "E";
+    if (severity === vscode.DiagnosticSeverity.Warning) return "W";
+    if (severity === vscode.DiagnosticSeverity.Information) return "I";
+    return "H";
+  }
+
+  private static getLanguageFence(filePath: string): string {
+    const ext = path.extname(filePath).toLowerCase();
+    if (ext === ".ts") return "ts";
+    if (ext === ".tsx") return "tsx";
+    if (ext === ".js") return "js";
+    if (ext === ".jsx") return "jsx";
+    if (ext === ".json") return "json";
+    return "";
+  }
+
+  private static getDiagnosticsForFile(filePath: string): vscode.Diagnostic[] {
+    const uri = vscode.Uri.file(filePath);
+    const direct = vscode.languages.getDiagnostics(uri);
+    if (direct.length > 0) {
+      return direct;
+    }
+
+    const target = this.normalizeFsPath(uri.fsPath);
+    const targetLoose = target.replace(/\\/g, "/");
+    const fallback: vscode.Diagnostic[] = [];
+    for (const [diagUri, diagItems] of vscode.languages.getDiagnostics()) {
+      const normalizedDiagPath = this.normalizeFsPath(diagUri.fsPath);
+      const diagLoose = normalizedDiagPath.replace(/\\/g, "/");
+      const isExact = normalizedDiagPath === target;
+      const isLooseSuffixMatch =
+        diagLoose.endsWith(targetLoose) || targetLoose.endsWith(diagLoose);
+      if (isExact || isLooseSuffixMatch) {
+        fallback.push(...diagItems);
+      }
+    }
+    return fallback;
+  }
+
+  private static getDiagnosticCode(d: vscode.Diagnostic): string {
+    if (d.code === undefined) return "n/a";
+    if (typeof d.code === "string" || typeof d.code === "number") {
+      return String(d.code);
+    }
+    return String(d.code.value);
+  }
+
+  private static readSnippetAtLine(
+    filePath: string,
+    line: number,
+    radius = 2,
+  ): string {
+    if (!fs.existsSync(filePath)) {
+      return "// file not found";
+    }
+    const lines = fs.readFileSync(filePath, "utf-8").split(/\r?\n/);
+    const start = Math.max(1, line - radius);
+    const end = Math.min(lines.length, line + radius);
+    const out: string[] = [];
+    for (let ln = start; ln <= end; ln++) {
+      const marker = ln === line ? ">" : " ";
+      out.push(`${marker}${ln.toString().padStart(4, " ")} | ${lines[ln - 1]}`);
+    }
+    return out.join("\n");
+  }
+
+  private static collectRelatedFiles(filePath: string): string[] {
+    const allDependencies = dependencyIndex.getAll();
+    const imports = allDependencies.filter((d) => d.importerFilePath === filePath);
+    const importedBy = allDependencies.filter(
+      (d) => d.importedFilePath === filePath,
+    );
+    const files = new Set<string>([filePath]);
+    for (const dep of imports) files.add(dep.importedFilePath);
+    for (const dep of importedBy) files.add(dep.importerFilePath);
+    return Array.from(files);
+  }
+
+  private static groupRootCauses(
+    diagnostics: vscode.Diagnostic[],
+  ): Array<{ key: string; count: number; firstLine: number; title: string }> {
+    const groups = new Map<
+      string,
+      { key: string; count: number; firstLine: number; title: string }
+    >();
+    for (const d of diagnostics) {
+      if (d.severity !== vscode.DiagnosticSeverity.Error) continue;
+      const code = this.getDiagnosticCode(d);
+      const source = d.source || "diagnostic";
+      const key = `${source}:${code}`;
+      const current = groups.get(key) || {
+        key,
+        count: 0,
+        firstLine: d.range.start.line + 1,
+        title: `${source}(${code})`,
+      };
+      current.count += 1;
+      current.firstLine = Math.min(current.firstLine, d.range.start.line + 1);
+      groups.set(key, current);
+    }
+    return Array.from(groups.values()).sort((a, b) => {
+      if (b.count !== a.count) return b.count - a.count;
+      return a.firstLine - b.firstLine;
+    });
+  }
+
+  private static async copySmartAIContext(
+    filePath: string,
+    includeRelatedFiles: boolean,
+  ) {
+    try {
+      if (!fs.existsSync(filePath)) {
+        throw new Error(`File not found: ${filePath}`);
+      }
+
+      const diagnostics = this.getDiagnosticsForFile(filePath).sort((a, b) => {
+        const bySeverity = this.severityOrder(a.severity) - this.severityOrder(b.severity);
+        if (bySeverity !== 0) return bySeverity;
+        return a.range.start.line - b.range.start.line;
+      });
+      const fileName = path.basename(filePath);
+      const language = this.getLanguageFence(filePath);
+      const rootGroups = this.groupRootCauses(diagnostics);
+      const allDependencies = dependencyIndex.getAll();
+      const imports = allDependencies.filter((d) => d.importerFilePath === filePath);
+      const importedBy = allDependencies.filter((d) => d.importedFilePath === filePath);
+
+      let context = `# Fix Context (${fileName})\n\n`;
+      context += `## Priority\n`;
+      context += `- Fix ERROR first, then WARNING, then INFO/HINT.\n`;
+      context += `- If syntax/root-cause exists, fix it before downstream diagnostics.\n\n`;
+
+      context += `## File\n`;
+      context += `- Path: ${filePath}\n`;
+      context += `- Language: ${language || "plain"}\n`;
+      context += `- Diagnostics: ${diagnostics.length}\n\n`;
+
+      if (rootGroups.length > 0) {
+        context += `## Root Causes (Fix First)\n`;
+        rootGroups.slice(0, 6).forEach((group, idx) => {
+          context += `${idx + 1}. ${group.title} | count=${group.count} | firstLine=${group.firstLine}\n`;
+        });
+        context += `\n`;
+      }
+
+      context += `## Diagnostics (E->W->I->H)\n`;
+      if (diagnostics.length === 0) {
+        context += `- No diagnostics returned by VS Code for this file.\n\n`;
+      } else {
+        for (const d of diagnostics) {
+          const line = d.range.start.line + 1;
+          const col = d.range.start.character + 1;
+          const code = this.getDiagnosticCode(d);
+          const source = d.source || "unknown";
+          context += `- [${this.severityShort(d.severity)}] ${source}(${code}) at ${line}:${col} -> ${d.message}\n`;
+        }
+        context += `\n`;
+      }
+
+      context += `## Error Line Snippets\n`;
+      const snippetLines = new Set<number>();
+      diagnostics
+        .filter((d) => d.severity === vscode.DiagnosticSeverity.Error)
+        .slice(0, 20)
+        .forEach((d) => snippetLines.add(d.range.start.line + 1));
+      if (snippetLines.size === 0 && diagnostics.length > 0) {
+        diagnostics.slice(0, 8).forEach((d) => snippetLines.add(d.range.start.line + 1));
+      }
+      if (snippetLines.size === 0) {
+        context += `- No diagnostic snippet available.\n\n`;
+      } else {
+        Array.from(snippetLines)
+          .sort((a, b) => a - b)
+          .forEach((line) => {
+            context += `### Around line ${line}\n`;
+            context += "```text\n";
+            context += this.readSnippetAtLine(filePath, line, 2);
+            context += "\n```\n\n";
+          });
+      }
+
+      context += `## Import Context\n`;
+      context += `- Imports: ${imports.length}\n`;
+      imports.slice(0, 25).forEach((dep) => {
+        context += `  - ${path.basename(dep.importedFilePath)}: ${dep.importedNames.join(", ")}\n`;
+      });
+      context += `- Imported By: ${importedBy.length}\n`;
+      importedBy.slice(0, 25).forEach((dep) => {
+        context += `  - ${path.basename(dep.importerFilePath)}: ${dep.importedNames.join(", ")}\n`;
+      });
+      context += `\n`;
+
+      context += `## Target File Content\n`;
+      context += `\`\`\`${language}\n`;
+      context += fs.readFileSync(filePath, "utf-8");
+      context += `\n\`\`\`\n\n`;
+
+      if (includeRelatedFiles) {
+        const relatedFiles = this.collectRelatedFiles(filePath).filter(
+          (p) => p !== filePath,
+        );
+        if (relatedFiles.length > 0) {
+          context += `## Related Files (for reference)\n`;
+          for (const related of relatedFiles.slice(0, 10)) {
+            if (!fs.existsSync(related)) continue;
+            context += `### ${path.basename(related)}\n`;
+            context += `\`\`\`${this.getLanguageFence(related)}\n`;
+            context += fs.readFileSync(related, "utf-8");
+            context += `\n\`\`\`\n\n`;
+          }
+        }
+      }
+
+      context += `## Required Output\n`;
+      context += `1. Root-cause first fix order.\n`;
+      context += `2. Return full corrected ${fileName} only.\n`;
+      context += `3. Keep behavior unchanged except bug fixes.\n`;
+      context += `4. If import/type changes are needed, include them in this file.\n`;
+
+      await vscode.env.clipboard.writeText(context);
+      vscode.window.showInformationMessage(
+        `🤖 Smart AI fix context copied (${includeRelatedFiles ? "with related files" : "single file"})`,
+      );
+    } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : "Unknown error";
+      vscode.window.showErrorMessage(`Failed to copy smart AI context: ${errorMsg}`);
+    }
+  }
+
   private static mapSeverity(
     severity: vscode.DiagnosticSeverity,
   ): RoadmapDiagnosticItem["severity"] {
@@ -404,19 +652,12 @@ export class CodeWebviewProvider {
     }
 
     try {
-      const uri = vscode.Uri.file(filePath);
-      const directDiagnostics = vscode.languages.getDiagnostics(uri);
-      let diagnostics = directDiagnostics;
-
+      let diagnostics = this.getDiagnosticsForFile(filePath);
       if (diagnostics.length === 0) {
-        const targetPath = this.normalizeFsPath(uri.fsPath);
-        const fallbackDiagnostics: vscode.Diagnostic[] = [];
-        for (const [diagUri, diagItems] of vscode.languages.getDiagnostics()) {
-          if (this.normalizeFsPath(diagUri.fsPath) === targetPath) {
-            fallbackDiagnostics.push(...diagItems);
-          }
-        }
-        diagnostics = fallbackDiagnostics;
+        // Trigger diagnostics provider for unopened files, then retry once.
+        await vscode.workspace.openTextDocument(vscode.Uri.file(filePath));
+        await new Promise((resolve) => setTimeout(resolve, 120));
+        diagnostics = this.getDiagnosticsForFile(filePath);
       }
 
       const allowed = includeWarnings
@@ -612,6 +853,49 @@ export class CodeWebviewProvider {
     };
   }
 
+  private static formatTodayKey(): string {
+    const now = new Date();
+    const yyyy = now.getFullYear();
+    const mm = String(now.getMonth() + 1).padStart(2, "0");
+    const dd = String(now.getDate()).padStart(2, "0");
+    return `${yyyy}-${mm}-${dd}`;
+  }
+
+  private static getErrorBaseline(currentErrorCount: number) {
+    const today = this.formatTodayKey();
+    const context = this.extensionContext;
+    const stored = context?.workspaceState.get<{
+      date: string;
+      baselineErrorCount: number;
+    }>(this.BASELINE_KEY);
+
+    if (!context) {
+      return {
+        date: today,
+        baselineErrorCount: currentErrorCount,
+        currentErrorCount,
+        deltaFromBaseline: 0,
+      };
+    }
+
+    if (!stored || stored.date !== today) {
+      const next = { date: today, baselineErrorCount: currentErrorCount };
+      void context.workspaceState.update(this.BASELINE_KEY, next);
+      return {
+        ...next,
+        currentErrorCount,
+        deltaFromBaseline: 0,
+      };
+    }
+
+    return {
+      date: stored.date,
+      baselineErrorCount: stored.baselineErrorCount,
+      currentErrorCount,
+      deltaFromBaseline: currentErrorCount - stored.baselineErrorCount,
+    };
+  }
+
   private static buildRoadmapData(): RoadmapData {
     console.log("🔨 [buildRoadmapData] Building roadmap...");
 
@@ -627,15 +911,43 @@ export class CodeWebviewProvider {
         totalFiles: 0,
         totalFunctions: 0,
         totalConnections: 0,
+        diagnosticsSummary: {
+          error: 0,
+          warning: 0,
+          info: 0,
+          hint: 0,
+          total: 0,
+        },
+        errorBaseline: this.getErrorBaseline(0),
       };
     }
 
     const errorsByFile = new Map<string, number>();
+    const diagnosticsSummary = {
+      error: 0,
+      warning: 0,
+      info: 0,
+      hint: 0,
+      total: 0,
+    };
     const allDiagnostics = vscode.languages.getDiagnostics();
     for (const [uri, diagnostics] of allDiagnostics) {
-      const errorCount = diagnostics.filter(
-        (d) => d.severity === vscode.DiagnosticSeverity.Error,
-      ).length;
+      let errorCount = 0;
+      let warningCount = 0;
+      let infoCount = 0;
+      let hintCount = 0;
+      for (const d of diagnostics) {
+        if (d.severity === vscode.DiagnosticSeverity.Error) errorCount += 1;
+        else if (d.severity === vscode.DiagnosticSeverity.Warning) warningCount += 1;
+        else if (d.severity === vscode.DiagnosticSeverity.Information) infoCount += 1;
+        else hintCount += 1;
+      }
+      diagnosticsSummary.error += errorCount;
+      diagnosticsSummary.warning += warningCount;
+      diagnosticsSummary.info += infoCount;
+      diagnosticsSummary.hint += hintCount;
+      diagnosticsSummary.total += diagnostics.length;
+
       if (errorCount > 0) {
         errorsByFile.set(uri.fsPath, errorCount);
       }
@@ -686,6 +998,8 @@ export class CodeWebviewProvider {
 
     console.log(`✅ Нийт ${roadmapFiles.length} файл roadmap-д нэмэгдлээ`);
 
+    const errorBaseline = this.getErrorBaseline(diagnosticsSummary.error);
+
     return {
       files: roadmapFiles,
       dependencies: dependenciesForFrontend,
@@ -695,6 +1009,8 @@ export class CodeWebviewProvider {
         0,
       ),
       totalConnections: allEdges.length,
+      diagnosticsSummary,
+      errorBaseline,
     };
   }
 
@@ -809,3 +1125,5 @@ export class CodeWebviewProvider {
       .replace(/'/g, "&#39;");
   }
 }
+
+

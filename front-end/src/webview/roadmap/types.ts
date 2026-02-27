@@ -31,6 +31,19 @@ export interface RoadmapData {
   totalFiles: number;
   totalFunctions: number;
   totalConnections: number;
+  diagnosticsSummary?: {
+    error: number;
+    warning: number;
+    info: number;
+    hint: number;
+    total: number;
+  };
+  errorBaseline?: {
+    date: string;
+    baselineErrorCount: number;
+    currentErrorCount: number;
+    deltaFromBaseline: number;
+  };
 }
 
 // Hierarchy types
