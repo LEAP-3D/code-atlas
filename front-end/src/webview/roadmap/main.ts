@@ -79,13 +79,17 @@ declare global {
       copyAll: (filePath: string) => void;
       copyForAI: (filePath: string) => void;
       toggleSection: (sectionId: string) => void;
+      toggleCopyDropdown: () => void;
+      closeCopyDropdown: () => void;
       clearSearch: () => void;
     };
   }
 }
 
 function ensureEmptyStateElement(): HTMLDivElement {
-  let el = document.getElementById("roadmapEmptyState") as HTMLDivElement | null;
+  let el = document.getElementById(
+    "roadmapEmptyState",
+  ) as HTMLDivElement | null;
   if (el) return el;
 
   el = document.createElement("div");
@@ -210,7 +214,6 @@ function applyRoadmapDataUpdate(newData: typeof state.roadmapData): void {
 
   state.setRoadmapData(newData);
 
-  // Auto-expand folders with files
   autoExpandFoldersWithFiles();
   hideEmptyState();
   ensureInteractionsInitialized();
@@ -236,9 +239,6 @@ function applyRoadmapDataUpdate(newData: typeof state.roadmapData): void {
   }
 }
 
-/**
- * Auto-expand folders that contain files
- */
 function autoExpandFoldersWithFiles(): void {
   if (!state.hierarchyData) {
     console.log("⚠️ No hierarchy data");
@@ -250,14 +250,12 @@ function autoExpandFoldersWithFiles(): void {
   function expandFolder(node: HierarchyNode): void {
     const nodeId = getNodeId(node);
 
-    // Expand folder if it has files
     if (node.files && node.files.length > 0 && nodeId) {
       state.expandedFolders.add(nodeId);
       expandedCount++;
       console.log(`📂 Expanded: ${node.name} (${node.files.length} files)`);
     }
 
-    // Check child folders
     if (node.children) {
       Object.values(node.children).forEach((child) => {
         expandFolder(child);
@@ -298,7 +296,6 @@ window.roadmapActions = {
     });
   },
 
-  // ✅ Copy only the selected file
   copyFile: (filePath: string) => {
     console.log("📄 Copying file:", filePath);
     state.vscode.postMessage({
@@ -306,10 +303,9 @@ window.roadmapActions = {
       filePath: filePath,
     });
     const fileName = filePath.split(/[/\\]/).pop() || filePath;
-    showCopyToast(`📄 ${fileName} copied to clipboard`);
+    showCopyToast(`📄 ${fileName} copied`);
   },
 
-  // ✅ Copy all related files (imports + imported by)
   copyAll: (filePath: string) => {
     if (!state.roadmapData || !state.hierarchyData) return;
 
@@ -328,10 +324,9 @@ window.roadmapActions = {
       files: Array.from(allFiles),
     });
 
-    showCopyToast(`📋 ${allFiles.size} files copied to clipboard`);
+    showCopyToast(`📋 ${allFiles.size} files copied`);
   },
 
-  // ✅ Copy for AI - error context бүхий
   copyForAI: (filePath: string) => {
     if (!state.roadmapData || !state.hierarchyData) return;
 
@@ -341,6 +336,12 @@ window.roadmapActions = {
     const deps = state.roadmapData.dependencies || [];
     const imports = deps.filter((d) => d.importerFilePath === filePath);
     const importedBy = deps.filter((d) => d.importedFilePath === filePath);
+
+    // Collect all related files
+    const allFiles = new Set<string>();
+    allFiles.add(filePath);
+    imports.forEach((dep) => allFiles.add(dep.importedFilePath));
+    importedBy.forEach((dep) => allFiles.add(dep.importerFilePath));
 
     const fileName = fileNode.name;
     const funcCount = fileNode.functions?.length || 0;
@@ -390,16 +391,17 @@ window.roadmapActions = {
     context += `// ${fileName} content will be inserted here by the extension\n`;
     context += `\`\`\`\n`;
 
+    // Send AI context with ALL related files
     state.vscode.postMessage({
       command: "copyAIContext",
       errorFile: filePath,
       context: context,
+      files: Array.from(allFiles), // Include all files for AI
     });
 
-    showCopyToast("🤖 AI context copied!");
+    showCopyToast(`🤖 AI context with ${allFiles.size} files copied!`);
   },
 
-  // ✅ Toggle section collapse/expand
   toggleSection: (sectionId: string) => {
     const content = document.getElementById(`${sectionId}-content`);
     const toggle = document.getElementById(`${sectionId}-toggle`);
@@ -414,6 +416,20 @@ window.roadmapActions = {
     } else {
       content.classList.add("collapsed");
       toggle.textContent = "▶";
+    }
+  },
+
+  toggleCopyDropdown: () => {
+    const dropdown = document.getElementById("copyDropdownMenu");
+    if (dropdown) {
+      dropdown.classList.toggle("show");
+    }
+  },
+
+  closeCopyDropdown: () => {
+    const dropdown = document.getElementById("copyDropdownMenu");
+    if (dropdown) {
+      dropdown.classList.remove("show");
     }
   },
 
@@ -448,21 +464,26 @@ window.roadmapActions = {
   },
 };
 
-/**
- * Initialize the roadmap
- */
+// Close dropdown when clicking outside
+document.addEventListener("click", (e) => {
+  const dropdown = document.getElementById("copyDropdownMenu");
+  const container = document.querySelector(".copy-dropdown-container");
+
+  if (dropdown && container && !container.contains(e.target as Node)) {
+    dropdown.classList.remove("show");
+  }
+});
+
 function init(): void {
   ensureInteractionsInitialized();
   setupSearchControls();
   if (state.roadmapData?.files?.length > 0) {
     console.log("✅ Init:", state.roadmapData.files.length, "files");
 
-    // Auto-expand folders with files
     autoExpandFoldersWithFiles();
 
     renderGraph();
 
-    // Check if we should restore previous view state
     const shouldRestore =
       new URLSearchParams(window.location.search).get("restore") === "true";
 
@@ -471,7 +492,6 @@ function init(): void {
     } else {
       setTimeout(resetView, 100);
     }
-
   } else {
     console.error("❌ No files");
     showEmptyState("No files found", "No roadmap data is loaded yet.");
@@ -480,7 +500,6 @@ function init(): void {
   state.vscode.postMessage({ command: "roadmapWebviewReady" });
 }
 
-// Add message handler to restore state
 window.addEventListener("message", (event) => {
   const message = event.data;
 
@@ -494,7 +513,6 @@ window.addEventListener("message", (event) => {
     getElement<HTMLDivElement>("zoomLevel").textContent =
       `${Math.round(message.state.scale * 100)}%`;
 
-    // Restore focused file if exists
     if (message.state.focusedFilePath && state.hierarchyData) {
       const fileNode = findFileNodeByPath(
         state.hierarchyData,
@@ -532,5 +550,4 @@ window.addEventListener("message", (event) => {
   }
 });
 
-// Run on load
 init();
