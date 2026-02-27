@@ -25,23 +25,46 @@ export function showFunctionPanel(fileData: FileNode): void {
     (d: RoadmapDependency) => d.importedFilePath === fileData.fullPath,
   );
 
-  // ✅ Copy buttons - бүх файл дээр харагдана
+  // ✅ Copy dropdown button - conditional based on errors
+  const hasErrors = fileData.errorCount > 0;
+
   const copyButtons = `
-    <div class="copy-buttons-container">
-      <button class="copy-file-btn" onclick="event.stopPropagation(); window.roadmapActions.copyFile('${fileData.fullPath.replace(/\\/g, "\\\\")}')">
-        📄 Copy File
+    <div class="copy-dropdown-container">
+      <button class="copy-main-btn" onclick="event.stopPropagation(); window.roadmapActions.toggleCopyDropdown()">
+        <span class="copy-main-icon">📋</span>
+        <span class="copy-main-text">Copy</span>
+        <span class="copy-main-arrow">▼</span>
       </button>
-      <button class="copy-all-btn" onclick="event.stopPropagation(); window.roadmapActions.copyAll('${fileData.fullPath.replace(/\\/g, "\\\\")}')">
-        📋 Copy All
-      </button>
-      <button class="copy-ai-btn" onclick="event.stopPropagation(); window.roadmapActions.copyForAI('${fileData.fullPath.replace(/\\/g, "\\\\")}')">
-        🤖 Copy for AI
-      </button>
+      <div class="copy-dropdown-menu" id="copyDropdownMenu">
+        <div class="copy-dropdown-item" onclick="event.stopPropagation(); window.roadmapActions.copyFile('${fileData.fullPath.replace(/\\/g, "\\\\")}'); window.roadmapActions.closeCopyDropdown();">
+          <span class="copy-dropdown-icon">📄</span>
+          <span class="copy-dropdown-text">This file only</span>
+        </div>
+        <div class="copy-dropdown-item" onclick="event.stopPropagation(); window.roadmapActions.copyAll('${fileData.fullPath.replace(/\\/g, "\\\\")}'); window.roadmapActions.closeCopyDropdown();">
+          <span class="copy-dropdown-icon">📦</span>
+          <span class="copy-dropdown-text">With imports/exports</span>
+        </div>
+        ${
+          hasErrors
+            ? `
+        <div class="copy-dropdown-divider"></div>
+        <div class="copy-dropdown-item copy-ai-item" onclick="event.stopPropagation(); window.roadmapActions.copyForAIErrorOnly('${fileData.fullPath.replace(/\\/g, "\\\\")}'); window.roadmapActions.closeCopyDropdown();">
+          <span class="copy-dropdown-icon">🤖</span>
+          <span class="copy-dropdown-text">For AI (error file only)</span>
+        </div>
+        <div class="copy-dropdown-item copy-ai-item" onclick="event.stopPropagation(); window.roadmapActions.copyForAI('${fileData.fullPath.replace(/\\/g, "\\\\")}'); window.roadmapActions.closeCopyDropdown();">
+          <span class="copy-dropdown-icon">🤖</span>
+          <span class="copy-dropdown-text">For AI (all files)</span>
+        </div>
+        `
+            : ""
+        }
+      </div>
     </div>
   `;
 
-  // ✅ Error warning - зөвхөн алдаатай үед харагдана
-  const errWarn =
+  // ✅ Error warning banner (like before) - at the top
+  const errorBanner =
     fileData.errorCount > 0
       ? `
       <div class="error-warning" onclick="window.roadmapActions.debugExecutionFlow('${fileData.fullPath.replace(/\\/g, "\\\\")}')">
@@ -60,10 +83,31 @@ export function showFunctionPanel(fileData: FileNode): void {
     <div class="function-panel-title">📄 ${fileData.name}</div>
     <div class="function-panel-subtitle">${fileData.functions?.length || 0} functions</div>
     ${copyButtons}
-    ${errWarn}
+    ${errorBanner}
   `;
 
-  // ✅ Functions FIRST (дээр байна)
+  // ✅ Collapsible Errors section (like Functions/Dependencies)
+  const errorSection =
+    fileData.errorCount > 0
+      ? `
+      <div class="error-section">
+        <div class="section-header" onclick="window.roadmapActions.toggleSection('errors')">
+          <div class="section-title">
+            <span class="section-icon">⚠️</span>
+            <span>Errors</span>
+            <span class="section-count error-count">${fileData.errorCount}</span>
+          </div>
+          <span class="section-toggle" id="errors-toggle">▼</span>
+        </div>
+        <div class="section-content" id="errors-content">
+          <div class="error-lines-container" id="errorLines-${fileData.fullPath.replace(/[^a-zA-Z0-9]/g, "_")}">
+            <div class="error-lines-loading">Loading errors...</div>
+          </div>
+        </div>
+      </div>`
+      : "";
+
+  // ✅ ORDER: Errors FIRST, then Functions, then Dependencies
   const funcSection = `
     <div class="functions-section">
       <div class="section-header" onclick="window.roadmapActions.toggleSection('funcs')">
@@ -95,7 +139,7 @@ export function showFunctionPanel(fileData: FileNode): void {
     </div>
   `;
 
-  // ✅ Dependencies SECOND (доор байна)
+  // ✅ Dependencies THIRD (доор байна)
   const depsSection = `
     <div class="dependencies-section">
       <div class="section-header" onclick="window.roadmapActions.toggleSection('deps')">
@@ -156,7 +200,8 @@ export function showFunctionPanel(fileData: FileNode): void {
     </div>
   `;
 
-  list.innerHTML = funcSection + depsSection;
+  // ✅ ORDER: Errors FIRST, Functions SECOND, Dependencies THIRD
+  list.innerHTML = errorSection + funcSection + depsSection;
   panel.classList.add("visible");
   const toggle = getElement<HTMLButtonElement>("panelToggle");
   const wasActive = toggle.classList.contains("active");
@@ -172,6 +217,13 @@ export function showFunctionPanel(fileData: FileNode): void {
       toggle.classList.remove("opening");
       panelToggleOpeningTimer = null;
     }, 260);
+  }
+
+  // Load error details if there are errors
+  if (fileData.errorCount > 0) {
+    setTimeout(() => {
+      window.roadmapActions.loadErrorDetails(fileData.fullPath);
+    }, 100);
   }
 }
 

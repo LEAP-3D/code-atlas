@@ -1768,63 +1768,172 @@ svg.connections {
    SIDEBAR PANEL STYLES - Clean & Modern
    ======================================== */
 
-/* Copy Buttons - Error Graph Style */
-.copy-buttons-container {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 6px;
+/* Copy Dropdown - Smooth & Modern */
+.copy-dropdown-container {
+  position: relative;
   margin: 12px 0;
 }
 
-.copy-file-btn,
-.copy-all-btn,
-.copy-ai-btn {
-  padding: 8px 12px;
-  border-radius: 6px;
-  font-size: 11px;
+.copy-main-btn {
+  width: 100%;
+  padding: 11px 14px;
+  background: linear-gradient(135deg, #1e3a5f 0%, #2a4a6f 100%);
+  border: 1px solid #3d6a9e;
+  border-radius: 8px;
+  color: white;
+  font-size: 13px;
   font-weight: 600;
   cursor: pointer;
-  transition: all 0.2s;
-  white-space: nowrap;
+  transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 6px;
-  border: 1px solid;
+  gap: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
 }
 
-.copy-ai-btn {
-  background: #f59e0b;
-  border-color: #f59e0b;
-  color: white;
-  grid-column: 1 / -1;
+.copy-main-btn:hover {
+  background: linear-gradient(135deg, #2a4a6f 0%, #3a5a7f 100%);
+  border-color: #4d7aae;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
 }
 
-.copy-ai-btn:hover {
-  background: #d97706;
-  border-color: #d97706;
+.copy-main-btn:active {
+  transform: translateY(0);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
 }
 
-.copy-all-btn {
-  background: #8b5cf6;
-  border-color: #8b5cf6;
-  color: white;
+.copy-main-icon {
+  font-size: 14px;
 }
 
-.copy-all-btn:hover {
-  background: #7c3aed;
-  border-color: #7c3aed;
+.copy-main-text {
+  flex: 1;
 }
 
-.copy-file-btn {
-  background: #2a2a2a;
-  border-color: #3a3a3a;
-  color: #fff;
+.copy-main-arrow {
+  font-size: 10px;
+  opacity: 0.7;
+  transition: transform 0.2s;
 }
 
-.copy-file-btn:hover {
-  background: #3a3a3a;
-  border-color: #4ec9b0;
+.copy-dropdown-menu.show + .copy-main-btn .copy-main-arrow,
+.copy-main-btn:hover .copy-main-arrow {
+  opacity: 1;
+}
+
+.copy-dropdown-menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  right: 0;
+  background: linear-gradient(135deg, #1a1a1a 0%, #1e1e1e 100%);
+  border: 1px solid #3a3a3a;
+  border-radius: 8px;
+  padding: 6px;
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(-8px) scale(0.95);
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  z-index: 1000;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+}
+
+.copy-dropdown-menu.show {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0) scale(1);
+}
+
+.copy-dropdown-item {
+  padding: 10px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.12s cubic-bezier(0.4, 0, 0.2, 1);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 3px;
+  position: relative;
+  overflow: hidden;
+}
+
+.copy-dropdown-item:last-child {
+  margin-bottom: 0;
+}
+
+.copy-dropdown-item::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(78, 201, 176, 0.1),
+    transparent
+  );
+  transform: translateX(-100%);
+  transition: transform 0.3s;
+}
+
+.copy-dropdown-item:hover::before {
+  transform: translateX(100%);
+}
+
+.copy-dropdown-item:hover {
+  background: rgba(78, 201, 176, 0.08);
+  transform: translateX(3px);
+}
+
+.copy-dropdown-item:active {
+  transform: translateX(1px) scale(0.98);
+}
+
+.copy-dropdown-item.copy-ai-item {
+  background: linear-gradient(
+    135deg,
+    rgba(139, 92, 246, 0.12),
+    rgba(139, 92, 246, 0.08)
+  );
+  border: 1px solid rgba(139, 92, 246, 0.25);
+}
+
+.copy-dropdown-item.copy-ai-item:hover {
+  background: linear-gradient(
+    135deg,
+    rgba(139, 92, 246, 0.2),
+    rgba(139, 92, 246, 0.15)
+  );
+  border-color: rgba(139, 92, 246, 0.4);
+}
+
+.copy-dropdown-icon {
+  font-size: 16px;
+  flex-shrink: 0;
+  transition: transform 0.2s;
+}
+
+.copy-dropdown-item:hover .copy-dropdown-icon {
+  transform: scale(1.15);
+}
+
+.copy-dropdown-text {
+  font-size: 12px;
+  color: #e0e0e0;
+  flex: 1;
+  font-weight: 500;
+}
+
+.copy-dropdown-item.copy-ai-item .copy-dropdown-text {
+  color: #c4b5fd;
+  font-weight: 600;
+}
+
+.copy-dropdown-divider {
+  height: 1px;
+  background: rgba(255, 255, 255, 0.1);
+  margin: 6px 8px;
 }
 
 /* Toast */
@@ -2061,4 +2170,133 @@ svg.connections {
   font-size: 11px;
   text-align: center;
   font-style: italic;
+}
+
+/* Error Warning Banner (at top of panel) */
+.error-warning {
+  background: rgba(239, 68, 68, 0.12);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  border-radius: 8px;
+  margin: 12px 0;
+  padding: 12px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.error-warning:hover {
+  background: rgba(239, 68, 68, 0.18);
+}
+
+.error-warning-icon {
+  font-size: 24px;
+  flex-shrink: 0;
+}
+
+.error-warning-text {
+  flex: 1;
+  min-width: 0;
+}
+
+.error-warning-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: #ef4444;
+  margin-bottom: 3px;
+}
+
+.error-warning-subtitle {
+  font-size: 10px;
+  color: #fca5a5;
+}
+
+.error-debug-btn {
+  background: #ef4444;
+  color: white;
+  border: none;
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.error-debug-btn:hover {
+  background: #dc2626;
+  transform: scale(1.05);
+}
+
+/* Error Section - Collapsible (like Functions/Dependencies) */
+.error-section {
+  margin-bottom: 16px;
+}
+
+.section-count.error-count {
+  background: rgba(239, 68, 68, 0.2);
+  color: #ef4444;
+}
+
+.error-lines-container {
+  margin-top: 8px;
+}
+
+.error-lines-loading {
+  font-size: 10px;
+  color: #888;
+  text-align: center;
+  padding: 8px;
+  font-style: italic;
+}
+
+.error-lines-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.error-line-item {
+  background: rgba(239, 68, 68, 0.12);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  border-radius: 6px;
+  padding: 10px 12px;
+  cursor: pointer;
+  transition: all 0.15s;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.error-line-item:hover {
+  background: rgba(239, 68, 68, 0.2);
+  border-color: rgba(239, 68, 68, 0.5);
+  transform: translateX(2px);
+}
+
+.error-line-number {
+  font-size: 11px;
+  font-weight: 700;
+  color: #ef4444;
+  letter-spacing: 0.5px;
+}
+
+.error-line-message {
+  font-size: 10px;
+  color: #fca5a5;
+  line-height: 1.4;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.error-line-item:hover .error-line-number {
+  color: #fff;
+}
+
+.error-line-item:hover .error-line-message {
+  color: #fecaca;
 }
