@@ -19,6 +19,7 @@ import { buildCallerChain } from "./analyzers/debug/executionChainBuilder";
 import { AIService } from "./services/aiService";
 import { relevantFilesResolver } from "./services/relevantFilesResolver";
 import * as fs from "fs";
+import * as path from "path";
 
 const MONOREPO_MARKERS = [
   "pnpm-workspace.yaml",
@@ -276,6 +277,27 @@ function clearAnalysisIndexes() {
   triggerIndex.clear();
 }
 
+async function appendDevRoadmapLog(
+  context: vscode.ExtensionContext,
+  phase: string,
+  error: unknown,
+) {
+  if (context.extensionMode === vscode.ExtensionMode.Production) {
+    return;
+  }
+
+  try {
+    await vscode.workspace.fs.createDirectory(context.globalStorageUri);
+    const logPath = path.join(context.globalStorageUri.fsPath, "roadmap-debug.log");
+    const stamp = new Date().toISOString();
+    const message = error instanceof Error ? error.stack || error.message : String(error);
+    const line = `[${stamp}] ${phase}: ${message}\n`;
+    fs.appendFileSync(logPath, line, "utf-8");
+  } catch {
+    // Do not block extension flow for debug log failure.
+  }
+}
+
 async function buildRoadmapForScope(
   context: vscode.ExtensionContext,
   scopeUri: vscode.Uri,
@@ -525,6 +547,7 @@ export function activate(context: vscode.ExtensionContext) {
         CodeWebviewProvider.showRoadmap(context);
         await CodeWebviewProvider.refreshRoadmapPanelFromIndexes();
       } catch (error) {
+        await appendDevRoadmapLog(context, "experiment.showRoadmap", error);
         vscode.window.showErrorMessage(
           `Error building roadmap: ${
             error instanceof Error ? error.message : "Unknown error"

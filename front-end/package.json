@@ -79,6 +79,9 @@
     "watch:webview": "node esbuild-webview.js --watch",
     "package": "node esbuild.js --production && node esbuild-webview.js --production",
     "lint": "eslint src",
+    "typecheck": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p tsconfig.webview.json",
+    "test:integration": "node ./test/runTest.js",
+    "test": "npm run test:integration",
     "build": "npm run package"
   },
   "devDependencies": {

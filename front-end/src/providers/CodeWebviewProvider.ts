@@ -11,6 +11,11 @@ import {
   RoadmapFunction,
   RoadmapDependency,
 } from "../roadmap/roadmapModel";
+import {
+  RoadmapCommandMessage,
+  RoadmapDiagnosticItem,
+  isRoadmapCommandMessage,
+} from "../webview/roadmap/messages";
 
 export class CodeWebviewProvider {
   private static currentRoadmapPanel: vscode.WebviewPanel | null = null;
@@ -41,7 +46,7 @@ export class CodeWebviewProvider {
   ) {
     const panel = vscode.window.createWebviewPanel(
       "errorDependencyGraph",
-      "🐛 Error Dependency Graph",
+      "Error Dependency Graph",
       vscode.ViewColumn.Beside,
       { enableScripts: true },
     );
@@ -53,8 +58,11 @@ export class CodeWebviewProvider {
     );
 
     panel.webview.onDidReceiveMessage(
-      async (message) => {
-        console.log("📨 [ErrorGraph] Received message:", message);
+      async (message: unknown) => {
+        if (!isRoadmapCommandMessage(message)) {
+          console.warn("[ErrorGraph] Ignored malformed message payload");
+          return;
+        }
         await this.handleWebviewMessage(message, context);
       },
       undefined,
@@ -70,7 +78,7 @@ export class CodeWebviewProvider {
 
     const panel = vscode.window.createWebviewPanel(
       "roadmapView",
-      "📊 Project Roadmap",
+      "Project Roadmap",
       vscode.ViewColumn.Beside,
       {
         enableScripts: true,
@@ -82,21 +90,25 @@ export class CodeWebviewProvider {
     this.currentRoadmapPanel = panel;
 
     panel.onDidDispose(() => {
-      console.log("🗑️ Roadmap panel disposed");
       this.currentRoadmapPanel = null;
     });
 
     panel.webview.html = this.getRoadmapHtml(panel.webview, context);
 
     panel.webview.onDidReceiveMessage(
-      async (message) => {
-        console.log("📨 [Roadmap] Received message:", message);
+      async (message: unknown) => {
+        if (!isRoadmapCommandMessage(message)) {
+          console.warn("[Roadmap] Ignored malformed message payload");
+          return;
+        }
+
         if (message.command === "refreshRoadmapData") {
           try {
             const refreshedData = this.buildRoadmapData();
             await panel.webview.postMessage({
               type: "roadmapDataUpdated",
               data: refreshedData,
+              updatedAt: Date.now(),
             });
           } catch (error) {
             const errorMsg =
@@ -104,10 +116,12 @@ export class CodeWebviewProvider {
             await panel.webview.postMessage({
               type: "roadmapDataRefreshFailed",
               error: errorMsg,
+              updatedAt: Date.now(),
             });
           }
           return;
         }
+
         await this.handleWebviewMessage(message, context);
       },
       undefined,
@@ -123,6 +137,7 @@ export class CodeWebviewProvider {
     await this.currentRoadmapPanel.webview.postMessage({
       type: "roadmapDataUpdated",
       data,
+      updatedAt: Date.now(),
     });
   }
 
@@ -153,25 +168,22 @@ export class CodeWebviewProvider {
       return;
     }
 
-    await this.currentRoadmapPanel.webview.postMessage({
+    const promptMessage = {
       type: "roadmapEmptyState",
       title: "Monorepo detected",
       message: `This workspace (${workspaceName}) is a monorepo. Choose the project you want to see the roadmap of.`,
       actionLabel: "Choose Project",
       actionCommand: "pickMonorepoRoadmapProject",
-    });
+    };
+
+    await this.currentRoadmapPanel.webview.postMessage(promptMessage);
+    setTimeout(() => {
+      this.currentRoadmapPanel?.webview.postMessage(promptMessage);
+    }, 200);
   }
 
   private static async handleWebviewMessage(
-    message: {
-      command: string;
-      filePath?: string;
-      line?: number;
-      files?: string[];
-      errors?: unknown[];
-      errorFile?: string;
-      context?: string;
-    },
+    message: RoadmapCommandMessage,
     context: vscode.ExtensionContext,
   ) {
     switch (message.command) {
@@ -205,7 +217,11 @@ export class CodeWebviewProvider {
         break;
 
       case "getErrorDetails":
-        await this.sendErrorDetails(message.filePath!);
+        await this.sendErrorDetails(
+          message.filePath!,
+          message.requestId!,
+          Boolean(message.includeWarnings),
+        );
         break;
 
       case "showAllErrors":
@@ -254,10 +270,6 @@ export class CodeWebviewProvider {
           setTimeout(() => decoration.dispose(), 2000);
         }
       }
-
-      vscode.window.showInformationMessage(
-        `📍 ${line ? `Jumped to line ${line}` : `Opened ${path.basename(filePath)}`}`,
-      );
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : "Unknown error";
       vscode.window.showErrorMessage(`Failed to open file: ${errorMsg}`);
@@ -272,7 +284,7 @@ export class CodeWebviewProvider {
       const content = fs.readFileSync(filePath, "utf-8");
       await vscode.env.clipboard.writeText(content);
       vscode.window.showInformationMessage(
-        `📋 Copied ${path.basename(filePath)} to clipboard`,
+        `Copied ${path.basename(filePath)} to clipboard`,
       );
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : "Unknown error";
@@ -311,9 +323,7 @@ export class CodeWebviewProvider {
       }
 
       await vscode.env.clipboard.writeText(combinedContent);
-      vscode.window.showInformationMessage(
-        `📋 Copied ${successCount} file(s) to clipboard!`,
-      );
+      vscode.window.showInformationMessage(`Copied ${successCount} file(s)`);
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : "Unknown error";
       vscode.window.showErrorMessage(`Failed to copy files: ${errorMsg}`);
@@ -332,7 +342,6 @@ export class CodeWebviewProvider {
 
       const errorFileContent = fs.readFileSync(errorFile, "utf-8");
       const fileName = path.basename(errorFile);
-
       let fullContext = aiContext.replace(
         `// ${fileName} content will be inserted here by the extension`,
         errorFileContent,
@@ -340,56 +349,108 @@ export class CodeWebviewProvider {
 
       if (files && files.length > 1) {
         fullContext += `\n\n---\n\n## Related Files\n\n`;
-
         for (const filePath of files) {
-          if (filePath === errorFile) continue;
-
-          if (!fs.existsSync(filePath)) continue;
-
-          const relatedFileName = path.basename(filePath);
-          const relatedContent = fs.readFileSync(filePath, "utf-8");
-
-          fullContext += `### ${relatedFileName}\n\n`;
-          fullContext += `\`\`\`javascript\n`;
-          fullContext += relatedContent;
-          fullContext += `\n\`\`\`\n\n`;
+          if (filePath === errorFile || !fs.existsSync(filePath)) {
+            continue;
+          }
+          const relatedName = path.basename(filePath);
+          fullContext += `### ${relatedName}\n\n`;
+          fullContext += "```javascript\n";
+          fullContext += fs.readFileSync(filePath, "utf-8");
+          fullContext += "\n```\n\n";
         }
       }
 
       await vscode.env.clipboard.writeText(fullContext);
-
-      const fileCount =
-        files && files.length > 1 ? `${files.length} files` : "context";
-      vscode.window.showInformationMessage(
-        `🤖 AI ${fileCount} copied! Ready for ChatGPT/Claude`,
-      );
+      vscode.window.showInformationMessage("AI context copied");
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : "Unknown error";
       vscode.window.showErrorMessage(`Failed to copy AI context: ${errorMsg}`);
     }
   }
 
-  private static async sendErrorDetails(filePath: string) {
-    if (!this.currentRoadmapPanel) return;
+  private static mapSeverity(
+    severity: vscode.DiagnosticSeverity,
+  ): RoadmapDiagnosticItem["severity"] {
+    if (severity === vscode.DiagnosticSeverity.Error) return "error";
+    if (severity === vscode.DiagnosticSeverity.Warning) return "warning";
+    if (severity === vscode.DiagnosticSeverity.Information) return "info";
+    return "hint";
+  }
+
+  private static normalizeFsPath(filePath: string): string {
+    const normalized = path.normalize(filePath);
+    return process.platform === "win32" ? normalized.toLowerCase() : normalized;
+  }
+
+  private static async sendErrorDetails(
+    filePath: string,
+    requestId: string,
+    includeWarnings: boolean,
+  ) {
+    if (!this.currentRoadmapPanel) {
+      return;
+    }
 
     try {
       const uri = vscode.Uri.file(filePath);
-      const diagnostics = vscode.languages.getDiagnostics(uri);
+      const directDiagnostics = vscode.languages.getDiagnostics(uri);
+      let diagnostics = directDiagnostics;
 
-      const errors = diagnostics
-        .filter((d) => d.severity === vscode.DiagnosticSeverity.Error)
+      // Some providers publish diagnostics under a path variant (slash/case).
+      // Fall back to all diagnostics and match by normalized fsPath.
+      if (diagnostics.length === 0) {
+        const targetPath = this.normalizeFsPath(uri.fsPath);
+        const fallbackDiagnostics: vscode.Diagnostic[] = [];
+        for (const [diagUri, diagItems] of vscode.languages.getDiagnostics()) {
+          if (this.normalizeFsPath(diagUri.fsPath) === targetPath) {
+            fallbackDiagnostics.push(...diagItems);
+          }
+        }
+        diagnostics = fallbackDiagnostics;
+      }
+
+      const allowed = includeWarnings
+        ? [
+            vscode.DiagnosticSeverity.Error,
+            vscode.DiagnosticSeverity.Warning,
+            vscode.DiagnosticSeverity.Information,
+            vscode.DiagnosticSeverity.Hint,
+          ]
+        : [vscode.DiagnosticSeverity.Error];
+
+      const issues: RoadmapDiagnosticItem[] = diagnostics
+        .filter((d) => allowed.includes(d.severity))
         .map((d) => ({
           line: d.range.start.line + 1,
           message: d.message,
+          severity: this.mapSeverity(d.severity),
+          code: (() => {
+            if (d.code === undefined) {
+              return undefined;
+            }
+            if (typeof d.code === "string" || typeof d.code === "number") {
+              return String(d.code);
+            }
+            return String(d.code.value);
+          })(),
+          source: d.source,
         }));
 
       await this.currentRoadmapPanel.webview.postMessage({
         type: "errorDetails",
-        filePath: filePath,
-        errors: errors,
+        filePath,
+        requestId,
+        issues,
       });
     } catch (error) {
-      console.error("Failed to send error details:", error);
+      console.error("Failed to send diagnostics:", error);
+      await this.currentRoadmapPanel.webview.postMessage({
+        type: "errorDetails",
+        filePath,
+        requestId,
+        issues: [],
+      });
     }
   }
 
@@ -423,7 +484,6 @@ export class CodeWebviewProvider {
     );
 
     if (!fs.existsSync(htmlPath)) {
-      console.error(`❌ HTML file not found: ${htmlPath}`);
       return this.getErrorHtml("Roadmap HTML file not found");
     }
 
@@ -431,22 +491,14 @@ export class CodeWebviewProvider {
 
     try {
       const roadmapData = this.buildRoadmapData();
-
-      console.log("📊 [getRoadmapHtml] Injecting roadmap data");
-      console.log(`   Files: ${roadmapData.totalFiles}`);
-      console.log(`   Functions: ${roadmapData.totalFunctions}`);
-      console.log(`   Dependencies: ${roadmapData.dependencies.length}`);
-
       const dataScript = `<script>window.ROADMAP_DATA = ${JSON.stringify(roadmapData, null, 2)};</script>`;
 
       html = html.replace("{{STYLES_URI}}", stylesUri.toString());
       html = html.replace("{{SCRIPT_URI}}", scriptUri.toString());
       html = html.replace("{{DATA_SCRIPT}}", dataScript);
-
       return html;
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : "Unknown error";
-      console.error("❌ [getRoadmapHtml] Error building roadmap:", errorMsg);
       return this.getErrorHtml(`Error building roadmap: ${errorMsg}`);
     }
   }
@@ -464,7 +516,6 @@ export class CodeWebviewProvider {
     );
 
     if (!fs.existsSync(htmlPath)) {
-      console.error(`❌ HTML file not found: ${htmlPath}`);
       return this.getErrorHtml("Error dependency graph HTML file not found");
     }
 
@@ -472,19 +523,11 @@ export class CodeWebviewProvider {
 
     try {
       const errorGraphData = this.buildErrorGraphData(errorFilePath);
-
-      console.log("🐛 [getErrorGraphHtml] Injecting error graph data");
-      console.log(`   Error file: ${errorFilePath}`);
-      console.log(`   Errors: ${errorGraphData.errors.length}`);
-      console.log(`   Dependencies: ${errorGraphData.dependencies.length}`);
-
       const dataScript = `<script>window.ERROR_GRAPH_DATA = ${JSON.stringify(errorGraphData, null, 2)};</script>`;
       html = html.replace("</head>", `${dataScript}\n</head>`);
-
       return html;
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : "Unknown error";
-      console.error("❌ [getErrorGraphHtml] Error building graph:", errorMsg);
       return this.getErrorHtml(`Error building dependency graph: ${errorMsg}`);
     }
   }
@@ -543,8 +586,6 @@ export class CodeWebviewProvider {
   }
 
   private static buildRoadmapData(): RoadmapData {
-    console.log("🔨 [buildRoadmapData] Building roadmap...");
-
     const files = fileIndex.getAll();
     const allFunctions = functionIndex.getAll();
     const allEdges = callGraphIndex.getAll();
@@ -572,7 +613,6 @@ export class CodeWebviewProvider {
     }
 
     const roadmapFiles: RoadmapFile[] = [];
-
     for (const file of files) {
       const fileName = file.path.split(/[/\\]/).pop() || file.path;
       const fileFunctions = allFunctions.filter(
@@ -595,7 +635,6 @@ export class CodeWebviewProvider {
       });
 
       const errorCount = errorsByFile.get(file.path) || 0;
-
       roadmapFiles.push({
         name: fileName,
         path: file.path,
@@ -614,16 +653,11 @@ export class CodeWebviewProvider {
       }),
     );
 
-    console.log(`✅ Нийт ${roadmapFiles.length} файл roadmap-д нэмэгдлээ`);
-
     return {
       files: roadmapFiles,
       dependencies: dependenciesForFrontend,
       totalFiles: roadmapFiles.length,
-      totalFunctions: roadmapFiles.reduce(
-        (sum, f) => sum + f.functions.length,
-        0,
-      ),
+      totalFunctions: roadmapFiles.reduce((sum, f) => sum + f.functions.length, 0),
       totalConnections: allEdges.length,
     };
   }
@@ -719,7 +753,6 @@ export class CodeWebviewProvider {
     }
 
     let html = fs.readFileSync(htmlPath, "utf8");
-
     html = html
       .replace("{{SUMMARY}}", this.escape(data.summary))
       .replace("{{ERROR}}", this.escape(data.errorText))

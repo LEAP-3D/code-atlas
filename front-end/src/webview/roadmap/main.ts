@@ -18,14 +18,21 @@ import {
 import { zoomIn, zoomOut } from "./interactions";
 import { getElement, getNodeId } from "./utils";
 import { findFileNodeByPath } from "./hierarchy";
-import { HierarchyNode } from "./types";
+import { HierarchyNode, RoadmapData } from "./types";
+import {
+  RoadmapCommandMessage,
+  RoadmapCommandName,
+  RoadmapDiagnosticItem,
+  isRoadmapWebviewMessage,
+} from "./messages";
 
-// Initialize VS Code API
 state.setVscode(window.acquireVsCodeApi());
 let interactionsInitialized = false;
 let hintInitialized = false;
+let refreshInProgress = false;
+let refreshCooldownTimer: number | null = null;
+const pendingErrorDetails = new Map<string, string>();
 
-// Load roadmap data
 state.setRoadmapData(
   window.ROADMAP_DATA || {
     files: [],
@@ -36,18 +43,105 @@ state.setRoadmapData(
   },
 );
 
-console.log(
-  "🗺️ Roadmap loaded:",
-  state.roadmapData.files.length,
-  "files,",
-  state.roadmapData.dependencies.length,
-  "deps",
-);
+function postRoadmapCommand(message: RoadmapCommandMessage): void {
+  state.vscode.postMessage(message);
+}
 
-// ✅ Toast notification function
+function isRoadmapData(value: unknown): value is RoadmapData {
+  if (typeof value !== "object" || value === null) {
+    return false;
+  }
+  const data = value as Partial<RoadmapData>;
+  return (
+    Array.isArray(data.files) &&
+    Array.isArray(data.dependencies) &&
+    typeof data.totalFiles === "number" &&
+    typeof data.totalFunctions === "number" &&
+    typeof data.totalConnections === "number"
+  );
+}
+
+function escapeHtml(text: string): string {
+  return text
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+function severityLabel(issue: RoadmapDiagnosticItem): string {
+  const icon =
+    issue.severity === "error"
+      ? "E"
+      : issue.severity === "warning"
+        ? "W"
+        : issue.severity === "info"
+          ? "I"
+          : "H";
+  const source = issue.source ? ` - ${escapeHtml(issue.source)}` : "";
+  const code = issue.code ? ` (${escapeHtml(issue.code)})` : "";
+  return `${icon}${source}${code}`;
+}
+
+function renderIssues(
+  container: HTMLElement,
+  filePath: string,
+  issues: RoadmapDiagnosticItem[],
+): void {
+  if (issues.length === 0) {
+    container.innerHTML =
+      '<div class="error-lines-empty">No diagnostics reported by VS Code for this file.</div>';
+    return;
+  }
+
+  const issuesByLine = new Map<number, RoadmapDiagnosticItem[]>();
+  for (const issue of issues) {
+    const lineIssues = issuesByLine.get(issue.line) || [];
+    lineIssues.push(issue);
+    issuesByLine.set(issue.line, lineIssues);
+  }
+
+  const sortedLines = Array.from(issuesByLine.keys()).sort((a, b) => a - b);
+  let html = '<div class="error-lines-list">';
+
+  for (const lineNum of sortedLines) {
+    const lineIssues = issuesByLine.get(lineNum) || [];
+    const first = lineIssues[0];
+    const preview =
+      first.message.length > 90
+        ? `${escapeHtml(first.message.substring(0, 90))}...`
+        : escapeHtml(first.message);
+    const tooltip = escapeHtml(lineIssues.map((item) => item.message).join("\n"));
+    const badges = lineIssues
+      .map(
+        (item) =>
+          `<span class="diag-chip diag-${item.severity}">${severityLabel(item)}</span>`,
+      )
+      .join("");
+
+    html += `
+      <div class="error-line-item"
+           onclick="event.stopPropagation(); window.roadmapActions.goToFunction('${filePath.replace(/\\/g, "\\\\")}', ${lineNum})"
+           title="${tooltip}">
+        <div class="error-line-row">
+          <div class="error-line-number">Line ${lineNum}</div>
+          <div class="error-line-chips">${badges}</div>
+        </div>
+        <div class="error-line-message">${preview}</div>
+      </div>
+    `;
+  }
+
+  html += "</div>";
+  container.innerHTML = html;
+}
+
 function showCopyToast(message: string): void {
   const existing = document.querySelector(".copy-toast");
-  if (existing) existing.remove();
+  if (existing) {
+    existing.remove();
+  }
 
   const toast = document.createElement("div");
   toast.className = "copy-toast";
@@ -60,11 +154,40 @@ function showCopyToast(message: string): void {
   }, 2000);
 }
 
-// Expose actions to window for HTML onclick handlers
+function formatTimestamp(timestamp: number): string {
+  return new Date(timestamp).toLocaleTimeString([], {
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+  });
+}
+
+function updateLastUpdated(timestamp: number): void {
+  const metaEl = document.getElementById("roadmapLastUpdated");
+  if (!metaEl) return;
+  metaEl.textContent = `Updated ${formatTimestamp(timestamp)}`;
+}
+
+function finishRefreshUi(ok: boolean, timestamp?: number): void {
+  const btn = getElement<HTMLButtonElement>("refreshRoadmapBtn");
+  btn.disabled = false;
+  btn.textContent = "Refresh Errors";
+  refreshInProgress = false;
+  if (refreshCooldownTimer !== null) {
+    window.clearTimeout(refreshCooldownTimer);
+  }
+  refreshCooldownTimer = window.setTimeout(() => {
+    refreshCooldownTimer = null;
+  }, 800);
+
+  if (ok && timestamp) {
+    updateLastUpdated(timestamp);
+  }
+}
+
 declare global {
   interface Window {
-    ROADMAP_DATA?: typeof state.roadmapData;
-    __errorDetailsContainer?: string;
+    ROADMAP_DATA: typeof state.roadmapData;
     roadmapActions: {
       goToFunction: (filePath: string, line: number) => void;
       jumpToFile: (filePath: string) => void;
@@ -131,7 +254,9 @@ function showEmptyState(
     ) as HTMLButtonElement | null;
     if (btn) {
       btn.onclick = () => {
-        state.vscode.postMessage({ command: actionCommand });
+        postRoadmapCommand({
+          command: actionCommand as RoadmapCommandName,
+        });
       };
     }
   }
@@ -208,7 +333,7 @@ function setupSearchControls(): void {
   updateSearchMeta();
 }
 
-function applyRoadmapDataUpdate(newData: typeof state.roadmapData): void {
+function applyRoadmapDataUpdate(newData: RoadmapData): void {
   const wasEmpty = (state.roadmapData?.files?.length || 0) === 0;
   const previousScale = state.scale;
   const previousTranslateX = state.translateX;
@@ -244,19 +369,13 @@ function applyRoadmapDataUpdate(newData: typeof state.roadmapData): void {
 
 function autoExpandFoldersWithFiles(): void {
   if (!state.hierarchyData) {
-    console.log("⚠️ No hierarchy data");
     return;
   }
 
-  let expandedCount = 0;
-
   function expandFolder(node: HierarchyNode): void {
     const nodeId = getNodeId(node);
-
     if (node.files && node.files.length > 0 && nodeId) {
       state.expandedFolders.add(nodeId);
-      expandedCount++;
-      console.log(`📂 Expanded: ${node.name} (${node.files.length} files)`);
     }
 
     if (node.children) {
@@ -267,290 +386,7 @@ function autoExpandFoldersWithFiles(): void {
   }
 
   expandFolder(state.hierarchyData);
-  console.log(`✅ Auto-expanded ${expandedCount} folders`);
 }
-
-window.roadmapActions = {
-  goToFunction: (filePath: string, line: number) => {
-    state.vscode.postMessage({
-      command: "saveState",
-      state: {
-        scale: state.scale,
-        translateX: state.translateX,
-        translateY: state.translateY,
-        focusedFilePath: state.focusedFile?.fullPath,
-      },
-    });
-
-    state.vscode.postMessage({
-      command: "goToFunction",
-      filePath: filePath,
-      line: line || 1,
-    });
-  },
-
-  jumpToFile: jumpToFile,
-
-  debugExecutionFlow: (filePath: string) => {
-    console.log("🐛 Debug execution flow for:", filePath);
-    state.vscode.postMessage({
-      command: "debugExecutionFlow",
-      filePath: filePath,
-    });
-  },
-
-  copyFile: (filePath: string) => {
-    console.log("📄 Copying file:", filePath);
-    state.vscode.postMessage({
-      command: "copyFile",
-      filePath: filePath,
-    });
-    const fileName = filePath.split(/[/\\]/).pop() || filePath;
-    showCopyToast(`📄 ${fileName} copied`);
-  },
-
-  copyAll: (filePath: string) => {
-    if (!state.roadmapData || !state.hierarchyData) return;
-
-    const deps = state.roadmapData.dependencies || [];
-    const imports = deps.filter((d) => d.importerFilePath === filePath);
-    const importedBy = deps.filter((d) => d.importedFilePath === filePath);
-
-    const allFiles = new Set<string>();
-    allFiles.add(filePath);
-    imports.forEach((dep) => allFiles.add(dep.importedFilePath));
-    importedBy.forEach((dep) => allFiles.add(dep.importerFilePath));
-
-    console.log("📋 Copying all files:", Array.from(allFiles));
-    state.vscode.postMessage({
-      command: "copyAllFiles",
-      files: Array.from(allFiles),
-    });
-
-    showCopyToast(`📋 ${allFiles.size} files copied`);
-  },
-
-  copyForAI: (filePath: string) => {
-    if (!state.roadmapData || !state.hierarchyData) return;
-
-    const fileNode = findFileNodeByPath(state.hierarchyData, filePath);
-    if (!fileNode) return;
-
-    const deps = state.roadmapData.dependencies || [];
-    const imports = deps.filter((d) => d.importerFilePath === filePath);
-    const importedBy = deps.filter((d) => d.importedFilePath === filePath);
-
-    // Collect all related files
-    const allFiles = new Set<string>();
-    allFiles.add(filePath);
-    imports.forEach((dep) => allFiles.add(dep.importedFilePath));
-    importedBy.forEach((dep) => allFiles.add(dep.importerFilePath));
-
-    const fileName = fileNode.name;
-    const funcCount = fileNode.functions?.length || 0;
-
-    let context = `# 🐛 Fix These Errors\n\n`;
-    context += `## Error File: ${fileName}\n\n`;
-
-    if (fileNode.errorCount > 0) {
-      context += `### Errors Found:\n`;
-      context += `${fileNode.errorCount} error${fileNode.errorCount > 1 ? "s" : ""} detected in this file.\n\n`;
-    }
-
-    context += `### Context:\n`;
-    context += `- **Functions**: ${funcCount}\n`;
-    context += `- **Imports**: ${imports.length}\n`;
-    context += `- **Used By**: ${importedBy.length}\n\n`;
-
-    if (imports.length > 0) {
-      context += `## 📥 Imports\n\n`;
-      imports.forEach((dep) => {
-        const depFile = dep.importedFilePath.split(/[/\\]/).pop();
-        context += `- **${depFile}**: ${dep.importedNames.join(", ")}\n`;
-      });
-      context += `\n`;
-    }
-
-    if (importedBy.length > 0) {
-      context += `## 📤 Used By\n\n`;
-      importedBy.forEach((dep) => {
-        const depFile = dep.importerFilePath.split(/[/\\]/).pop();
-        context += `- **${depFile}**: ${dep.importedNames.join(", ")}\n`;
-      });
-      context += `\n`;
-    }
-
-    context += `### Instructions:\n`;
-    context += `Please fix ALL errors listed above in the ${fileName} file.\n\n`;
-    context += `**Requirements:**\n`;
-    context += `1. Fix each error on the specified line\n`;
-    context += `2. Maintain existing functionality\n`;
-    context += `3. Keep the same code style\n`;
-    context += `4. Return ONLY the corrected code for ${fileName}\n`;
-    context += `5. No explanations needed - just the fixed code\n\n`;
-    context += `---\n\n`;
-    context += `## File Content:\n`;
-    context += `\`\`\`javascript\n`;
-    context += `// ${fileName} content will be inserted here by the extension\n`;
-    context += `\`\`\`\n`;
-
-    // Send AI context with ALL related files
-    state.vscode.postMessage({
-      command: "copyAIContext",
-      errorFile: filePath,
-      context: context,
-      files: Array.from(allFiles), // Include all files for AI
-    });
-
-    showCopyToast(`🤖 AI context with ${allFiles.size} files copied!`);
-  },
-
-  copyForAIErrorOnly: (filePath: string) => {
-    if (!state.roadmapData || !state.hierarchyData) return;
-
-    const fileNode = findFileNodeByPath(state.hierarchyData, filePath);
-    if (!fileNode) return;
-
-    const deps = state.roadmapData.dependencies || [];
-    const imports = deps.filter((d) => d.importerFilePath === filePath);
-    const importedBy = deps.filter((d) => d.importedFilePath === filePath);
-
-    const fileName = fileNode.name;
-    const funcCount = fileNode.functions?.length || 0;
-
-    let context = `# 🐛 Fix These Errors\n\n`;
-    context += `## Error File: ${fileName}\n\n`;
-
-    if (fileNode.errorCount > 0) {
-      context += `### Errors Found:\n`;
-      context += `${fileNode.errorCount} error${fileNode.errorCount > 1 ? "s" : ""} detected in this file.\n\n`;
-    }
-
-    context += `### Context:\n`;
-    context += `- **Functions**: ${funcCount}\n`;
-    context += `- **Imports**: ${imports.length}\n`;
-    context += `- **Used By**: ${importedBy.length}\n\n`;
-
-    if (imports.length > 0) {
-      context += `## 📥 Imports\n\n`;
-      imports.forEach((dep) => {
-        const depFile = dep.importedFilePath.split(/[/\\]/).pop();
-        context += `- **${depFile}**: ${dep.importedNames.join(", ")}\n`;
-      });
-      context += `\n`;
-    }
-
-    if (importedBy.length > 0) {
-      context += `## 📤 Used By\n\n`;
-      importedBy.forEach((dep) => {
-        const depFile = dep.importerFilePath.split(/[/\\]/).pop();
-        context += `- **${depFile}**: ${dep.importedNames.join(", ")}\n`;
-      });
-      context += `\n`;
-    }
-
-    context += `### Instructions:\n`;
-    context += `Please fix ALL errors listed above in the ${fileName} file.\n\n`;
-    context += `**Requirements:**\n`;
-    context += `1. Fix each error on the specified line\n`;
-    context += `2. Maintain existing functionality\n`;
-    context += `3. Keep the same code style\n`;
-    context += `4. Return ONLY the corrected code for ${fileName}\n`;
-    context += `5. No explanations needed - just the fixed code\n\n`;
-    context += `---\n\n`;
-    context += `## File Content:\n`;
-    context += `\`\`\`javascript\n`;
-    context += `// ${fileName} content will be inserted here by the extension\n`;
-    context += `\`\`\`\n`;
-
-    // Send AI context with ONLY error file (no related files)
-    state.vscode.postMessage({
-      command: "copyAIContext",
-      errorFile: filePath,
-      context: context,
-      files: [filePath], // Only the error file
-    });
-
-    showCopyToast(`🤖 AI context (error file only) copied!`);
-  },
-
-  toggleSection: (sectionId: string) => {
-    const content = document.getElementById(`${sectionId}-content`);
-    const toggle = document.getElementById(`${sectionId}-toggle`);
-
-    if (!content || !toggle) return;
-
-    const isCollapsed = content.classList.contains("collapsed");
-
-    if (isCollapsed) {
-      content.classList.remove("collapsed");
-      toggle.textContent = "▼";
-    } else {
-      content.classList.add("collapsed");
-      toggle.textContent = "▶";
-    }
-  },
-
-  loadErrorDetails: (filePath: string) => {
-    const containerId = `errorLines-${filePath.replace(/[^a-zA-Z0-9]/g, "_")}`;
-    const container = document.getElementById(containerId);
-    if (!container) return;
-
-    // Request error details from VS Code
-    state.vscode.postMessage({
-      command: "getErrorDetails",
-      filePath: filePath,
-    });
-
-    // Store container ID for when we receive the response
-    window.__errorDetailsContainer = containerId;
-  },
-
-  toggleCopyDropdown: () => {
-    const dropdown = document.getElementById("copyDropdownMenu");
-    if (!(dropdown instanceof HTMLElement)) return;
-
-    const shouldOpen = !dropdown.classList.contains("show");
-    setCopyDropdownState(dropdown, shouldOpen);
-  },
-
-  closeCopyDropdown: () => {
-    const dropdown = document.getElementById("copyDropdownMenu");
-    if (!(dropdown instanceof HTMLElement)) return;
-
-    setCopyDropdownState(dropdown, false);
-  },
-
-  resetView: () => {
-    state.clearExpandedFolders();
-    autoExpandFoldersWithFiles();
-    renderGraph();
-    resetView();
-  },
-
-  closeFunctionPanel: closeFunctionPanel,
-  toggleFunctionPanel: toggleFunctionPanel,
-  clearFileSelection: clearFileSelection,
-  zoomIn: zoomIn,
-  zoomOut: zoomOut,
-
-  refreshRoadmap: () => {
-    const btn = getElement<HTMLButtonElement>("refreshRoadmapBtn");
-    btn.disabled = true;
-    btn.textContent = "Refreshing...";
-    state.vscode.postMessage({ command: "refreshRoadmapData" });
-  },
-
-  clearSearch: () => {
-    const searchInput = document.getElementById(
-      "roadmapSearchInput",
-    ) as HTMLInputElement | null;
-    if (searchInput) {
-      searchInput.value = "";
-    }
-    applySearch("");
-  },
-};
 
 function setCopyDropdownState(dropdown: HTMLElement, isOpen: boolean): void {
   const container = dropdown.closest(".copy-dropdown-container");
@@ -572,7 +408,208 @@ function setCopyDropdownState(dropdown: HTMLElement, isOpen: boolean): void {
   container.style.setProperty("--copy-dropdown-space", "0px");
 }
 
-// Close dropdown when clicking outside
+window.roadmapActions = {
+  goToFunction: (filePath: string, line: number) => {
+    postRoadmapCommand({
+      command: "saveState",
+      state: {
+        scale: state.scale,
+        translateX: state.translateX,
+        translateY: state.translateY,
+        focusedFilePath: state.focusedFile?.fullPath,
+      },
+    });
+
+    postRoadmapCommand({
+      command: "goToFunction",
+      filePath,
+      line: line || 1,
+    });
+  },
+
+  jumpToFile,
+
+  debugExecutionFlow: (filePath: string) => {
+    postRoadmapCommand({
+      command: "debugExecutionFlow",
+      filePath,
+    });
+  },
+
+  copyFile: (filePath: string) => {
+    postRoadmapCommand({
+      command: "copyFile",
+      filePath,
+    });
+    const fileName = filePath.split(/[/\\]/).pop() || filePath;
+    showCopyToast(`Copied ${fileName}`);
+  },
+
+  copyAll: (filePath: string) => {
+    if (!state.roadmapData || !state.hierarchyData) return;
+
+    const deps = state.roadmapData.dependencies || [];
+    const imports = deps.filter((d) => d.importerFilePath === filePath);
+    const importedBy = deps.filter((d) => d.importedFilePath === filePath);
+
+    const allFiles = new Set<string>();
+    allFiles.add(filePath);
+    imports.forEach((dep) => allFiles.add(dep.importedFilePath));
+    importedBy.forEach((dep) => allFiles.add(dep.importerFilePath));
+
+    postRoadmapCommand({
+      command: "copyAllFiles",
+      files: Array.from(allFiles),
+    });
+
+    showCopyToast(`Copied ${allFiles.size} files`);
+  },
+
+  copyForAI: (filePath: string) => {
+    if (!state.roadmapData || !state.hierarchyData) return;
+
+    const fileNode = findFileNodeByPath(state.hierarchyData, filePath);
+    if (!fileNode) return;
+
+    const deps = state.roadmapData.dependencies || [];
+    const imports = deps.filter((d) => d.importerFilePath === filePath);
+    const importedBy = deps.filter((d) => d.importedFilePath === filePath);
+
+    const allFiles = new Set<string>();
+    allFiles.add(filePath);
+    imports.forEach((dep) => allFiles.add(dep.importedFilePath));
+    importedBy.forEach((dep) => allFiles.add(dep.importerFilePath));
+
+    const fileName = fileNode.name;
+    const funcCount = fileNode.functions?.length || 0;
+    let context = `# Fix These Diagnostics\n\n`;
+    context += `## File: ${fileName}\n\n`;
+    context += `### Context\n`;
+    context += `- Functions: ${funcCount}\n`;
+    context += `- Imports: ${imports.length}\n`;
+    context += `- Used by: ${importedBy.length}\n\n`;
+    context += `## File Content\n`;
+    context += "```javascript\n";
+    context += `// ${fileName} content will be inserted here by the extension\n`;
+    context += "```\n";
+
+    postRoadmapCommand({
+      command: "copyAIContext",
+      errorFile: filePath,
+      context,
+      files: Array.from(allFiles),
+    });
+
+    showCopyToast("AI context copied");
+  },
+
+  copyForAIErrorOnly: (filePath: string) => {
+    if (!state.roadmapData || !state.hierarchyData) return;
+
+    const fileNode = findFileNodeByPath(state.hierarchyData, filePath);
+    if (!fileNode) return;
+
+    const fileName = fileNode.name;
+    let context = `# Fix These Diagnostics\n\n`;
+    context += `## File: ${fileName}\n\n`;
+    context += `## File Content\n`;
+    context += "```javascript\n";
+    context += `// ${fileName} content will be inserted here by the extension\n`;
+    context += "```\n";
+
+    postRoadmapCommand({
+      command: "copyAIContext",
+      errorFile: filePath,
+      context,
+      files: [filePath],
+    });
+
+    showCopyToast("AI context copied");
+  },
+
+  toggleSection: (sectionId: string) => {
+    const content = document.getElementById(`${sectionId}-content`);
+    const toggle = document.getElementById(`${sectionId}-toggle`);
+
+    if (!content || !toggle) return;
+
+    const isCollapsed = content.classList.contains("collapsed");
+    if (isCollapsed) {
+      content.classList.remove("collapsed");
+      toggle.textContent = "▼";
+    } else {
+      content.classList.add("collapsed");
+      toggle.textContent = "▶";
+    }
+  },
+
+  loadErrorDetails: (filePath: string) => {
+    const containerId = `errorLines-${filePath.replace(/[^a-zA-Z0-9]/g, "_")}`;
+    const container = document.getElementById(containerId);
+    if (!container) return;
+
+    const requestId = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    pendingErrorDetails.set(requestId, containerId);
+    container.innerHTML = '<div class="error-lines-loading">Loading diagnostics...</div>';
+
+    postRoadmapCommand({
+      command: "getErrorDetails",
+      filePath,
+      requestId,
+      includeWarnings: true,
+    });
+  },
+
+  toggleCopyDropdown: () => {
+    const dropdown = document.getElementById("copyDropdownMenu");
+    if (!(dropdown instanceof HTMLElement)) return;
+
+    const shouldOpen = !dropdown.classList.contains("show");
+    setCopyDropdownState(dropdown, shouldOpen);
+  },
+
+  closeCopyDropdown: () => {
+    const dropdown = document.getElementById("copyDropdownMenu");
+    if (!(dropdown instanceof HTMLElement)) return;
+    setCopyDropdownState(dropdown, false);
+  },
+
+  resetView: () => {
+    state.clearExpandedFolders();
+    autoExpandFoldersWithFiles();
+    renderGraph();
+    resetView();
+  },
+
+  closeFunctionPanel,
+  toggleFunctionPanel,
+  clearFileSelection,
+  zoomIn,
+  zoomOut,
+
+  refreshRoadmap: () => {
+    if (refreshInProgress || refreshCooldownTimer !== null) {
+      return;
+    }
+
+    refreshInProgress = true;
+    const btn = getElement<HTMLButtonElement>("refreshRoadmapBtn");
+    btn.disabled = true;
+    btn.textContent = "Refreshing...";
+    postRoadmapCommand({ command: "refreshRoadmapData" });
+  },
+
+  clearSearch: () => {
+    const searchInput = document.getElementById(
+      "roadmapSearchInput",
+    ) as HTMLInputElement | null;
+    if (searchInput) {
+      searchInput.value = "";
+    }
+    applySearch("");
+  },
+};
+
 document.addEventListener("click", (e) => {
   const dropdown = document.getElementById("copyDropdownMenu");
   const container = document.querySelector(".copy-dropdown-container");
@@ -589,35 +626,31 @@ document.addEventListener("click", (e) => {
 function init(): void {
   ensureInteractionsInitialized();
   setupSearchControls();
+
   if (state.roadmapData?.files?.length > 0) {
-    console.log("✅ Init:", state.roadmapData.files.length, "files");
-
     autoExpandFoldersWithFiles();
-
     renderGraph();
 
     const shouldRestore =
       new URLSearchParams(window.location.search).get("restore") === "true";
-
-    if (shouldRestore) {
-      console.log("🔄 Waiting for state restoration...");
-    } else {
+    if (!shouldRestore) {
       setTimeout(resetView, 100);
     }
   } else {
-    console.error("❌ No files");
     showEmptyState("No files found", "No roadmap data is loaded yet.");
   }
 
-  state.vscode.postMessage({ command: "roadmapWebviewReady" });
+  updateLastUpdated(Date.now());
+  postRoadmapCommand({ command: "roadmapWebviewReady" });
 }
 
-window.addEventListener("message", (event) => {
+window.addEventListener("message", (event: MessageEvent<unknown>) => {
   const message = event.data;
+  if (!isRoadmapWebviewMessage(message)) {
+    return;
+  }
 
   if (message.type === "restoreState" && message.state) {
-    console.log("🔄 Restoring view state:", message.state);
-
     state.setScale(message.state.scale);
     state.setTranslate(message.state.translateX, message.state.translateY);
     updateTransform();
@@ -634,22 +667,24 @@ window.addEventListener("message", (event) => {
         focusOnFile(fileNode);
       }
     }
+    return;
   }
 
-  if (message.type === "roadmapDataUpdated" && message.data) {
+  if (message.type === "roadmapDataUpdated") {
+    if (!isRoadmapData(message.data)) {
+      finishRefreshUi(false);
+      return;
+    }
+
     applyRoadmapDataUpdate(message.data);
     setupSearchControls();
-
-    const btn = getElement<HTMLButtonElement>("refreshRoadmapBtn");
-    btn.disabled = false;
-    btn.textContent = "Refresh Errors";
+    finishRefreshUi(true, message.updatedAt || Date.now());
+    return;
   }
 
   if (message.type === "roadmapDataRefreshFailed") {
-    const btn = getElement<HTMLButtonElement>("refreshRoadmapBtn");
-    btn.disabled = false;
-    btn.textContent = "Refresh Errors";
-    console.error("❌ Failed to refresh roadmap data:", message.error);
+    finishRefreshUi(false, message.updatedAt || Date.now());
+    return;
   }
 
   if (message.type === "roadmapEmptyState") {
@@ -659,54 +694,19 @@ window.addEventListener("message", (event) => {
       message.actionLabel,
       message.actionCommand,
     );
+    return;
   }
 
-  if (message.type === "errorDetails" && message.errors) {
-    const containerId = window.__errorDetailsContainer;
+  if (message.type === "errorDetails") {
+    const containerId = pendingErrorDetails.get(message.requestId);
+    pendingErrorDetails.delete(message.requestId);
+    if (!containerId) return;
+
     const container = document.getElementById(containerId);
     if (!container) return;
-
-    const errors = message.errors as Array<{ line: number; message: string }>;
-
-    // Group errors by line number to avoid duplicates
-    const errorsByLine = new Map<number, string[]>();
-    errors.forEach((error) => {
-      const messages = errorsByLine.get(error.line) || [];
-      messages.push(error.message);
-      errorsByLine.set(error.line, messages);
-    });
-
-    // Sort by line number and show ALL lines (no limit)
-    const sortedLines = Array.from(errorsByLine.keys()).sort((a, b) => a - b);
-
-    let html = '<div class="error-lines-list">';
-
-    sortedLines.forEach((lineNum) => {
-      const messages = errorsByLine.get(lineNum)!;
-
-      // Full message for tooltip
-      const fullTooltip = messages.join("\n").replace(/"/g, "&quot;");
-
-      // Short preview for display (first message, max 50 chars)
-      const firstMessage = messages[0];
-      const shortPreview =
-        firstMessage.length > 50
-          ? firstMessage.substring(0, 50) + "..."
-          : firstMessage;
-
-      html += `
-        <div class="error-line-item" 
-             onclick="event.stopPropagation(); window.roadmapActions.goToFunction('${message.filePath.replace(/\\/g, "\\\\")}', ${lineNum})"
-             title="${fullTooltip}">
-          <div class="error-line-number">Line ${lineNum}</div>
-          <div class="error-line-message">${shortPreview}</div>
-        </div>
-      `;
-    });
-
-    html += "</div>";
-    container.innerHTML = html;
+    renderIssues(container, message.filePath, message.issues);
   }
 });
 
 init();
+

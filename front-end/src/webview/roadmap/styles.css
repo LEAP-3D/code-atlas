@@ -2307,3 +2307,55 @@ svg.connections {
 .error-line-item:hover .error-line-message {
   color: #fecaca;
 }
+
+.refresh-meta {
+  font-size: 11px;
+  color: #9ca3af;
+  min-width: 126px;
+  text-align: right;
+}
+
+.error-lines-empty {
+  font-size: 12px;
+  color: #9ca3af;
+  padding: 8px 2px;
+}
+
+.error-line-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+}
+
+.error-line-chips {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.diag-chip {
+  font-size: 10px;
+  border-radius: 999px;
+  padding: 2px 6px;
+  border: 1px solid transparent;
+}
+
+.diag-error {
+  color: #fecaca;
+  border-color: #ef4444;
+  background: rgba(127, 29, 29, 0.45);
+}
+
+.diag-warning {
+  color: #fde68a;
+  border-color: #f59e0b;
+  background: rgba(120, 53, 15, 0.45);
+}
+
+.diag-info,
+.diag-hint {
+  color: #bfdbfe;
+  border-color: #3b82f6;
+  background: rgba(30, 58, 138, 0.35);
+}

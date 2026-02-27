@@ -86,25 +86,22 @@ export function showFunctionPanel(fileData: FileNode): void {
   `;
 
   // ✅ Collapsible Errors section (like Functions/Dependencies)
-  const errorSection =
-    fileData.errorCount > 0
-      ? `
+  const errorSection = `
       <div class="error-section">
         <div class="section-header" onclick="window.roadmapActions.toggleSection('errors')">
           <div class="section-title">
             <span class="section-icon">⚠️</span>
-            <span>Errors</span>
+            <span>Errors & Warnings</span>
             <span class="section-count error-count">${fileData.errorCount}</span>
           </div>
           <span class="section-toggle" id="errors-toggle">▼</span>
         </div>
         <div class="section-content" id="errors-content">
           <div class="error-lines-container" id="errorLines-${fileData.fullPath.replace(/[^a-zA-Z0-9]/g, "_")}">
-            <div class="error-lines-loading">Loading errors...</div>
+            <div class="error-lines-loading">Loading diagnostics...</div>
           </div>
         </div>
-      </div>`
-      : "";
+      </div>`;
 
   // ✅ ORDER: Errors FIRST, then Functions, then Dependencies
   const funcSection = `
@@ -217,13 +214,10 @@ export function showFunctionPanel(fileData: FileNode): void {
       panelToggleOpeningTimer = null;
     }, 260);
   }
+  setTimeout(() => {
+    window.roadmapActions.loadErrorDetails(fileData.fullPath);
+  }, 100);
 
-  // Load error details if there are errors
-  if (fileData.errorCount > 0) {
-    setTimeout(() => {
-      window.roadmapActions.loadErrorDetails(fileData.fullPath);
-    }, 100);
-  }
 }
 
 /**
@@ -524,3 +518,6 @@ export function jumpToFile(filePath: string): void {
     }, 50);
   }
 }
+
+
+

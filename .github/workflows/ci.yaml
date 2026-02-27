@@ -27,21 +27,19 @@ jobs:
         with:
           node-version: 20
 
-      # ---------- FRONT-END LINT ----------
       - name: Install & lint front-end
         working-directory: front-end
         run: |
-          npm install
+          npm ci
           npm run lint
 
-      # ---------- BACK-END LINT ----------
       - name: Install & lint back-end
         working-directory: back-end
         run: |
-          npm install
+          npm ci
           npm run lint
 
-  build:
+  typecheck:
     runs-on: ubuntu-latest
 
     steps:
@@ -54,16 +52,65 @@ jobs:
         with:
           node-version: 20
 
-      # ---------- FRONT-END BUILD ----------
+      - name: Install & typecheck front-end
+        working-directory: ./front-end
+        run: |
+          npm ci
+          npm run typecheck
+
+      - name: Install & typecheck back-end
+        working-directory: ./back-end
+        run: |
+          npm ci
+          npm run typecheck
+
+  integration-tests:
+    runs-on: ubuntu-latest
+    needs: [lint, typecheck]
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install & compile front-end
+        working-directory: ./front-end
+        run: |
+          npm ci
+          npm run compile
+
+      - name: Run extension integration smoke tests
+        working-directory: ./front-end
+        run: xvfb-run -a npm test
+
+  build:
+    runs-on: ubuntu-latest
+    needs: [lint, typecheck, integration-tests]
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
       - name: Install & build front-end
         working-directory: ./front-end
         run: |
-          npm install
+          npm ci
           npm run build
 
-      # ---------- BACK-END BUILD ----------
       - name: Install & build back-end
         working-directory: ./back-end
         run: |
-          npm install
+          npm ci
           npm run build
+
