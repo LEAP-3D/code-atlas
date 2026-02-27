@@ -29,10 +29,13 @@ export function showFunctionPanel(fileData: FileNode): void {
   const copyButtons = `
     <div class="copy-buttons-container">
       <button class="copy-file-btn" onclick="event.stopPropagation(); window.roadmapActions.copyFile('${fileData.fullPath.replace(/\\/g, "\\\\")}')">
-        📄 Copy This File
+        📄 Copy File
       </button>
       <button class="copy-all-btn" onclick="event.stopPropagation(); window.roadmapActions.copyAll('${fileData.fullPath.replace(/\\/g, "\\\\")}')">
-        📋 Copy All Related
+        📋 Copy All
+      </button>
+      <button class="copy-ai-btn" onclick="event.stopPropagation(); window.roadmapActions.copyForAI('${fileData.fullPath.replace(/\\/g, "\\\\")}')">
+        🤖 Copy for AI
       </button>
     </div>
   `;
@@ -60,76 +63,96 @@ export function showFunctionPanel(fileData: FileNode): void {
     ${errWarn}
   `;
 
-  const depsSection = `
-    <div class="dependencies-section">
-      <div class="section-title">🔗 Dependencies</div>
-      ${
-        imports.length > 0
-          ? `
-        <div class="dep-subsection">
-          <div class="dep-subtitle">📥 Imports (${imports.length})</div>
-          ${imports
-            .map(
-              (d) => `
-            <div class="dep-item" onclick="window.roadmapActions.jumpToFile('${d.importedFilePath.replace(/\\/g, "\\\\")}')">
-              <div class="dep-icon">📄</div>
-              <div class="dep-details">
-                <div class="dep-file-name">${d.importedFilePath.split("/").pop()}</div>
-                <div class="dep-imported-names">${d.importedNames.join(", ")}</div>
-              </div>
-              <div class="dep-arrow">→</div>
+  // ✅ Functions FIRST (дээр байна)
+  const funcSection = `
+    <div class="functions-section">
+      <div class="section-header" onclick="window.roadmapActions.toggleSection('funcs')">
+        <div class="section-title">
+          <span class="section-icon">⚡</span>
+          <span>Functions</span>
+          <span class="section-count">${fileData.functions?.length || 0}</span>
+        </div>
+        <span class="section-toggle" id="funcs-toggle">▼</span>
+      </div>
+      <div class="section-content" id="funcs-content">
+        ${
+          fileData.functions
+            ?.map(
+              (fn) => `
+          <div class="function-card" onclick="window.roadmapActions.goToFunction('${fileData.fullPath.replace(/\\/g, "\\\\")}', ${fn.startLine || 1})">
+            <div class="function-icon">${getFunctionIcon(fn.name)}</div>
+            <div class="function-details">
+              <div class="function-name">${fn.name}</div>
+              <div class="function-meta">${fn.startLine ? `Line ${fn.startLine}` : ""}${fn.calls && fn.calls.length > 0 ? ` • ${fn.calls.length} calls` : ""}</div>
             </div>
-          `,
+            <div class="function-goto">→</div>
+          </div>
+        `,
             )
-            .join("")}
-        </div>`
-          : ""
-      }
-      ${
-        importedBy.length > 0
-          ? `
-        <div class="dep-subsection">
-          <div class="dep-subtitle">📤 Imported by (${importedBy.length})</div>
-          ${importedBy
-            .map(
-              (d) => `
-            <div class="dep-item" onclick="window.roadmapActions.jumpToFile('${d.importerFilePath.replace(/\\/g, "\\\\")}')">
-              <div class="dep-icon">📄</div>
-              <div class="dep-details">
-                <div class="dep-file-name">${d.importerFilePath.split("/").pop()}</div>
-                <div class="dep-imported-names">${d.importedNames.join(", ")}</div>
-              </div>
-              <div class="dep-arrow">→</div>
-            </div>
-          `,
-            )
-            .join("")}
-        </div>`
-          : ""
-      }
-      ${imports.length === 0 && importedBy.length === 0 ? '<div class="no-deps">No dependencies</div>' : ""}
+            .join("") || '<p class="no-content">No functions</p>'
+        }
+      </div>
     </div>
   `;
 
-  const funcSection = `
-    <div class="functions-section">
-      <div class="section-title">⚡ Functions (${fileData.functions?.length || 0})</div>
-      ${
-        fileData.functions
-          ?.map(
-            (fn) => `
-        <div class="function-card" onclick="window.roadmapActions.goToFunction('${fileData.fullPath.replace(/\\/g, "\\\\")}', ${fn.startLine || 1})">
-          <div class="function-icon">${getFunctionIcon(fn.name)}</div>
-          <div class="function-details">
-            <div class="function-name">${fn.name}</div>
-            <div class="function-meta">${fn.startLine ? `Line ${fn.startLine}` : ""}${fn.calls && fn.calls.length > 0 ? ` • Calls: ${fn.calls.slice(0, 2).join(", ")}${fn.calls.length > 2 ? "..." : ""}` : ""}</div>
-          </div>
-          <div class="function-goto">→</div>
+  // ✅ Dependencies SECOND (доор байна)
+  const depsSection = `
+    <div class="dependencies-section">
+      <div class="section-header" onclick="window.roadmapActions.toggleSection('deps')">
+        <div class="section-title">
+          <span class="section-icon">🔗</span>
+          <span>Dependencies</span>
+          <span class="section-count">${imports.length + importedBy.length}</span>
         </div>
-      `,
-          )
-          .join("") || '<p style="color:#666;padding:12px">No functions</p>'
-      }
+        <span class="section-toggle" id="deps-toggle">▼</span>
+      </div>
+      <div class="section-content" id="deps-content">
+        ${
+          imports.length > 0
+            ? `
+          <div class="dep-subsection">
+            <div class="dep-subtitle">📥 Imports (${imports.length})</div>
+            ${imports
+              .map(
+                (d) => `
+              <div class="dep-item" onclick="window.roadmapActions.jumpToFile('${d.importedFilePath.replace(/\\/g, "\\\\")}')">
+                <div class="dep-icon">📄</div>
+                <div class="dep-details">
+                  <div class="dep-file-name">${d.importedFilePath.split("/").pop()}</div>
+                  <div class="dep-imported-names">${d.importedNames.join(", ")}</div>
+                </div>
+                <div class="dep-arrow">→</div>
+              </div>
+            `,
+              )
+              .join("")}
+          </div>`
+            : ""
+        }
+        ${
+          importedBy.length > 0
+            ? `
+          <div class="dep-subsection">
+            <div class="dep-subtitle">📤 Imported by (${importedBy.length})</div>
+            ${importedBy
+              .map(
+                (d) => `
+              <div class="dep-item" onclick="window.roadmapActions.jumpToFile('${d.importerFilePath.replace(/\\/g, "\\\\")}')">
+                <div class="dep-icon">📄</div>
+                <div class="dep-details">
+                  <div class="dep-file-name">${d.importerFilePath.split("/").pop()}</div>
+                  <div class="dep-imported-names">${d.importedNames.join(", ")}</div>
+                </div>
+                <div class="dep-arrow">→</div>
+              </div>
+            `,
+              )
+              .join("")}
+          </div>`
+            : ""
+        }
+        ${imports.length === 0 && importedBy.length === 0 ? '<div class="no-content">No dependencies</div>' : ""}
+      </div>
     </div>
   `;
 
@@ -366,8 +389,7 @@ export function focusOnFile(fileData: FileNode): void {
     } else if (isImportedByFolder) {
       nodeObj.element.classList.add("imported-by-folder");
     } else if (isInPath) {
-      // Keep ancestor folders readable/full-size when a file is focused.
-      // "small" made parent/grandparent folders visibly shrink on click.
+      nodeObj.element.classList.add("small");
     } else {
       nodeObj.element.classList.add("dimmed");
     }
