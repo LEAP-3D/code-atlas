@@ -508,16 +508,17 @@ window.roadmapActions = {
 
   toggleCopyDropdown: () => {
     const dropdown = document.getElementById("copyDropdownMenu");
-    if (dropdown) {
-      dropdown.classList.toggle("show");
-    }
+    if (!(dropdown instanceof HTMLElement)) return;
+
+    const shouldOpen = !dropdown.classList.contains("show");
+    setCopyDropdownState(dropdown, shouldOpen);
   },
 
   closeCopyDropdown: () => {
     const dropdown = document.getElementById("copyDropdownMenu");
-    if (dropdown) {
-      dropdown.classList.remove("show");
-    }
+    if (!(dropdown instanceof HTMLElement)) return;
+
+    setCopyDropdownState(dropdown, false);
   },
 
   resetView: () => {
@@ -551,13 +552,37 @@ window.roadmapActions = {
   },
 };
 
+function setCopyDropdownState(dropdown: HTMLElement, isOpen: boolean): void {
+  const container = dropdown.closest(".copy-dropdown-container");
+  if (!(container instanceof HTMLElement)) {
+    dropdown.classList.toggle("show", isOpen);
+    return;
+  }
+
+  if (isOpen) {
+    dropdown.classList.add("show");
+    const dropdownSpace = dropdown.scrollHeight + 10;
+    container.classList.add("dropdown-open");
+    container.style.setProperty("--copy-dropdown-space", `${dropdownSpace}px`);
+    return;
+  }
+
+  dropdown.classList.remove("show");
+  container.classList.remove("dropdown-open");
+  container.style.setProperty("--copy-dropdown-space", "0px");
+}
+
 // Close dropdown when clicking outside
 document.addEventListener("click", (e) => {
   const dropdown = document.getElementById("copyDropdownMenu");
   const container = document.querySelector(".copy-dropdown-container");
 
-  if (dropdown && container && !container.contains(e.target as Node)) {
-    dropdown.classList.remove("show");
+  if (
+    dropdown instanceof HTMLElement &&
+    container instanceof HTMLElement &&
+    !container.contains(e.target as Node)
+  ) {
+    setCopyDropdownState(dropdown, false);
   }
 });
 

@@ -54,7 +54,7 @@ export function showFunctionPanel(fileData: FileNode): void {
         </div>
         <div class="copy-dropdown-item copy-ai-item" onclick="event.stopPropagation(); window.roadmapActions.copyForAI('${fileData.fullPath.replace(/\\/g, "\\\\")}'); window.roadmapActions.closeCopyDropdown();">
           <span class="copy-dropdown-icon">🤖</span>
-          <span class="copy-dropdown-text">For AI (all files)</span>
+          <span class="copy-dropdown-text">For AI (relate)</span>
         </div>
         `
             : ""
@@ -83,7 +83,6 @@ export function showFunctionPanel(fileData: FileNode): void {
     <div class="function-panel-title">📄 ${fileData.name}</div>
     <div class="function-panel-subtitle">${fileData.functions?.length || 0} functions</div>
     ${copyButtons}
-    ${errorBanner}
   `;
 
   // ✅ Collapsible Errors section (like Functions/Dependencies)
@@ -200,8 +199,8 @@ export function showFunctionPanel(fileData: FileNode): void {
     </div>
   `;
 
-  // ✅ ORDER: Errors FIRST, Functions SECOND, Dependencies THIRD
-  list.innerHTML = errorSection + funcSection + depsSection;
+  // ✅ ORDER: Errors section, Functions, Dependencies, Error banner
+  list.innerHTML = errorSection + funcSection + depsSection + errorBanner;
   panel.classList.add("visible");
   const toggle = getElement<HTMLButtonElement>("panelToggle");
   const wasActive = toggle.classList.contains("active");
