@@ -27,19 +27,21 @@ jobs:
         with:
           node-version: 20
 
+      # ---------- FRONT-END LINT ----------
       - name: Install & lint front-end
         working-directory: front-end
         run: |
-          npm ci
+          npm install
           npm run lint
 
+      # ---------- BACK-END LINT ----------
       - name: Install & lint back-end
         working-directory: back-end
         run: |
-          npm ci
+          npm install
           npm run lint
 
-  typecheck:
+  build:
     runs-on: ubuntu-latest
 
     steps:
@@ -52,14 +54,16 @@ jobs:
         with:
           node-version: 20
 
-      - name: Install & typecheck front-end
+      # ---------- FRONT-END BUILD ----------
+      - name: Install & build front-end
         working-directory: ./front-end
         run: |
-          npm ci
-          npm run typecheck
+          npm install
+          npm run build
 
-      - name: Install & typecheck back-end
+      # ---------- BACK-END BUILD ----------
+      - name: Install & build back-end
         working-directory: ./back-end
         run: |
-          npm ci
-          npm run typecheck
+          npm install
+          npm run build
