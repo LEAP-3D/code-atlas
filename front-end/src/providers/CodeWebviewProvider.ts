@@ -164,13 +164,18 @@ export class CodeWebviewProvider {
       return;
     }
 
-    await this.currentRoadmapPanel.webview.postMessage({
+    const promptMessage = {
       type: "roadmapEmptyState",
       title: "Monorepo detected",
       message: `This workspace (${workspaceName}) is a monorepo. Choose the project you want to see the roadmap of.`,
       actionLabel: "Choose Project",
       actionCommand: "pickMonorepoRoadmapProject",
-    });
+    };
+
+    await this.currentRoadmapPanel.webview.postMessage(promptMessage);
+    setTimeout(() => {
+      this.currentRoadmapPanel?.webview.postMessage(promptMessage);
+    }, 200);
   }
 
   /**
