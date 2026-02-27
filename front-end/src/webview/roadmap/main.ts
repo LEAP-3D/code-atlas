@@ -78,7 +78,9 @@ declare global {
       copyFile: (filePath: string) => void;
       copyAll: (filePath: string) => void;
       copyForAI: (filePath: string) => void;
+      copyForAIErrorOnly: (filePath: string) => void;
       toggleSection: (sectionId: string) => void;
+      loadErrorDetails: (filePath: string) => void;
       toggleCopyDropdown: () => void;
       closeCopyDropdown: () => void;
       clearSearch: () => void;
@@ -402,6 +404,75 @@ window.roadmapActions = {
     showCopyToast(`🤖 AI context with ${allFiles.size} files copied!`);
   },
 
+  copyForAIErrorOnly: (filePath: string) => {
+    if (!state.roadmapData || !state.hierarchyData) return;
+
+    const fileNode = findFileNodeByPath(state.hierarchyData, filePath);
+    if (!fileNode) return;
+
+    const deps = state.roadmapData.dependencies || [];
+    const imports = deps.filter((d) => d.importerFilePath === filePath);
+    const importedBy = deps.filter((d) => d.importedFilePath === filePath);
+
+    const fileName = fileNode.name;
+    const funcCount = fileNode.functions?.length || 0;
+
+    let context = `# 🐛 Fix These Errors\n\n`;
+    context += `## Error File: ${fileName}\n\n`;
+
+    if (fileNode.errorCount > 0) {
+      context += `### Errors Found:\n`;
+      context += `${fileNode.errorCount} error${fileNode.errorCount > 1 ? "s" : ""} detected in this file.\n\n`;
+    }
+
+    context += `### Context:\n`;
+    context += `- **Functions**: ${funcCount}\n`;
+    context += `- **Imports**: ${imports.length}\n`;
+    context += `- **Used By**: ${importedBy.length}\n\n`;
+
+    if (imports.length > 0) {
+      context += `## 📥 Imports\n\n`;
+      imports.forEach((dep) => {
+        const depFile = dep.importedFilePath.split(/[/\\]/).pop();
+        context += `- **${depFile}**: ${dep.importedNames.join(", ")}\n`;
+      });
+      context += `\n`;
+    }
+
+    if (importedBy.length > 0) {
+      context += `## 📤 Used By\n\n`;
+      importedBy.forEach((dep) => {
+        const depFile = dep.importerFilePath.split(/[/\\]/).pop();
+        context += `- **${depFile}**: ${dep.importedNames.join(", ")}\n`;
+      });
+      context += `\n`;
+    }
+
+    context += `### Instructions:\n`;
+    context += `Please fix ALL errors listed above in the ${fileName} file.\n\n`;
+    context += `**Requirements:**\n`;
+    context += `1. Fix each error on the specified line\n`;
+    context += `2. Maintain existing functionality\n`;
+    context += `3. Keep the same code style\n`;
+    context += `4. Return ONLY the corrected code for ${fileName}\n`;
+    context += `5. No explanations needed - just the fixed code\n\n`;
+    context += `---\n\n`;
+    context += `## File Content:\n`;
+    context += `\`\`\`javascript\n`;
+    context += `// ${fileName} content will be inserted here by the extension\n`;
+    context += `\`\`\`\n`;
+
+    // Send AI context with ONLY error file (no related files)
+    state.vscode.postMessage({
+      command: "copyAIContext",
+      errorFile: filePath,
+      context: context,
+      files: [filePath], // Only the error file
+    });
+
+    showCopyToast(`🤖 AI context (error file only) copied!`);
+  },
+
   toggleSection: (sectionId: string) => {
     const content = document.getElementById(`${sectionId}-content`);
     const toggle = document.getElementById(`${sectionId}-toggle`);
@@ -417,6 +488,21 @@ window.roadmapActions = {
       content.classList.add("collapsed");
       toggle.textContent = "▶";
     }
+  },
+
+  loadErrorDetails: (filePath: string) => {
+    const containerId = `errorLines-${filePath.replace(/[^a-zA-Z0-9]/g, "_")}`;
+    const container = document.getElementById(containerId);
+    if (!container) return;
+
+    // Request error details from VS Code
+    state.vscode.postMessage({
+      command: "getErrorDetails",
+      filePath: filePath,
+    });
+
+    // Store container ID for when we receive the response
+    (window as any).__errorDetailsContainer = containerId;
   },
 
   toggleCopyDropdown: () => {
@@ -547,6 +633,53 @@ window.addEventListener("message", (event) => {
       message.actionLabel,
       message.actionCommand,
     );
+  }
+
+  if (message.type === "errorDetails" && message.errors) {
+    const containerId = (window as any).__errorDetailsContainer;
+    const container = document.getElementById(containerId);
+    if (!container) return;
+
+    const errors = message.errors as Array<{ line: number; message: string }>;
+
+    // Group errors by line number to avoid duplicates
+    const errorsByLine = new Map<number, string[]>();
+    errors.forEach((error) => {
+      const messages = errorsByLine.get(error.line) || [];
+      messages.push(error.message);
+      errorsByLine.set(error.line, messages);
+    });
+
+    // Sort by line number and show ALL lines (no limit)
+    const sortedLines = Array.from(errorsByLine.keys()).sort((a, b) => a - b);
+
+    let html = '<div class="error-lines-list">';
+
+    sortedLines.forEach((lineNum) => {
+      const messages = errorsByLine.get(lineNum)!;
+
+      // Full message for tooltip
+      const fullTooltip = messages.join("\n").replace(/"/g, "&quot;");
+
+      // Short preview for display (first message, max 50 chars)
+      const firstMessage = messages[0];
+      const shortPreview =
+        firstMessage.length > 50
+          ? firstMessage.substring(0, 50) + "..."
+          : firstMessage;
+
+      html += `
+        <div class="error-line-item" 
+             onclick="event.stopPropagation(); window.roadmapActions.goToFunction('${message.filePath.replace(/\\/g, "\\\\")}', ${lineNum})"
+             title="${fullTooltip}">
+          <div class="error-line-number">Line ${lineNum}</div>
+          <div class="error-line-message">${shortPreview}</div>
+        </div>
+      `;
+    });
+
+    html += "</div>";
+    container.innerHTML = html;
   }
 });
 

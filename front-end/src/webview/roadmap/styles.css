@@ -1930,6 +1930,12 @@ svg.connections {
   font-weight: 600;
 }
 
+.copy-dropdown-divider {
+  height: 1px;
+  background: rgba(255, 255, 255, 0.1);
+  margin: 6px 8px;
+}
+
 /* Toast */
 .copy-toast {
   position: fixed;
@@ -2164,4 +2170,133 @@ svg.connections {
   font-size: 11px;
   text-align: center;
   font-style: italic;
+}
+
+/* Error Warning Banner (at top of panel) */
+.error-warning {
+  background: rgba(239, 68, 68, 0.12);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  border-radius: 8px;
+  margin: 12px 0;
+  padding: 12px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.error-warning:hover {
+  background: rgba(239, 68, 68, 0.18);
+}
+
+.error-warning-icon {
+  font-size: 24px;
+  flex-shrink: 0;
+}
+
+.error-warning-text {
+  flex: 1;
+  min-width: 0;
+}
+
+.error-warning-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: #ef4444;
+  margin-bottom: 3px;
+}
+
+.error-warning-subtitle {
+  font-size: 10px;
+  color: #fca5a5;
+}
+
+.error-debug-btn {
+  background: #ef4444;
+  color: white;
+  border: none;
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.error-debug-btn:hover {
+  background: #dc2626;
+  transform: scale(1.05);
+}
+
+/* Error Section - Collapsible (like Functions/Dependencies) */
+.error-section {
+  margin-bottom: 16px;
+}
+
+.section-count.error-count {
+  background: rgba(239, 68, 68, 0.2);
+  color: #ef4444;
+}
+
+.error-lines-container {
+  margin-top: 8px;
+}
+
+.error-lines-loading {
+  font-size: 10px;
+  color: #888;
+  text-align: center;
+  padding: 8px;
+  font-style: italic;
+}
+
+.error-lines-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.error-line-item {
+  background: rgba(239, 68, 68, 0.12);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  border-radius: 6px;
+  padding: 10px 12px;
+  cursor: pointer;
+  transition: all 0.15s;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.error-line-item:hover {
+  background: rgba(239, 68, 68, 0.2);
+  border-color: rgba(239, 68, 68, 0.5);
+  transform: translateX(2px);
+}
+
+.error-line-number {
+  font-size: 11px;
+  font-weight: 700;
+  color: #ef4444;
+  letter-spacing: 0.5px;
+}
+
+.error-line-message {
+  font-size: 10px;
+  color: #fca5a5;
+  line-height: 1.4;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.error-line-item:hover .error-line-number {
+  color: #fff;
+}
+
+.error-line-item:hover .error-line-message {
+  color: #fecaca;
 }

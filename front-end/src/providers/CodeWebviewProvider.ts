@@ -204,6 +204,10 @@ export class CodeWebviewProvider {
         );
         break;
 
+      case "getErrorDetails":
+        await this.sendErrorDetails(message.filePath!);
+        break;
+
       case "showAllErrors":
         await vscode.commands.executeCommand("workbench.action.problems.focus");
         break;
@@ -362,6 +366,30 @@ export class CodeWebviewProvider {
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : "Unknown error";
       vscode.window.showErrorMessage(`Failed to copy AI context: ${errorMsg}`);
+    }
+  }
+
+  private static async sendErrorDetails(filePath: string) {
+    if (!this.currentRoadmapPanel) return;
+
+    try {
+      const uri = vscode.Uri.file(filePath);
+      const diagnostics = vscode.languages.getDiagnostics(uri);
+
+      const errors = diagnostics
+        .filter((d) => d.severity === vscode.DiagnosticSeverity.Error)
+        .map((d) => ({
+          line: d.range.start.line + 1,
+          message: d.message,
+        }));
+
+      await this.currentRoadmapPanel.webview.postMessage({
+        type: "errorDetails",
+        filePath: filePath,
+        errors: errors,
+      });
+    } catch (error) {
+      console.error("Failed to send error details:", error);
     }
   }
 
