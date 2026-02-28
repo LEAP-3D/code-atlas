@@ -342,7 +342,34 @@ export function focusOnFile(fileData: FileNode): void {
   const importedByNodeIds = new Set<string>();
   const importFolderIds = new Set<string>();
   const importedByFolderIds = new Set<string>();
+  const importPathNodeIds = new Set<string>();
+  const importedByPathNodeIds = new Set<string>();
   let needsRerender = false;
+
+  const markPathToRoot = (
+    startNode: FileNode | HierarchyNode,
+    pathNodeIds: Set<string>,
+    folderIds: Set<string>,
+  ): void => {
+    let pathCursor: FileNode | HierarchyNode | null = startNode;
+    while (pathCursor && pathCursor.name !== "Root") {
+      const pathId = getNodeId(pathCursor);
+      if (pathId) {
+        pathNodeIds.add(pathId);
+        if (pathCursor.type === "folder") {
+          folderIds.add(pathId);
+        }
+      }
+      if (pathCursor.parent) {
+        const pathParentId = getNodeId(pathCursor.parent);
+        if (pathParentId && !state.isFolderExpanded(pathParentId)) {
+          state.expandedFolders.add(pathParentId);
+          needsRerender = true;
+        }
+      }
+      pathCursor = pathCursor.parent;
+    }
+  };
 
   const currentId = getNodeId(fileData);
   if (currentId) relevantNodeIds.add(currentId);
@@ -388,17 +415,7 @@ export function focusOnFile(fileData: FileNode): void {
       if (node) {
         const id = getNodeId(node);
         if (id) importNodeIds.add(id);
-
-        if (node.parent) {
-          const parentId = getNodeId(node.parent);
-          if (parentId) {
-            importFolderIds.add(parentId);
-            if (!state.isFolderExpanded(parentId)) {
-              state.expandedFolders.add(parentId);
-              needsRerender = true;
-            }
-          }
-        }
+        markPathToRoot(node, importPathNodeIds, importFolderIds);
       }
     }
   });
@@ -412,17 +429,7 @@ export function focusOnFile(fileData: FileNode): void {
       if (node) {
         const id = getNodeId(node);
         if (id) importedByNodeIds.add(id);
-
-        if (node.parent) {
-          const parentId = getNodeId(node.parent);
-          if (parentId) {
-            importedByFolderIds.add(parentId);
-            if (!state.isFolderExpanded(parentId)) {
-              state.expandedFolders.add(parentId);
-              needsRerender = true;
-            }
-          }
-        }
+        markPathToRoot(node, importedByPathNodeIds, importedByFolderIds);
       }
     }
   });
@@ -479,11 +486,11 @@ export function focusOnFile(fileData: FileNode): void {
       importedByNodeIds.has(childId) ||
       (parentId && importedByNodeIds.has(parentId));
     const isImportFolderLine =
-      importFolderIds.has(childId) ||
-      (parentId && importFolderIds.has(parentId));
+      importPathNodeIds.has(childId) &&
+      Boolean(parentId && importPathNodeIds.has(parentId));
     const isImportedByFolderLine =
-      importedByFolderIds.has(childId) ||
-      (parentId && importedByFolderIds.has(parentId));
+      importedByPathNodeIds.has(childId) &&
+      Boolean(parentId && importedByPathNodeIds.has(parentId));
 
     line.classList.remove(
       "highlight",
@@ -574,5 +581,3 @@ export function goBackInPanel(): void {
 
   focusOnFile(node);
 }
-
-
