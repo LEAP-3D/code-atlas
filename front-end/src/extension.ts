@@ -1,7 +1,7 @@
 import * as vscode from "vscode";
 import { CodeTreeProvider } from "./providers/CodeTreeProvider";
 import { CodeWebviewProvider } from "./providers/CodeWebviewProvider";
-import { AIProviderWebviewProvider } from "./providers/AIProviderWebviewProvider";
+// import { AIProviderWebviewProvider } from "./providers/AIProviderWebviewProvider";
 import { scanWorkspaceFiles } from "./analyzers/core/workspaceScanner";
 import { fileIndex } from "./state/fileIndex";
 import { functionIndex } from "./state/functionIndex";
@@ -16,9 +16,9 @@ import { analyzeRuntimeTriggers } from "./analyzers/runtime/runtimeTriggerAnalyz
 import { analyzeImportDependencies } from "./analyzers/dependencies/importDependencyAnalyzer"; // ✅ ШИНЭ
 import { mapErrorsToFunctions } from "./analyzers/debug/errorFunctionMapper";
 import { buildCallerChain } from "./analyzers/debug/executionChainBuilder";
-import { AIService } from "./services/aiService";
-import { relevantFilesResolver } from "./services/relevantFilesResolver";
-import * as fs from "fs";
+// import { AIService } from "./services/aiService";
+// import { relevantFilesResolver } from "./services/relevantFilesResolver";
+// import * as fs from "fs";
 
 const MONOREPO_MARKERS = [
   "pnpm-workspace.yaml",
@@ -202,7 +202,10 @@ async function discoverMonorepoProjectsShallow(
       if (type !== vscode.FileType.Directory) continue;
       if (name.startsWith(".") || IGNORED_DIR_NAMES.has(name)) continue;
 
-      await maybeAddCandidate(vscode.Uri.joinPath(workspaceFolder.uri, name), name);
+      await maybeAddCandidate(
+        vscode.Uri.joinPath(workspaceFolder.uri, name),
+        name,
+      );
     }
   }
 
@@ -240,7 +243,7 @@ async function pickMonorepoProject(
         ? `$(star-full) ${candidate.label}`
         : candidate.hasRecentSelection
           ? `$(history) ${candidate.label}`
-        : candidate.label,
+          : candidate.label,
       description: candidate.hasActiveFile
         ? "Contains current file"
         : candidate.hasRecentSelection
@@ -347,23 +350,23 @@ export function activate(context: vscode.ExtensionContext) {
   // ============================================
   // AI SERVICE SETUP
   // ============================================
-  const aiService = new AIService(context);
+  // const aiService = new AIService(context);
 
   // ============================================
   // AI PROVIDER WEBVIEW (SIDEBAR)
   // ============================================
-  const aiProviderWebviewProvider = new AIProviderWebviewProvider(
-    context.extensionUri,
-    context,
-    aiService,
-  );
+  // const aiProviderWebviewProvider = new AIProviderWebviewProvider(
+  //   context.extensionUri,
+  //   context,
+  //   aiService,
+  // );
 
-  context.subscriptions.push(
-    vscode.window.registerWebviewViewProvider(
-      AIProviderWebviewProvider.viewType,
-      aiProviderWebviewProvider,
-    ),
-  );
+  // context.subscriptions.push(
+  //   vscode.window.registerWebviewViewProvider(
+  //     AIProviderWebviewProvider.viewType,
+  //     aiProviderWebviewProvider,
+  //   ),
+  // );
 
   // ============================================
   // Existing code tree
@@ -554,108 +557,108 @@ export function activate(context: vscode.ExtensionContext) {
   // ============================================
   // ASK AI COMMAND
   // ============================================
-  const askAIDisposable = vscode.commands.registerCommand(
-    "experiment.askAI",
-    async () => {
-      try {
-        const hasKey = await aiService.hasApiKey();
-        if (!hasKey) {
-          vscode.window.showErrorMessage(
-            "API key тохируулаагүй. Sidebar-аас тохируулна уу.",
-          );
-          return;
-        }
+  // const askAIDisposable = vscode.commands.registerCommand(
+  //   "experiment.askAI",
+  //   async () => {
+  //     try {
+  //       const hasKey = await aiService.hasApiKey();
+  //       if (!hasKey) {
+  //         vscode.window.showErrorMessage(
+  //           "API key тохируулаагүй. Sidebar-аас тохируулна уу.",
+  //         );
+  //         return;
+  //       }
 
-        const editor = vscode.window.activeTextEditor;
-        if (!editor) {
-          vscode.window.showErrorMessage("Файл нээнэ үү");
-          return;
-        }
+  //       const editor = vscode.window.activeTextEditor;
+  //       if (!editor) {
+  //         vscode.window.showErrorMessage("Файл нээнэ үү");
+  //         return;
+  //       }
 
-        const files = await scanWorkspaceFiles();
-        if (files.length > 0) {
-          await loadWorkspaceFileContents(files);
-          analyzeFunctionBoundaries(fileIndex.getAll());
-          analyzeFunctionCalls(fileIndex.getAll());
-        }
+  //       const files = await scanWorkspaceFiles();
+  //       if (files.length > 0) {
+  //         await loadWorkspaceFileContents(files);
+  //         analyzeFunctionBoundaries(fileIndex.getAll());
+  //         analyzeFunctionCalls(fileIndex.getAll());
+  //       }
 
-        const currentFilePath = editor.document.uri.fsPath;
-        const relevantFiles =
-          relevantFilesResolver.getRelevantFiles(currentFilePath);
+  //       const currentFilePath = editor.document.uri.fsPath;
+  //       const relevantFiles =
+  //         relevantFilesResolver.getRelevantFiles(currentFilePath);
 
-        const relevantFilesWithContent = relevantFiles.map((rf) => {
-          try {
-            const indexedFile = fileIndex.getAll().find((f) => f.path === rf.path);
+  //       const relevantFilesWithContent = relevantFiles.map((rf) => {
+  //         try {
+  //           const indexedFile = fileIndex.getAll().find((f) => f.path === rf.path);
 
-            if (indexedFile) {
-              return {
-                path: rf.path,
-                content: indexedFile.text,
-              };
-            }
+  //           if (indexedFile) {
+  //             return {
+  //               path: rf.path,
+  //               content: indexedFile.text,
+  //             };
+  //           }
 
-            if (fs.existsSync(rf.path)) {
-              const content = fs.readFileSync(rf.path, "utf-8");
-              return {
-                path: rf.path,
-                content,
-              };
-            }
+  //           if (fs.existsSync(rf.path)) {
+  //             const content = fs.readFileSync(rf.path, "utf-8");
+  //             return {
+  //               path: rf.path,
+  //               content,
+  //             };
+  //           }
 
-            console.warn(`File not found: ${rf.path}`);
-            return {
-              path: rf.path,
-              content: `// File not found: ${rf.path}`,
-            };
-          } catch (error) {
-            console.error(`Error reading file ${rf.path}:`, error);
-            return {
-              path: rf.path,
-              content: `// Error reading file: ${error instanceof Error ? error.message : "Unknown error"}`,
-            };
-          }
-        });
+  //           console.warn(`File not found: ${rf.path}`);
+  //           return {
+  //             path: rf.path,
+  //             content: `// File not found: ${rf.path}`,
+  //           };
+  //         } catch (error) {
+  //           console.error(`Error reading file ${rf.path}:`, error);
+  //           return {
+  //             path: rf.path,
+  //             content: `// Error reading file: ${error instanceof Error ? error.message : "Unknown error"}`,
+  //           };
+  //         }
+  //       });
 
-        const providerName = aiService.getProviderConfig().name;
-        vscode.window.showInformationMessage(
-          `📁 ${relevantFilesWithContent.length} файл → ${providerName}`,
-        );
+  //       const providerName = aiService.getProviderConfig().name;
+  //       vscode.window.showInformationMessage(
+  //         `📁 ${relevantFilesWithContent.length} файл → ${providerName}`,
+  //       );
 
-        const question = await vscode.window.showInputBox({
-          prompt: `${providerName}-аас асуух`,
-          placeHolder: "Энэ код юу хийдэг вэ?",
-          ignoreFocusOut: true,
-        });
+  //       const question = await vscode.window.showInputBox({
+  //         prompt: `${providerName}-аас асуух`,
+  //         placeHolder: "Энэ код юу хийдэг вэ?",
+  //         ignoreFocusOut: true,
+  //       });
 
-        if (!question) return;
+  //       if (!question) return;
 
-        await vscode.window.withProgress(
-          {
-            location: vscode.ProgressLocation.Notification,
-            title: `${providerName} хариулж байна...`,
-            cancellable: false,
-          },
-          async () => {
-            const answer = await aiService.askWithContext(
-              relevantFilesWithContent,
-              question,
-            );
+  //       await vscode.window.withProgress(
+  //         {
+  //           location: vscode.ProgressLocation.Notification,
+  //           title: `${providerName} хариулж байна...`,
+  //           cancellable: false,
+  //         },
+  //         async () => {
+  //           const answer = await aiService.askWithContext(
+  //             relevantFilesWithContent,
+  //             question,
+  //           );
 
-            const doc = await vscode.workspace.openTextDocument({
-              content: `# ${providerName} Хариулт\n\n**Асуулт:** ${question}\n\n**Контекст:** ${relevantFilesWithContent.length} файл\n- ${relevantFilesWithContent.map((f) => f.path).join("\n- ")}\n\n---\n\n${answer}`,
-              language: "markdown",
-            });
-            await vscode.window.showTextDocument(doc, { preview: true });
-          },
-        );
-      } catch (error) {
-        vscode.window.showErrorMessage(
-          `AI алдаа: ${error instanceof Error ? error.message : "Unknown"}`,
-        );
-        console.error(error);
-      }
-    },
-  );
+  //           const doc = await vscode.workspace.openTextDocument({
+  //             content: `# ${providerName} Хариулт\n\n**Асуулт:** ${question}\n\n**Контекст:** ${relevantFilesWithContent.length} файл\n- ${relevantFilesWithContent.map((f) => f.path).join("\n- ")}\n\n---\n\n${answer}`,
+  //             language: "markdown",
+  //           });
+  //           await vscode.window.showTextDocument(doc, { preview: true });
+  //         },
+  //       );
+  //     } catch (error) {
+  //       vscode.window.showErrorMessage(
+  //         `AI алдаа: ${error instanceof Error ? error.message : "Unknown"}`,
+  //       );
+  //       console.error(error);
+  //     }
+  //   },
+  // );
 
   // ============================================
   // REGISTER ALL COMMANDS
@@ -663,7 +666,7 @@ export function activate(context: vscode.ExtensionContext) {
   context.subscriptions.push(disposable);
   context.subscriptions.push(roadmapDisposable);
   context.subscriptions.push(pickMonorepoRoadmapProjectDisposable);
-  context.subscriptions.push(askAIDisposable);
+  // context.subscriptions.push(askAIDisposable);
 }
 
 export function deactivate() {

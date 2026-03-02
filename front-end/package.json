@@ -3,7 +3,7 @@
   "displayName": "Code-Atlas",
   "description": "Visualize call graphs and code structure through diagram",
   "icon": "media/Group.png",
-  "version": "0.1.0",
+  "version": "0.1.3",
   "publisher": "saruul",
   "repository": {
     "type": "git",
@@ -35,11 +35,6 @@
         {
           "id": "codeTree",
           "name": "Selected Code"
-        },
-        {
-          "id": "aiProviderView",
-          "name": "AI Assistant",
-          "type": "webview"
         }
       ]
     },
@@ -51,21 +46,12 @@
       {
         "command": "experiment.showRoadmap",
         "title": "Show Project Roadmap"
-      },
-      {
-        "command": "experiment.askAI",
-        "title": "Ask AI About Current Code"
       }
     ],
     "keybindings": [
       {
         "command": "experiment.showSelectedCode",
         "key": "ctrl+alt+c",
-        "when": "editorTextFocus"
-      },
-      {
-        "command": "experiment.askAI",
-        "key": "ctrl+alt+a",
         "when": "editorTextFocus"
       }
     ]
