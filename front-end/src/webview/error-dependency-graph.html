@@ -89,17 +89,6 @@
         font-weight: 600;
       }
 
-      .control-btn.ai {
-        background: #f59e0b;
-        border-color: #f59e0b;
-        color: white;
-        font-weight: 600;
-      }
-
-      .control-btn.ai:hover {
-        background: #d97706;
-      }
-
       .control-btn.copy {
         background: #8b5cf6;
         border-color: #8b5cf6;
@@ -637,9 +626,6 @@
           <button class="control-btn" onclick="zoomOut()">−</button>
           <button class="control-btn" onclick="resetView()">Reset</button>
           <button class="control-btn" onclick="zoomIn()">+</button>
-          <button class="control-btn ai" onclick="copyForAI()">
-            🤖 Copy for AI
-          </button>
           <button class="control-btn copy" onclick="copyAllFiles()">
             📋 Copy All
           </button>
@@ -1261,73 +1247,6 @@
         });
 
         showToast(`📋 Copied ${allFilePaths.length} files!`);
-      }
-
-      function copyForAI() {
-        const fileName = errorData.errorFile.split(/[/\\]/).pop();
-
-        // Remove duplicates
-        const uniqueErrors = [];
-        const seenLines = new Set();
-        errorData.errors.forEach((err) => {
-          if (!seenLines.has(err.line)) {
-            seenLines.add(err.line);
-            uniqueErrors.push(err);
-          }
-        });
-
-        let aiContext = `# 🐛 Fix These Errors
-
-## Error File: ${fileName}
-
-### Errors Found:
-`;
-
-        uniqueErrors.forEach((err, index) => {
-          aiContext += `${index + 1}. **Line ${err.line}**: ${err.message}\n`;
-        });
-
-        const fileData = errorData.allFiles.find(
-          (f) => f.path === errorData.errorFile,
-        );
-        const functions = fileData?.functions?.length || 0;
-        const imports = errorData.dependencies.filter(
-          (d) => d.importerFilePath === errorData.errorFile,
-        ).length;
-        const exports = errorData.dependencies.filter(
-          (d) => d.importedFilePath === errorData.errorFile,
-        ).length;
-
-        aiContext += `\n### Context:
-- **Functions**: ${functions}
-- **Imports**: ${imports}
-- **Used By**: ${exports}
-
-### Instructions:
-Please fix ALL errors listed above in the ${fileName} file. 
-
-**Requirements:**
-1. Fix each error on the specified line
-2. Maintain existing functionality  
-3. Keep the same code style
-4. Return ONLY the corrected code for ${fileName}
-5. No explanations needed - just the fixed code
-
----
-
-## File Content:
-\`\`\`javascript
-// ${fileName} content will be inserted here by the extension
-\`\`\`
-`;
-
-        vscode.postMessage({
-          command: "copyAIContext",
-          errorFile: errorData.errorFile,
-          context: aiContext,
-        });
-
-        showToast(`🤖 AI context copied! Paste to ChatGPT/Claude`);
       }
 
       function openFile(filePath) {

@@ -26,9 +26,6 @@ export function showFunctionPanel(fileData: FileNode): void {
     (d: RoadmapDependency) => d.importedFilePath === fileData.fullPath,
   );
 
-  // ✅ Copy dropdown button - conditional based on errors
-  const hasErrors = fileData.errorCount > 0;
-
   const copyButtons = `
     <div class="copy-dropdown-container">
       <button class="copy-main-btn" onclick="event.stopPropagation(); window.roadmapActions.toggleCopyDropdown()">
@@ -45,29 +42,6 @@ export function showFunctionPanel(fileData: FileNode): void {
           <span class="copy-dropdown-icon">📦</span>
           <span class="copy-dropdown-text">With imports/exports</span>
         </div>
-        ${
-          hasErrors
-            ? `
-        <div class="copy-dropdown-divider"></div>
-        <div class="copy-dropdown-item copy-ai-item" onclick="event.stopPropagation(); window.roadmapActions.copyForAIErrorOnly('${fileData.fullPath.replace(/\\/g, "\\\\")}'); window.roadmapActions.closeCopyDropdown();">
-          <span class="copy-dropdown-icon">🤖</span>
-          <span class="copy-dropdown-text">For AI (error file only)</span>
-        </div>
-        <div class="copy-dropdown-item copy-ai-item" onclick="event.stopPropagation(); window.roadmapActions.copyForAI('${fileData.fullPath.replace(/\\/g, "\\\\")}'); window.roadmapActions.closeCopyDropdown();">
-          <span class="copy-dropdown-icon">🤖</span>
-          <span class="copy-dropdown-text">For AI (related files)</span>
-        </div>
-        <div class="copy-dropdown-item copy-ai-item copy-ai-smart-item" onclick="event.stopPropagation(); window.roadmapActions.copyForAISmart('${fileData.fullPath.replace(/\\/g, "\\\\")}', false); window.roadmapActions.closeCopyDropdown();">
-          <span class="copy-dropdown-icon">AI</span>
-          <span class="copy-dropdown-text">Copy Fix Context (TS-smart)</span>
-        </div>
-        <div class="copy-dropdown-item copy-ai-item copy-ai-smart-item" onclick="event.stopPropagation(); window.roadmapActions.copyForAISmart('${fileData.fullPath.replace(/\\/g, "\\\\")}', true); window.roadmapActions.closeCopyDropdown();">
-          <span class="copy-dropdown-icon">AI+</span>
-          <span class="copy-dropdown-text">Copy Fix Context + related</span>
-        </div>
-        `
-            : ""
-        }
       </div>
     </div>
   `;

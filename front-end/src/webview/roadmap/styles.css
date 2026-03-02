@@ -1520,8 +1520,7 @@ svg.connections {
 }
 
 .copy-file-btn,
-.copy-all-btn,
-.copy-ai-btn {
+.copy-all-btn {
   background: #2a2a2a;
   color: white;
   border: 1px solid #3a3a3a;
@@ -1555,21 +1554,8 @@ svg.connections {
   transform: translateY(-1px);
 }
 
-.copy-ai-btn {
-  background: #3a2a1a;
-  border-color: #f59e0b;
-  grid-column: 1 / -1; /* Full width for AI button */
-}
-
-.copy-ai-btn:hover {
-  background: #4a3a2a;
-  border-color: #fbbf24;
-  transform: translateY(-1px);
-}
-
 .copy-file-btn:active,
-.copy-all-btn:active,
-.copy-ai-btn:active {
+.copy-all-btn:active {
   transform: translateY(0) scale(0.98);
 }
 
@@ -1672,8 +1658,7 @@ svg.connections {
 }
 
 .copy-file-btn,
-.copy-all-btn,
-.copy-ai-btn {
+.copy-all-btn {
   background: #2a2a2a;
   color: white;
   border: 1px solid #3a3a3a;
@@ -1707,21 +1692,8 @@ svg.connections {
   transform: translateY(-1px);
 }
 
-.copy-ai-btn {
-  background: #3a2a1a;
-  border-color: #f59e0b;
-  grid-column: 1 / -1; /* Full width for AI button */
-}
-
-.copy-ai-btn:hover {
-  background: #4a3a2a;
-  border-color: #fbbf24;
-  transform: translateY(-1px);
-}
-
 .copy-file-btn:active,
-.copy-all-btn:active,
-.copy-ai-btn:active {
+.copy-all-btn:active {
   transform: translateY(0) scale(0.98);
 }
 
@@ -1947,24 +1919,6 @@ svg.connections {
   transform: translateX(1px) scale(0.98);
 }
 
-.copy-dropdown-item.copy-ai-item {
-  background: linear-gradient(
-    135deg,
-    rgba(139, 92, 246, 0.12),
-    rgba(139, 92, 246, 0.08)
-  );
-  border: 1px solid rgba(139, 92, 246, 0.25);
-}
-
-.copy-dropdown-item.copy-ai-item:hover {
-  background: linear-gradient(
-    135deg,
-    rgba(139, 92, 246, 0.2),
-    rgba(139, 92, 246, 0.15)
-  );
-  border-color: rgba(139, 92, 246, 0.4);
-}
-
 .copy-dropdown-icon {
   font-size: 16px;
   flex-shrink: 0;
@@ -1980,11 +1934,6 @@ svg.connections {
   color: #e0e0e0;
   flex: 1;
   font-weight: 500;
-}
-
-.copy-dropdown-item.copy-ai-item .copy-dropdown-text {
-  color: #c4b5fd;
-  font-weight: 600;
 }
 
 .copy-dropdown-divider {
@@ -2534,10 +2483,6 @@ svg.connections {
   border: 1px solid rgba(255, 255, 255, 0.25);
   border-radius: 999px;
   padding: 2px 8px;
-}
-
-.copy-dropdown-item.copy-ai-smart-item {
-  border-left: 2px solid #22c55e;
 }
 
 /* Unified sidebar section design */

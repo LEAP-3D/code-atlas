@@ -11,9 +11,6 @@ import { loadWorkspaceFileContents } from "./analyzers/core/fileContentLoader";
 import { analyzeFunctionBoundaries } from "./analyzers/core/functionBoundaryAnalyzer";
 import { analyzeFunctionCalls } from "./analyzers/core/functionCallAnalyzer";
 import { analyzeImportDependencies } from "./analyzers/dependencies/importDependencyAnalyzer"; // ✅ ШИНЭ
-// import { AIService } from "./services/aiService";
-// import { relevantFilesResolver } from "./services/relevantFilesResolver";
-// import * as fs from "fs";
 
 const MONOREPO_MARKERS = [
   "pnpm-workspace.yaml",
