@@ -45,30 +45,24 @@
     },
     "commands": [
       {
-        "command": "experiment.showSelectedCode",
-        "title": "Show Selected Code"
-      },
-      {
         "command": "experiment.showRoadmap",
         "title": "Show Project Roadmap"
       },
       {
-        "command": "experiment.askAI",
-        "title": "Ask AI About Current Code"
+        "command": "experiment.giveFeedback",
+        "title": "Give Feedback",
+        "icon": "$(comment-discussion)"
       }
     ],
-    "keybindings": [
-      {
-        "command": "experiment.showSelectedCode",
-        "key": "ctrl+alt+c",
-        "when": "editorTextFocus"
-      },
-      {
-        "command": "experiment.askAI",
-        "key": "ctrl+alt+a",
-        "when": "editorTextFocus"
-      }
-    ]
+    "menus": {
+      "view/title": [
+        {
+          "command": "experiment.giveFeedback",
+          "when": "view == codeTree",
+          "group": "navigation"
+        }
+      ]
+    }
   },
   "scripts": {
     "vscode:prepublish": "npm run package",
