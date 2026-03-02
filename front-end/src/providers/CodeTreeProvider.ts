@@ -12,16 +12,10 @@ export class CodeTreeProvider implements vscode.TreeDataProvider<TreeItem> {
     return element;
   }
 
-  // getChildren(): TreeItem[] {
-  //   return [
-  //     new TreeItem("Explain Selected Code", "experiment.showSelectedCode"),
-  //     new TreeItem("Show Execution Flow", "experiment.showSelectedCode"),
-  //   ];
-  // }
   getChildren(): TreeItem[] {
     return [
       new TreeItem("🧠 Roadmap View", "experiment.showRoadmap"),
-      new TreeItem("🐞 Debug Execution Flow", "experiment.showSelectedCode"),
+      new TreeItem("💬 Give Feedback", "experiment.giveFeedback"),
     ];
   }
 }
