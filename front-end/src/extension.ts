@@ -1,24 +1,16 @@
 import * as vscode from "vscode";
 import { CodeTreeProvider } from "./providers/CodeTreeProvider";
 import { CodeWebviewProvider } from "./providers/CodeWebviewProvider";
-// import { AIProviderWebviewProvider } from "./providers/AIProviderWebviewProvider";
 import { scanWorkspaceFiles } from "./analyzers/core/workspaceScanner";
 import { fileIndex } from "./state/fileIndex";
 import { functionIndex } from "./state/functionIndex";
 import { triggerIndex } from "./state/triggerIndex";
 import { dependencyIndex } from "./state/dependencyIndex"; // ✅ ШИНЭ
 import { callGraphIndex } from "./state/callGraphIndex";
-import { buildExecutionMermaid } from "./analyzers/debug/executionMermaidBuilder";
 import { loadWorkspaceFileContents } from "./analyzers/core/fileContentLoader";
 import { analyzeFunctionBoundaries } from "./analyzers/core/functionBoundaryAnalyzer";
 import { analyzeFunctionCalls } from "./analyzers/core/functionCallAnalyzer";
-import { analyzeRuntimeTriggers } from "./analyzers/runtime/runtimeTriggerAnalyzer";
 import { analyzeImportDependencies } from "./analyzers/dependencies/importDependencyAnalyzer"; // ✅ ШИНЭ
-import { mapErrorsToFunctions } from "./analyzers/debug/errorFunctionMapper";
-import { buildCallerChain } from "./analyzers/debug/executionChainBuilder";
-// import { AIService } from "./services/aiService";
-// import { relevantFilesResolver } from "./services/relevantFilesResolver";
-// import * as fs from "fs";
 
 const MONOREPO_MARKERS = [
   "pnpm-workspace.yaml",
@@ -348,27 +340,6 @@ async function runMonorepoProjectPickerFlow(context: vscode.ExtensionContext) {
 
 export function activate(context: vscode.ExtensionContext) {
   // ============================================
-  // AI SERVICE SETUP
-  // ============================================
-  // const aiService = new AIService(context);
-
-  // ============================================
-  // AI PROVIDER WEBVIEW (SIDEBAR)
-  // ============================================
-  // const aiProviderWebviewProvider = new AIProviderWebviewProvider(
-  //   context.extensionUri,
-  //   context,
-  //   aiService,
-  // );
-
-  // context.subscriptions.push(
-  //   vscode.window.registerWebviewViewProvider(
-  //     AIProviderWebviewProvider.viewType,
-  //     aiProviderWebviewProvider,
-  //   ),
-  // );
-
-  // ============================================
   // Existing code tree
   // ============================================
   // const treeProvider = new CodeTreeProvider();
@@ -382,89 +353,13 @@ export function activate(context: vscode.ExtensionContext) {
 
   console.log("✅ CodeTreeProvider registered");
 
-  // ============================================
-  // show selected code command (debug mode)
-  // ============================================
-  const disposable = vscode.commands.registerCommand(
-    "experiment.showSelectedCode",
+  const feedbackDisposable = vscode.commands.registerCommand(
+    "experiment.giveFeedback",
     async () => {
-      try {
-        vscode.window.showInformationMessage("Scanning workspace...");
-        const files = await scanWorkspaceFiles();
-
-        if (files.length === 0) {
-          vscode.window.showWarningMessage(
-            "No TypeScript files found in workspace",
-          );
-          return;
-        }
-
-        await loadWorkspaceFileContents(files);
-        analyzeFunctionBoundaries(fileIndex.getAll());
-
-        vscode.window.showInformationMessage(
-          `✓ Indexed ${fileIndex.getAll().length} files`,
-        );
-        vscode.window.showInformationMessage(
-          `✓ Found ${functionIndex.getAll().length} functions`,
-        );
-
-        analyzeFunctionCalls(fileIndex.getAll());
-        analyzeRuntimeTriggers(fileIndex.getAll());
-
-        const editor = vscode.window.activeTextEditor;
-        if (!editor) {
-          vscode.window.showErrorMessage("No active editor");
-          return;
-        }
-
-        const document = editor.document;
-        const mappedErrors = mapErrorsToFunctions(document);
-
-        mappedErrors.forEach((err) => {
-          const chain = buildCallerChain(err.functionName, document.uri.fsPath);
-          const trigger = triggerIndex.find(
-            err.functionName,
-            document.uri.fsPath,
-          );
-
-          vscode.window.showErrorMessage(
-            `❌ ${chain.join(" → ")}: ${err.message}`,
-          );
-
-          if (trigger) {
-            vscode.window.showInformationMessage(
-              `🔔 Triggered by: ${trigger.trigger}`,
-            );
-          }
-        });
-
-        const selectedCode =
-          editor.selection && !editor.selection.isEmpty
-            ? document.getText(editor.selection)
-            : "No code selected";
-
-        const errorFunctions = mappedErrors.map((e) => e.functionName);
-        const mermaidDiagram = buildExecutionMermaid(
-          document.uri.fsPath,
-          errorFunctions,
-        );
-
-        CodeWebviewProvider.show(context, {
-          summary: "Workspace indexed",
-          errorText: "N/A",
-          relevantCode: "N/A",
-          selectedCode,
-          mermaidDiagram,
-        });
-      } catch (error) {
-        vscode.window.showErrorMessage(
-          `Error during analysis: ${
-            error instanceof Error ? error.message : "Unknown error"
-          }`,
-        );
-        console.error(error);
-      }
+      const feedbackRepoUri = vscode.Uri.parse(
+        "https://github.com/Sarrul/codeatlas-feedback.git",
+      );
+      await vscode.env.openExternal(feedbackRepoUri);
     },
   );
 
@@ -555,118 +450,11 @@ export function activate(context: vscode.ExtensionContext) {
   );
 
   // ============================================
-  // ASK AI COMMAND
-  // ============================================
-  // const askAIDisposable = vscode.commands.registerCommand(
-  //   "experiment.askAI",
-  //   async () => {
-  //     try {
-  //       const hasKey = await aiService.hasApiKey();
-  //       if (!hasKey) {
-  //         vscode.window.showErrorMessage(
-  //           "API key тохируулаагүй. Sidebar-аас тохируулна уу.",
-  //         );
-  //         return;
-  //       }
-
-  //       const editor = vscode.window.activeTextEditor;
-  //       if (!editor) {
-  //         vscode.window.showErrorMessage("Файл нээнэ үү");
-  //         return;
-  //       }
-
-  //       const files = await scanWorkspaceFiles();
-  //       if (files.length > 0) {
-  //         await loadWorkspaceFileContents(files);
-  //         analyzeFunctionBoundaries(fileIndex.getAll());
-  //         analyzeFunctionCalls(fileIndex.getAll());
-  //       }
-
-  //       const currentFilePath = editor.document.uri.fsPath;
-  //       const relevantFiles =
-  //         relevantFilesResolver.getRelevantFiles(currentFilePath);
-
-  //       const relevantFilesWithContent = relevantFiles.map((rf) => {
-  //         try {
-  //           const indexedFile = fileIndex.getAll().find((f) => f.path === rf.path);
-
-  //           if (indexedFile) {
-  //             return {
-  //               path: rf.path,
-  //               content: indexedFile.text,
-  //             };
-  //           }
-
-  //           if (fs.existsSync(rf.path)) {
-  //             const content = fs.readFileSync(rf.path, "utf-8");
-  //             return {
-  //               path: rf.path,
-  //               content,
-  //             };
-  //           }
-
-  //           console.warn(`File not found: ${rf.path}`);
-  //           return {
-  //             path: rf.path,
-  //             content: `// File not found: ${rf.path}`,
-  //           };
-  //         } catch (error) {
-  //           console.error(`Error reading file ${rf.path}:`, error);
-  //           return {
-  //             path: rf.path,
-  //             content: `// Error reading file: ${error instanceof Error ? error.message : "Unknown error"}`,
-  //           };
-  //         }
-  //       });
-
-  //       const providerName = aiService.getProviderConfig().name;
-  //       vscode.window.showInformationMessage(
-  //         `📁 ${relevantFilesWithContent.length} файл → ${providerName}`,
-  //       );
-
-  //       const question = await vscode.window.showInputBox({
-  //         prompt: `${providerName}-аас асуух`,
-  //         placeHolder: "Энэ код юу хийдэг вэ?",
-  //         ignoreFocusOut: true,
-  //       });
-
-  //       if (!question) return;
-
-  //       await vscode.window.withProgress(
-  //         {
-  //           location: vscode.ProgressLocation.Notification,
-  //           title: `${providerName} хариулж байна...`,
-  //           cancellable: false,
-  //         },
-  //         async () => {
-  //           const answer = await aiService.askWithContext(
-  //             relevantFilesWithContent,
-  //             question,
-  //           );
-
-  //           const doc = await vscode.workspace.openTextDocument({
-  //             content: `# ${providerName} Хариулт\n\n**Асуулт:** ${question}\n\n**Контекст:** ${relevantFilesWithContent.length} файл\n- ${relevantFilesWithContent.map((f) => f.path).join("\n- ")}\n\n---\n\n${answer}`,
-  //             language: "markdown",
-  //           });
-  //           await vscode.window.showTextDocument(doc, { preview: true });
-  //         },
-  //       );
-  //     } catch (error) {
-  //       vscode.window.showErrorMessage(
-  //         `AI алдаа: ${error instanceof Error ? error.message : "Unknown"}`,
-  //       );
-  //       console.error(error);
-  //     }
-  //   },
-  // );
-
-  // ============================================
   // REGISTER ALL COMMANDS
   // ============================================
-  context.subscriptions.push(disposable);
+  context.subscriptions.push(feedbackDisposable);
   context.subscriptions.push(roadmapDisposable);
   context.subscriptions.push(pickMonorepoRoadmapProjectDisposable);
-  // context.subscriptions.push(askAIDisposable);
 }
 
 export function deactivate() {
