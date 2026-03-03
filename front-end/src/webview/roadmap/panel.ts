@@ -32,38 +32,64 @@ export function showFunctionPanel(fileData: FileNode): void {
   const copyButtons = `
     <div class="copy-dropdown-container">
       <button class="copy-main-btn" onclick="event.stopPropagation(); window.roadmapActions.toggleCopyDropdown()">
-        <span class="copy-main-icon">📋</span>
+        <span class="copy-main-icon">&#128203;</span>
         <span class="copy-main-text">Copy</span>
-        <span class="copy-main-arrow">▼</span>
+        <span class="copy-main-arrow">&#9660;</span>
       </button>
       <div class="copy-dropdown-menu" id="copyDropdownMenu">
-        <div class="copy-dropdown-item" onclick="event.stopPropagation(); window.roadmapActions.copyFile('${fileData.fullPath.replace(/\\/g, "\\\\")}'); window.roadmapActions.closeCopyDropdown();">
-          <span class="copy-dropdown-icon">📄</span>
-          <span class="copy-dropdown-text">This file only</span>
-        </div>
-        <div class="copy-dropdown-item" onclick="event.stopPropagation(); window.roadmapActions.copyAll('${fileData.fullPath.replace(/\\/g, "\\\\")}'); window.roadmapActions.closeCopyDropdown();">
-          <span class="copy-dropdown-icon">📦</span>
-          <span class="copy-dropdown-text">With imports/exports</span>
+        <div class="copy-subdropdown">
+          <button class="copy-sub-btn" onclick="event.stopPropagation(); window.roadmapActions.toggleCopySubmenu('copySubmenu-file')">
+            <span class="copy-sub-btn-icon">&#128196;</span>
+            <span class="copy-sub-btn-text">Copy</span>
+            <span class="copy-sub-btn-arrow">&#9660;</span>
+          </button>
+          <div class="copy-submenu" id="copySubmenu-file">
+            <div class="copy-dropdown-item" onclick="event.stopPropagation(); window.roadmapActions.copyFile('${fileData.fullPath.replace(/\\/g, "\\\\")}'); window.roadmapActions.closeCopyDropdown();">
+              <span class="copy-dropdown-icon">&#128196;</span>
+              <span class="copy-dropdown-text">This file only</span>
+            </div>
+            <div class="copy-dropdown-item" onclick="event.stopPropagation(); window.roadmapActions.copyAll('${fileData.fullPath.replace(/\\/g, "\\\\")}'); window.roadmapActions.closeCopyDropdown();">
+              <span class="copy-dropdown-icon">&#128230;</span>
+              <span class="copy-dropdown-text">With imports/exports</span>
+            </div>
+          </div>
         </div>
         ${
           hasErrors
             ? `
-        <div class="copy-dropdown-divider"></div>
-        <div class="copy-dropdown-item copy-ai-item" onclick="event.stopPropagation(); window.roadmapActions.copyForAIErrorOnly('${fileData.fullPath.replace(/\\/g, "\\\\")}'); window.roadmapActions.closeCopyDropdown();">
-          <span class="copy-dropdown-icon">🤖</span>
-          <span class="copy-dropdown-text">For AI (error file only)</span>
+        <div class="copy-subdropdown">
+          <button class="copy-sub-btn copy-sub-btn-ai" onclick="event.stopPropagation(); window.roadmapActions.toggleCopySubmenu('copySubmenu-ai')">
+            <span class="copy-sub-btn-icon">&#129302;</span>
+            <span class="copy-sub-btn-text">For AI</span>
+            <span class="copy-sub-btn-arrow">&#9660;</span>
+          </button>
+          <div class="copy-submenu" id="copySubmenu-ai">
+            <div class="copy-dropdown-item copy-ai-item" onclick="event.stopPropagation(); window.roadmapActions.copyForAIErrorOnly('${fileData.fullPath.replace(/\\/g, "\\\\")}'); window.roadmapActions.closeCopyDropdown();">
+              <span class="copy-dropdown-icon">&#129302;</span>
+              <span class="copy-dropdown-text">For AI (error file only)</span>
+            </div>
+            <div class="copy-dropdown-item copy-ai-item" onclick="event.stopPropagation(); window.roadmapActions.copyForAI('${fileData.fullPath.replace(/\\/g, "\\\\")}'); window.roadmapActions.closeCopyDropdown();">
+              <span class="copy-dropdown-icon">&#129302;</span>
+              <span class="copy-dropdown-text">For AI (related files)</span>
+            </div>
+          </div>
         </div>
-        <div class="copy-dropdown-item copy-ai-item" onclick="event.stopPropagation(); window.roadmapActions.copyForAI('${fileData.fullPath.replace(/\\/g, "\\\\")}'); window.roadmapActions.closeCopyDropdown();">
-          <span class="copy-dropdown-icon">🤖</span>
-          <span class="copy-dropdown-text">For AI (related files)</span>
-        </div>
-        <div class="copy-dropdown-item copy-ai-item copy-ai-smart-item" onclick="event.stopPropagation(); window.roadmapActions.copyForAISmart('${fileData.fullPath.replace(/\\/g, "\\\\")}', false); window.roadmapActions.closeCopyDropdown();">
-          <span class="copy-dropdown-icon">AI</span>
-          <span class="copy-dropdown-text">Copy Fix Context (TS-smart)</span>
-        </div>
-        <div class="copy-dropdown-item copy-ai-item copy-ai-smart-item" onclick="event.stopPropagation(); window.roadmapActions.copyForAISmart('${fileData.fullPath.replace(/\\/g, "\\\\")}', true); window.roadmapActions.closeCopyDropdown();">
-          <span class="copy-dropdown-icon">AI+</span>
-          <span class="copy-dropdown-text">Copy Fix Context + related</span>
+        <div class="copy-subdropdown">
+          <button class="copy-sub-btn copy-sub-btn-smart" onclick="event.stopPropagation(); window.roadmapActions.toggleCopySubmenu('copySubmenu-fix')">
+            <span class="copy-sub-btn-icon">AI</span>
+            <span class="copy-sub-btn-text">Copy Fix Context</span>
+            <span class="copy-sub-btn-arrow">&#9660;</span>
+          </button>
+          <div class="copy-submenu" id="copySubmenu-fix">
+            <div class="copy-dropdown-item copy-ai-item copy-ai-smart-item" onclick="event.stopPropagation(); window.roadmapActions.copyForAISmart('${fileData.fullPath.replace(/\\/g, "\\\\")}', false); window.roadmapActions.closeCopyDropdown();">
+              <span class="copy-dropdown-icon">AI</span>
+              <span class="copy-dropdown-text">Copy Fix Context (TS-smart)</span>
+            </div>
+            <div class="copy-dropdown-item copy-ai-item copy-ai-smart-item" onclick="event.stopPropagation(); window.roadmapActions.copyForAISmart('${fileData.fullPath.replace(/\\/g, "\\\\")}', true); window.roadmapActions.closeCopyDropdown();">
+              <span class="copy-dropdown-icon">AI+</span>
+              <span class="copy-dropdown-text">Copy Fix Context + related</span>
+            </div>
+          </div>
         </div>
         `
             : ""
@@ -581,3 +607,7 @@ export function goBackInPanel(): void {
 
   focusOnFile(node);
 }
+
+
+
+

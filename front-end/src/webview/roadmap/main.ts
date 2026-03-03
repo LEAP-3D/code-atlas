@@ -329,6 +329,7 @@ declare global {
       toggleErrorPriorityMode: (enabled: boolean) => void;
       toggleRootCauseGrouping: (enabled: boolean) => void;
       toggleCopyDropdown: () => void;
+      toggleCopySubmenu: (submenuId: string) => void;
       closeCopyDropdown: () => void;
       clearSearch: () => void;
     };
@@ -811,6 +812,27 @@ window.roadmapActions = {
     setCopyDropdownState(dropdown, shouldOpen);
   },
 
+  toggleCopySubmenu: (submenuId: string) => {
+    const dropdown = document.getElementById("copyDropdownMenu");
+    if (!(dropdown instanceof HTMLElement)) return;
+
+    const submenu = document.getElementById(submenuId);
+    if (!(submenu instanceof HTMLElement)) return;
+
+    const shouldOpen = !submenu.classList.contains("show");
+    closeCopySubmenus(dropdown);
+
+    if (shouldOpen) {
+      submenu.classList.add("show");
+      const trigger = submenu.previousElementSibling;
+      if (trigger instanceof HTMLElement) {
+        trigger.classList.add("submenu-open");
+      }
+    }
+
+    updateCopyDropdownSpace(dropdown);
+  },
+
   closeCopyDropdown: () => {
     const dropdown = document.getElementById("copyDropdownMenu");
     if (!(dropdown instanceof HTMLElement)) return;
@@ -857,20 +879,45 @@ function setCopyDropdownState(dropdown: HTMLElement, isOpen: boolean): void {
   const container = dropdown.closest(".copy-dropdown-container");
   if (!(container instanceof HTMLElement)) {
     dropdown.classList.toggle("show", isOpen);
+    if (!isOpen) {
+      closeCopySubmenus(dropdown);
+    }
     return;
   }
 
   if (isOpen) {
     dropdown.classList.add("show");
-    const dropdownSpace = dropdown.scrollHeight + 10;
     container.classList.add("dropdown-open");
-    container.style.setProperty("--copy-dropdown-space", `${dropdownSpace}px`);
+    updateCopyDropdownSpace(dropdown);
     return;
   }
 
+  closeCopySubmenus(dropdown);
   dropdown.classList.remove("show");
   container.classList.remove("dropdown-open");
   container.style.setProperty("--copy-dropdown-space", "0px");
+}
+
+function closeCopySubmenus(dropdown: HTMLElement): void {
+  dropdown.querySelectorAll(".copy-submenu").forEach((node) => {
+    if (node instanceof HTMLElement) {
+      node.classList.remove("show");
+    }
+  });
+
+  dropdown.querySelectorAll(".copy-sub-btn").forEach((node) => {
+    if (node instanceof HTMLElement) {
+      node.classList.remove("submenu-open");
+    }
+  });
+}
+
+function updateCopyDropdownSpace(dropdown: HTMLElement): void {
+  const container = dropdown.closest(".copy-dropdown-container");
+  if (!(container instanceof HTMLElement)) return;
+
+  const dropdownSpace = dropdown.scrollHeight + 10;
+  container.style.setProperty("--copy-dropdown-space", `${dropdownSpace}px`);
 }
 
 // Close dropdown when clicking outside
@@ -982,5 +1029,13 @@ window.addEventListener("message", (event: MessageEvent<unknown>) => {
 });
 
 init();
+
+
+
+
+
+
+
+
 
 

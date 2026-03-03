@@ -1903,6 +1903,86 @@ svg.connections {
   transform: translateY(0) scale(1);
 }
 
+.copy-subdropdown {
+  margin-bottom: 8px;
+}
+
+.copy-subdropdown:last-child {
+  margin-bottom: 0;
+}
+
+.copy-sub-btn {
+  width: 100%;
+  padding: 9px 10px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(255, 255, 255, 0.04);
+  color: #f4f4f5;
+  display: grid;
+  grid-template-columns: 18px 1fr 12px;
+  align-items: center;
+  column-gap: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.14s ease;
+}
+
+.copy-sub-btn:hover {
+  border-color: rgba(255, 255, 255, 0.28);
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.copy-sub-btn.submenu-open {
+  border-color: #f59e0b;
+  box-shadow: 0 0 0 1px rgba(245, 158, 11, 0.28) inset;
+}
+
+.copy-sub-btn-ai {
+  border-color: rgba(139, 92, 246, 0.35);
+  background: linear-gradient(
+    135deg,
+    rgba(139, 92, 246, 0.2),
+    rgba(139, 92, 246, 0.1)
+  );
+}
+
+.copy-sub-btn-smart {
+  border-color: rgba(34, 197, 94, 0.45);
+  background: linear-gradient(
+    135deg,
+    rgba(34, 197, 94, 0.18),
+    rgba(34, 197, 94, 0.08)
+  );
+}
+
+.copy-sub-btn-icon {
+  font-size: 14px;
+  justify-self: center;
+}
+
+.copy-sub-btn-text {
+  text-align: left;
+}
+
+.copy-sub-btn-arrow {
+  font-size: 10px;
+  opacity: 0.8;
+  justify-self: end;
+}
+
+.copy-submenu {
+  margin-top: 6px;
+  padding: 6px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(0, 0, 0, 0.2);
+  display: none;
+}
+
+.copy-submenu.show {
+  display: block;
+}
 .copy-dropdown-item {
   padding: 10px 12px;
   border-radius: 6px;
@@ -2620,3 +2700,5 @@ svg.connections {
   overflow: hidden;
   text-overflow: ellipsis;
 }
+
+
