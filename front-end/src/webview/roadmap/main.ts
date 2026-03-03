@@ -84,20 +84,6 @@ function escapeHtml(text: string): string {
     .replace(/'/g, "&#39;");
 }
 
-function severityLabel(issue: RoadmapDiagnosticItem): string {
-  const icon =
-    issue.severity === "error"
-      ? "E"
-      : issue.severity === "warning"
-        ? "W"
-        : issue.severity === "info"
-          ? "I"
-          : "H";
-  const source = issue.source ? ` - ${escapeHtml(issue.source)}` : "";
-  const code = issue.code ? ` (${escapeHtml(issue.code)})` : "";
-  return `${icon}${source}${code}`;
-}
-
 function severityRank(severity: RoadmapDiagnosticItem["severity"]): number {
   if (severity === "error") return 0;
   if (severity === "warning") return 1;
@@ -221,20 +207,12 @@ function renderIssues(
         ? `${escapeHtml(first.message.substring(0, 90))}...`
         : escapeHtml(first.message);
     const tooltip = escapeHtml(lineIssues.map((item) => item.message).join("\n"));
-    const badges = lineIssues
-      .map(
-        (item) =>
-          `<span class="diag-chip diag-${item.severity}">${severityLabel(item)}</span>`,
-      )
-      .join("");
-
     html += `
       <div class="error-line-item"
            onclick="event.stopPropagation(); window.roadmapActions.goToFunction('${filePath.replace(/\\/g, "\\\\")}', ${lineNum})"
            title="${tooltip}">
         <div class="error-line-row">
           <div class="error-line-number">Line ${lineNum}</div>
-          <div class="error-line-chips">${badges}</div>
         </div>
         <div class="error-line-message">${preview}</div>
       </div>
