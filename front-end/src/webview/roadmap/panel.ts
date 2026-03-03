@@ -107,6 +107,15 @@ export function showFunctionPanel(fileData: FileNode): void {
     </div>
   `;
 
+  const openFileButton = hasErrors
+    ? ""
+    : `
+    <button class="open-file-btn" onclick="event.stopPropagation(); window.roadmapActions.goToFunction('${fileData.fullPath.replace(/\\/g, "\\\\")}', 1)">
+      <span class="open-file-btn-icon">↗</span>
+      <span class="open-file-btn-text">Open this file</span>
+    </button>
+  `;
+
 
   const backButton =
     fileNavigationHistory.length > 0
@@ -122,6 +131,7 @@ export function showFunctionPanel(fileData: FileNode): void {
       </div>
     </div>
     ${copyButtons}
+    ${openFileButton}
   `;
 
   // ✅ Collapsible Errors section (like Functions/Dependencies)

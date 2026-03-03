@@ -1829,6 +1829,52 @@ svg.connections {
   z-index: 2;
 }
 
+.open-file-btn {
+  width: 100%;
+  margin-top: 8px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  border: 1px solid rgba(78, 201, 176, 0.42);
+  background: linear-gradient(
+    135deg,
+    rgba(78, 201, 176, 0.2) 0%,
+    rgba(45, 212, 191, 0.1) 100%
+  );
+  color: #e6fffa;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  display: grid;
+  grid-template-columns: 16px 1fr;
+  align-items: center;
+  column-gap: 8px;
+  transition: all 0.16s ease;
+}
+
+.open-file-btn:hover {
+  border-color: rgba(94, 234, 212, 0.62);
+  background: linear-gradient(
+    135deg,
+    rgba(78, 201, 176, 0.3) 0%,
+    rgba(45, 212, 191, 0.16) 100%
+  );
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(20, 184, 166, 0.18);
+}
+
+.open-file-btn:active {
+  transform: translateY(0);
+}
+
+.open-file-btn-icon {
+  font-size: 12px;
+  justify-self: center;
+}
+
+.open-file-btn-text {
+  text-align: left;
+}
+
 .copy-main-btn {
   width: 100%;
   padding: 11px 14px;
