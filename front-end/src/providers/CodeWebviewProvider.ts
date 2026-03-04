@@ -634,12 +634,21 @@ export class CodeWebviewProvider {
           context += `## Related Files (for reference)\n- None resolved from dependency graph.\n\n`;
         }
       }
-
       context += `## Required Output\n`;
-      context += `1. Root-cause first fix order.\n`;
-      context += `2. Return full corrected ${fileName} only.\n`;
-      context += `3. Keep behavior unchanged except bug fixes.\n`;
-      context += `4. If import/type changes are needed, include them in this file.\n`;
+      context += `1. Fix root causes first, then downstream errors.\n`;
+      context += `2. Apply corrections across ALL related files included in this context (not only target file).\n`;
+      context += `3. Do NOT ask follow-up questions. Proceed autonomously with best-correct fixes.\n`;
+      context += `4. Return full corrected content for every changed file.\n`;
+      context += `5. Use this exact output format:\n`;
+      context += `   ### FILE: <relative/path>\n`;
+      context += `   \`\`\`<language>\n`;
+      context += `   <full corrected file content>\n`;
+      context += `   \`\`\`\n`;
+      context += `6. If a file does not need changes, omit it.\n`;
+      context += `7. Keep runtime behavior unchanged except necessary bug/type fixes.\n`;
+      context += `8. Remove redundant checks and logical tautologies where safe to do so.\n`;
+      context += `9. Improve business validation quality, not only type correctness.\n`;
+      context += `10. For each validation condition touched, explain why it is meaningful.\n`;
 
       await vscode.env.clipboard.writeText(context);
       vscode.window.showInformationMessage(
