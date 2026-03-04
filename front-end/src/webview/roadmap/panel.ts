@@ -28,6 +28,7 @@ export function showFunctionPanel(fileData: FileNode): void {
 
   // ✅ Copy dropdown button - conditional based on errors
   const hasErrors = fileData.errorCount > 0;
+  const showAIDebugPromptCopy = false;
 
   const copyButtons = `
     <div class="copy-dropdown-container">
@@ -57,6 +58,9 @@ export function showFunctionPanel(fileData: FileNode): void {
             </div>
           </div>
         </div>
+        ${
+          showAIDebugPromptCopy
+            ? `
         <div class="copy-subdropdown">
           <button class="copy-sub-btn copy-sub-btn-ai" onclick="event.stopPropagation(); window.roadmapActions.toggleCopySubmenu('copySubmenu-ai')">
             <span class="copy-sub-btn-icon">&#129302;</span>
@@ -74,6 +78,9 @@ export function showFunctionPanel(fileData: FileNode): void {
             </div>
           </div>
         </div>
+        `
+            : ""
+        }
         <div class="copy-subdropdown">
           <button class="copy-sub-btn copy-sub-btn-smart" onclick="event.stopPropagation(); window.roadmapActions.toggleCopySubmenu('copySubmenu-fix')">
             <span class="copy-sub-btn-icon">AI</span>
