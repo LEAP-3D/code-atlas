@@ -2,8 +2,8 @@
   "name": "codeatlas-saruul",
   "displayName": "Code-Atlas",
   "description": "Visualize call graphs and code structure through diagram",
-  "icon": "media/Group.png",
-  "version": "0.1.3",
+  "icon": "media/Atlas9.png",
+  "version": "0.1.6",
   "publisher": "saruul",
   "repository": {
     "type": "git",
@@ -26,7 +26,7 @@
         {
           "id": "experimentSidebar",
           "title": "Code atlas",
-          "icon": "media/Group.png"
+          "icon": "media/Atlas9.png"
         }
       ]
     },
