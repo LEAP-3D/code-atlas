@@ -219,6 +219,7 @@ export class CodeWebviewProvider {
         await this.copySmartAIContext(
           message.filePath!,
           Boolean(message.includeRelatedFiles),
+          message.files,
         );
         break;
 
@@ -466,15 +467,36 @@ export class CodeWebviewProvider {
   }
 
   private static collectRelatedFiles(filePath: string): string[] {
-    const allDependencies = dependencyIndex.getAll();
-    const imports = allDependencies.filter((d) => d.importerFilePath === filePath);
-    const importedBy = allDependencies.filter(
-      (d) => d.importedFilePath === filePath,
-    );
-    const files = new Set<string>([filePath]);
-    for (const dep of imports) files.add(dep.importedFilePath);
-    for (const dep of importedBy) files.add(dep.importerFilePath);
+    const imports = dependencyIndex.getImportsOf(filePath);
+    const importedBy = dependencyIndex.getImportersOf(filePath);
+    const files = new Set<string>([path.normalize(filePath)]);
+    for (const dep of imports) files.add(path.normalize(dep.importedFilePath));
+    for (const dep of importedBy) files.add(path.normalize(dep.importerFilePath));
     return Array.from(files);
+  }
+
+  private static resolveRelatedFileCandidates(
+    filePath: string,
+    hintedRelatedFiles?: string[],
+  ): string[] {
+    const normalizedTarget = this.normalizeFsPath(filePath);
+    const candidates = [
+      ...(hintedRelatedFiles || []),
+      ...this.collectRelatedFiles(filePath),
+    ];
+
+    const dedup = new Map<string, string>();
+    for (const candidate of candidates) {
+      if (!candidate) continue;
+      const normalizedPath = path.normalize(candidate);
+      const normalizedKey = this.normalizeFsPath(normalizedPath);
+      if (normalizedKey === normalizedTarget) continue;
+      if (!dedup.has(normalizedKey)) {
+        dedup.set(normalizedKey, normalizedPath);
+      }
+    }
+
+    return Array.from(dedup.values()).filter((p) => fs.existsSync(p));
   }
 
   private static groupRootCauses(
@@ -508,6 +530,7 @@ export class CodeWebviewProvider {
   private static async copySmartAIContext(
     filePath: string,
     includeRelatedFiles: boolean,
+    hintedRelatedFiles?: string[],
   ) {
     try {
       if (!fs.existsSync(filePath)) {
@@ -522,9 +545,8 @@ export class CodeWebviewProvider {
       const fileName = path.basename(filePath);
       const language = this.getLanguageFence(filePath);
       const rootGroups = this.groupRootCauses(diagnostics);
-      const allDependencies = dependencyIndex.getAll();
-      const imports = allDependencies.filter((d) => d.importerFilePath === filePath);
-      const importedBy = allDependencies.filter((d) => d.importedFilePath === filePath);
+      const imports = dependencyIndex.getImportsOf(filePath);
+      const importedBy = dependencyIndex.getImportersOf(filePath);
 
       let context = `# Fix Context (${fileName})\n\n`;
       context += `## Priority\n`;
@@ -595,20 +617,21 @@ export class CodeWebviewProvider {
       context += `\`\`\`${language}\n`;
       context += fs.readFileSync(filePath, "utf-8");
       context += `\n\`\`\`\n\n`;
-
       if (includeRelatedFiles) {
-        const relatedFiles = this.collectRelatedFiles(filePath).filter(
-          (p) => p !== filePath,
+        const relatedFiles = this.resolveRelatedFileCandidates(
+          filePath,
+          hintedRelatedFiles,
         );
         if (relatedFiles.length > 0) {
           context += `## Related Files (for reference)\n`;
-          for (const related of relatedFiles.slice(0, 10)) {
-            if (!fs.existsSync(related)) continue;
+          for (const related of relatedFiles.slice(0, 15)) {
             context += `### ${path.basename(related)}\n`;
             context += `\`\`\`${this.getLanguageFence(related)}\n`;
             context += fs.readFileSync(related, "utf-8");
             context += `\n\`\`\`\n\n`;
           }
+        } else {
+          context += `## Related Files (for reference)\n- None resolved from dependency graph.\n\n`;
         }
       }
 
