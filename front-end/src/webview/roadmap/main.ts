@@ -701,10 +701,25 @@ window.roadmapActions = {
     showCopyToast(`🤖 AI context (error file only) copied!`);
   },
   copyForAISmart: (filePath: string, includeRelatedFiles: boolean) => {
+    const relatedFiles = includeRelatedFiles
+      ? Array.from(
+          new Set<string>([
+            filePath,
+            ...(state.roadmapData?.dependencies || [])
+              .filter(
+                (d) =>
+                  d.importerFilePath === filePath || d.importedFilePath === filePath,
+              )
+              .flatMap((d) => [d.importerFilePath, d.importedFilePath]),
+          ]),
+        )
+      : undefined;
+
     state.vscode.postMessage({
       command: "copySmartAIContext",
       filePath,
       includeRelatedFiles,
+      files: relatedFiles,
     });
     showCopyToast(
       `Smart fix context copied (${includeRelatedFiles ? "with related files" : "single file"})`,
